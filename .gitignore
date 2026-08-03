@@ -9,5 +9,6 @@ Output/
 .pytest_cache/
 htmlcov/
 .coverage
+*.egg-info/
 # GCP service account keys
 script-consejo-2026-gcp-*.json
