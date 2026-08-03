@@ -1,0 +1,81 @@
+schema: spec-driven
+language: es-neutral
+project: "Script Consejo 2026"
+persistence: hybrid
+strict_tdd: false
+
+context: |
+  Objetivo: automatizar la generación, validación y publicación de la presentación del consejo 2026.
+  Estado: repositorio inicial con PLAN.md y README.md; todavía no existe código ni estructura de aplicación.
+  Stack previsto: Python ETL, PostgreSQL remoto, MySQL local:8889, Google Sheets, Apps Script y Google Slides.
+  Flujo: extracción, validación DQS, snapshot, revisión maker-checker, publicación sobre copia y verificación final.
+  Trazabilidad: run_id, attempt_id, bundle canónico UTF-8 y hash SHA-256.
+  Datos: PostgreSQL es la fuente principal; MySQL y entradas manuales son fuentes temporales o autorizadas.
+  Arquitectura: flujo por fases definido; la arquitectura de código aún no está decidida ni implementada.
+  Calidad: publicación bloqueada ante discrepancias, fuentes vacías no equivalen a cero y la reejecución no debe duplicar datos.
+
+testing:
+  detected_on: "2026-07-30"
+  strict_tdd: false
+  strict_tdd_reason: "No se detectó código, configuración de dependencias ni test runner ejecutable."
+  runner:
+    available: false
+    framework: null
+    command: null
+  layers:
+    unit:
+      available: false
+      tool: null
+    integration:
+      available: false
+      tool: null
+    e2e:
+      available: false
+      tool: null
+  coverage:
+    available: false
+    command: null
+  quality_tools:
+    linter:
+      available: false
+      command: null
+    type_checker:
+      available: false
+      command: null
+    formatter:
+      available: false
+      command: null
+
+rules:
+  proposal:
+    - "Mantener PLAN.md como contexto de negocio y declarar explícitamente cualquier cambio de alcance."
+    - "Incluir riesgos de datos, rollback y protección de la presentación original."
+  specs:
+    - "Redactar requisitos y escenarios en español neutral con términos RFC 2119."
+    - "Cubrir cardinalidad exacta, reconciliación, casos borde, idempotencia y cero filas huérfanas."
+    - "Distinguir datos reales, proyectados y manuales, incluyendo fuente, corte y evidencia."
+  design:
+    - "Documentar límites entre extracción, validación, snapshot, render, aprobación y publicación."
+    - "Incluir trazabilidad por run_id, attempt_id, manifiestos, hashes y bundle canónico."
+    - "Diseñar la publicación únicamente sobre una copia temporal de Google Slides."
+  tasks:
+    - "Agrupar por fase y usar numeración jerárquica."
+    - "Mantener cada tarea verificable y realizable en una sesión."
+    - "Agregar primero la habilitación del entorno de pruebas antes de implementar lógica."
+  apply:
+    constraints:
+      - "No implementar sin especificación y diseño aprobados."
+      - "Cuando exista un test runner, aplicar RED-GREEN-REFACTOR sin modificar pruebas para forzar pases."
+      - "No usar una fuente vacía como valor cero ni publicar ante discrepancias."
+    tdd: false
+    test_command: ""
+  verify:
+    constraints:
+      - "Verificar los requisitos, el diseño, las tareas y las cinco obligaciones DQS."
+      - "Verificar que Sheets y Slides compartan el mismo hash antes de aprobar publicación."
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - "Advertir antes de fusionar deltas destructivos."
+    - "Conservar el archivo como pista de auditoría inmutable."

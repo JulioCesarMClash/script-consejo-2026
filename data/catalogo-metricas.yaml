@@ -1,0 +1,416 @@
+# Catálogo de Métricas — analisis_cpe_db
+# =======================================
+# Versión: 1.1
+# Fecha:   2026-08-03
+# Cambio 1.1: inscriptions_cpe particionada por plataforma de usuario (plataformaId = 1);
+#              inscriptions_cpe_total = suma de partes disjuntas (CPE + desde Aprende).
+# Base:    analisis_cpe_db (PostgreSQL)
+#
+# Convenciones:
+# - CPE = Capacitate (platform.id = 1)
+# - Aprende = platform.id = 2
+# - "desde Aprende" = cursos de CPE tomados por usuarios de Aprende
+# - Certificación ≡ certificationDate IS NOT NULL AND advance = 100
+# - source: dim_user → COUNT DISTINCT sobre dim_user (automático)
+# - source: fact_inscription → consulta directa sobre fact_inscription (no usa agg_*)
+# - source: manual → se calcula con DISTINCT directo, se pone a mano en reportes
+# - Las tablas analytics_snapshot_* existen desde abril 2026, solo para validar comportamiento
+
+# ── Plataformas ──────────────────────────────────────────────────────────
+
+platforms:
+  - id: 1
+    name: Capacitate
+    alias: CPE
+    description: Plataforma Capacitate para el Empleo (Fundación Carlos Slim)
+
+  - id: 2
+    name: Aprende
+    description: Plataforma Aprende
+
+# ── Métricas ─────────────────────────────────────────────────────────────
+
+# Registrados ─── usuarios que crearon cuenta ─────────────────────────────
+
+metrics:
+  - key: registered_cpe
+    name: Registrados CPE
+    description: Usuarios que generaron una cuenta con correo en la plataforma CPE.
+    formula: COUNT(DISTINCT dim_user.userId) WHERE dim_user.plataformaId = 1
+    type: count_distinct
+    source: dim_user
+    platform_scope: [cpe]
+    db_mapping: >
+      SELECT COUNT(DISTINCT "userId")
+      FROM dim_user
+      WHERE "plataformaId" = 1
+    caveats: []
+
+  - key: registered_aprende
+    name: Registrados Aprende
+    description: Usuarios que generaron una cuenta con correo en la plataforma Aprende.
+    formula: COUNT(DISTINCT dim_user.userId) WHERE dim_user.plataformaId = 2
+    type: count_distinct
+    source: dim_user
+    platform_scope: [aprende]
+    db_mapping: >
+      SELECT COUNT(DISTINCT "userId")
+      FROM dim_user
+      WHERE "plataformaId" = 2
+    caveats: []
+
+  - key: registered_total
+    name: Registrados totales CPE+Aprende
+    description: Suma de registrados en CPE más registrados en Aprende.
+    formula: registered_cpe + registered_aprende
+    type: sum
+    source: dim_user
+    platform_scope: [cpe, aprende]
+    db_mapping: >
+      Registrados CPE + Registrados Aprende
+    caveats: []
+
+  # Beneficiarios ─── registrados CPE + inscritos únicos CPE desde Aprende ─
+
+  - key: beneficiaries
+    name: Beneficiarios
+    description: >
+      Usuarios registrados en CPE + Inscritos únicos CPE desde Aprende.
+      Mide el alcance combinado de ambas plataformas.
+    formula: >
+      registered_cpe + inscritos_unicos_cpe_desde_aprende
+      (calculado con DISTINCT directo sobre fact_inscription, no desde agregadas)
+    type: count_distinct
+    source: manual
+    platform_scope: [cpe, aprende]
+    db_mapping: >
+      SELECT (
+        (SELECT COUNT(DISTINCT "userId") FROM dim_user WHERE "plataformaId" = 1)
+        +
+        (SELECT COUNT(DISTINCT fi."userId")
+         FROM fact_inscription fi
+         JOIN course c ON c."id" = fi."courseId"
+         JOIN dim_user du ON du."userId" = fi."userId"
+         WHERE c."platformId" = 1 AND du."plataformaId" = 2)
+      )
+    caveats:
+      - "No usar tablas agregadas (agg_*). Se calcula con DISTINCT directo sobre fact_inscription."
+      - "Restricción: se pone a mano en los reportes, no está automatizado en MV."
+
+  # Inscripciones ─── eventos de inscripción ──────────────────────────────
+
+  - key: inscriptions_cpe
+    name: Inscripciones CPE
+    description: >
+      Inscripciones en cursos de CPE realizadas por usuarios de CPE
+      (plataformaId = 1). Puede incluir más de una inscripción por usuario.
+    formula: >
+      COUNT(*) FROM fact_inscription
+      JOIN course ON course.platformId = 1
+      JOIN dim_user ON dim_user.userId = fact_inscription.userId AND dim_user.plataformaId = 1
+    type: count
+    source: fact_inscription
+    platform_scope: [cpe]
+    db_mapping: >
+      SELECT COUNT(*)
+      FROM fact_inscription fi
+      JOIN course c ON c."id" = fi."courseId"
+      JOIN dim_user du ON du."userId" = fi."userId"
+      WHERE c."platformId" = 1 AND du."plataformaId" = 1
+    caveats:
+      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+      - "Particionada por plataforma de usuario: inscriptions_cpe_total = inscriptions_cpe + inscriptions_cpe_from_aprende."
+
+  - key: inscriptions_cpe_from_aprende
+    name: Inscripciones CPE desde Aprende
+    description: >
+      Total de inscripciones realizadas en cursos de CPE por usuarios de Aprende.
+      Puede incluir más de una inscripción por usuario.
+    formula: >
+      COUNT(*) FROM fact_inscription
+      JOIN course ON course.platformId = 1
+      JOIN dim_user ON dim_user.userId = fact_inscription.userId AND dim_user.plataformaId = 2
+    type: count
+    source: fact_inscription
+    platform_scope: [cpe]
+    db_mapping: >
+      SELECT COUNT(*)
+      FROM fact_inscription fi
+      JOIN course c ON c."id" = fi."courseId"
+      JOIN dim_user du ON du."userId" = fi."userId"
+      WHERE c."platformId" = 1 AND du."plataformaId" = 2
+    caveats:
+      - "Mide usuarios Aprende consumiendo contenido CPE."
+      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+
+  - key: inscriptions_cpe_total
+    name: Inscripciones totales CPE
+    description: >
+      Total de inscripciones en cursos de CPE (desde CPE y desde Aprende).
+      Incluye más de una inscripción por usuario.
+    formula: inscriptions_cpe + inscriptions_cpe_from_aprende
+    type: sum
+    source: fact_inscription
+    platform_scope: [cpe]
+    db_mapping: "Inscripciones CPE + Inscripciones CPE desde Aprende"
+    caveats:
+      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+      - "Partes disjuntas por plataforma de usuario (1 y 2); la suma iguala el total."
+
+  # Inscritos únicos ─── usuarios distintos inscritos ─────────────────────
+
+  - key: inscribed_unique_cpe
+    name: Inscritos únicos CPE
+    description: Usuarios únicos inscritos en al menos un curso de CPE.
+    formula: >
+      COUNT(DISTINCT fact_inscription.userId)
+      JOIN course ON course.platformId = 1
+      JOIN dim_user ON dim_user.plataformaId = 1
+    type: count_distinct
+    source: fact_inscription
+    platform_scope: [cpe]
+    db_mapping: >
+      SELECT COUNT(DISTINCT fi."userId")
+      FROM fact_inscription fi
+      JOIN course c ON c."id" = fi."courseId"
+      JOIN dim_user du ON du."userId" = fi."userId"
+      WHERE c."platformId" = 1 AND du."plataformaId" = 1
+    caveats:
+      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+
+  - key: inscribed_unique_cpe_from_aprende
+    name: Inscritos únicos CPE desde Aprende
+    description: Usuarios únicos inscritos en al menos un curso de CPE desde Aprende.
+    formula: >
+      COUNT(DISTINCT fact_inscription.userId)
+      JOIN course ON course.platformId = 1
+      JOIN dim_user ON dim_user.plataformaId = 2
+    type: count_distinct
+    source: fact_inscription
+    platform_scope: [cpe]
+    db_mapping: >
+      SELECT COUNT(DISTINCT fi."userId")
+      FROM fact_inscription fi
+      JOIN course c ON c."id" = fi."courseId"
+      JOIN dim_user du ON du."userId" = fi."userId"
+      WHERE c."platformId" = 1 AND du."plataformaId" = 2
+    caveats:
+      - "Usuarios de Aprende que se inscribieron en cursos CPE."
+
+  - key: beneficiaries_unique
+    name: Beneficiarios únicos
+    description: >
+      Inscritos únicos CPE + Inscritos únicos CPE desde Aprende.
+      Representa el total de personas alcanzadas por cursos CPE.
+    formula: >
+      inscribed_unique_cpe + inscribed_unique_cpe_from_aprende
+      (calculado con DISTINCT directo sobre fact_inscription, no desde agregadas)
+    type: count_distinct
+    source: manual
+    platform_scope: [cpe, aprende]
+    db_mapping: >
+      SELECT (
+        (SELECT COUNT(DISTINCT fi."userId")
+         FROM fact_inscription fi
+         JOIN course c ON c."id" = fi."courseId"
+         JOIN dim_user du ON du."userId" = fi."userId"
+         WHERE c."platformId" = 1 AND du."plataformaId" = 1)
+        +
+        (SELECT COUNT(DISTINCT fi."userId")
+         FROM fact_inscription fi
+         JOIN course c ON c."id" = fi."courseId"
+         JOIN dim_user du ON du."userId" = fi."userId"
+         WHERE c."platformId" = 1 AND du."plataformaId" = 2)
+      )
+    caveats:
+      - "No usar tablas agregadas (agg_*). Se calcula con DISTINCT directo sobre fact_inscription."
+      - "Restricción: se pone a mano en los reportes, no está automatizado en MV."
+
+  # Certificados ─── eventos de certificación ─────────────────────────────
+
+  - key: certifications_cpe
+    name: Certificados CPE
+    description: >
+      Total de certificados emitidos en CPE.
+      Incluye más de un certificado por usuario.
+      Regla: certificationDate IS NOT NULL AND advance = 100.
+    formula: >
+      COUNT(*) FROM fact_inscription
+      JOIN course ON course.platformId = 1
+      JOIN dim_user ON dim_user.plataformaId = 1
+      WHERE advance = 100 AND certificationDate IS NOT NULL
+    type: count
+    source: fact_inscription
+    platform_scope: [cpe]
+    db_mapping: >
+      SELECT COUNT(*)
+      FROM fact_inscription fi
+      JOIN course c ON c."id" = fi."courseId"
+      JOIN dim_user du ON du."userId" = fi."userId"
+      WHERE c."platformId" = 1
+        AND du."plataformaId" = 1
+        AND fi."advance" = 100
+        AND fi."certificationDate" IS NOT NULL
+    caveats:
+      - "Requiere advance = 100 AND certificationDate IS NOT NULL. Usar solo certificationDate sobrecuenta."
+      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+
+  - key: certifications_cpe_from_aprende
+    name: Certificados CPE desde Aprende
+    description: >
+      Total de certificados emitidos en CPE a usuarios de Aprende.
+      Incluye más de un certificado por usuario.
+      Regla: certificationDate IS NOT NULL AND advance = 100.
+    formula: >
+      COUNT(*) FROM fact_inscription
+      JOIN course ON course.platformId = 1
+      JOIN dim_user ON dim_user.plataformaId = 2
+      WHERE advance = 100 AND certificationDate IS NOT NULL
+    type: count
+    source: fact_inscription
+    platform_scope: [cpe]
+    db_mapping: >
+      SELECT COUNT(*)
+      FROM fact_inscription fi
+      JOIN course c ON c."id" = fi."courseId"
+      JOIN dim_user du ON du."userId" = fi."userId"
+      WHERE c."platformId" = 1
+        AND du."plataformaId" = 2
+        AND fi."advance" = 100
+        AND fi."certificationDate" IS NOT NULL
+    caveats:
+      - "Requiere advance = 100 AND certificationDate IS NOT NULL."
+      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+
+  - key: certifications_cpe_total
+    name: Certificados totales CPE
+    description: >
+      Total de certificados emitidos en CPE + certificados CPE desde Aprende.
+      Incluye más de un certificado por usuario.
+    formula: certifications_cpe + certifications_cpe_from_aprende
+    type: sum
+    source: fact_inscription
+    platform_scope: [cpe]
+    db_mapping: "Certificados CPE + Certificados CPE desde Aprende"
+    caveats:
+      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+
+  # Certificados únicos ─── usuarios distintos certificados ───────────────
+
+  - key: certified_unique_cpe
+    name: Certificados únicos CPE
+    description: >
+      Usuarios que han terminado al menos un curso en CPE.
+      Regla: certificationDate IS NOT NULL AND advance = 100.
+    formula: >
+      COUNT(DISTINCT fact_inscription.userId)
+      JOIN course ON course.platformId = 1
+      JOIN dim_user ON dim_user.plataformaId = 1
+      WHERE advance = 100 AND certificationDate IS NOT NULL
+    type: count_distinct
+    source: fact_inscription
+    platform_scope: [cpe]
+    db_mapping: >
+      SELECT COUNT(DISTINCT fi."userId")
+      FROM fact_inscription fi
+      JOIN course c ON c."id" = fi."courseId"
+      JOIN dim_user du ON du."userId" = fi."userId"
+      WHERE c."platformId" = 1
+        AND du."plataformaId" = 1
+        AND fi."advance" = 100
+        AND fi."certificationDate" IS NOT NULL
+    caveats:
+      - "Requiere advance = 100 AND certificationDate IS NOT NULL."
+      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+
+  - key: certified_unique_cpe_from_aprende
+    name: Certificados únicos CPE desde Aprende
+    description: >
+      Usuarios que han terminado al menos un curso en CPE desde Aprende.
+      Regla: certificationDate IS NOT NULL AND advance = 100.
+    formula: >
+      COUNT(DISTINCT fact_inscription.userId)
+      JOIN course ON course.platformId = 1
+      JOIN dim_user ON dim_user.plataformaId = 2
+      WHERE advance = 100 AND certificationDate IS NOT NULL
+    type: count_distinct
+    source: fact_inscription
+    platform_scope: [cpe]
+    db_mapping: >
+      SELECT COUNT(DISTINCT fi."userId")
+      FROM fact_inscription fi
+      JOIN course c ON c."id" = fi."courseId"
+      JOIN dim_user du ON du."userId" = fi."userId"
+      WHERE c."platformId" = 1
+        AND du."plataformaId" = 2
+        AND fi."advance" = 100
+        AND fi."certificationDate" IS NOT NULL
+    caveats:
+      - "Usuarios de Aprende que certificaron cursos CPE."
+      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+
+  - key: certified_unique_cpe_total
+    name: Certificados únicos totales CPE
+    description: >
+      Total de usuarios que han terminado al menos un curso en CPE (directo o desde Aprende).
+    formula: certified_unique_cpe + certified_unique_cpe_from_aprende
+    type: sum
+    source: fact_inscription
+    platform_scope: [cpe, aprende]
+    db_mapping: "Certificados únicos CPE + Certificados únicos CPE desde Aprende"
+    caveats:
+      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+
+# ── Notas técnicas ───────────────────────────────────────────────────────
+
+notes:
+  - key: certification_rule
+    description: >
+      Regla oficial de certificación:
+      certificationDate IS NOT NULL AND advance = 100.
+      Usar solo certificationDate sobrecuenta certificaciones.
+      Evidencia: en fact_inscription ~56M filas tienen certificationDate no nula,
+      pero solo ~12M tienen advance = 100.
+
+  - key: cumulative_warning
+    description: >
+      Los acumulados (agg_*_month_cum) suman totales mensuales,
+      NO cuentan únicos históricos reales.
+      Para obtener únicos históricos verdaderos, usar DISTINCT sobre
+      todo el período, no sumar agregados mensuales.
+
+  - key: manual_metrics
+    description: >
+      Las métricas marcadas como source: manual (Beneficiarios,
+      Beneficiarios únicos) se calculan con DISTINCT directo sobre
+      fact_inscription y se ponen a mano en los reportes.
+      No usan tablas agregadas ni MV.
+      En las slides actuales, "Usuarios registrados" de Capacítate
+      equivale a Beneficiarios.
+
+  - key: source_model
+    description: >
+      Tres fuentes en el catálogo:
+      - dim_user: COUNT DISTINCT sobre dim_user (registrados). Automático.
+      - fact_inscription: consulta directa sobre fact_inscription,
+        sin pasar por agg_* ni MV. Incluye inscripciones,
+        inscritos únicos, certificados, certificados únicos.
+      - manual: DISTINCT directo sobre fact_inscription, se pone
+        a mano en reportes. Incluye beneficiarios.
+
+  - key: slide_naming
+    description: >
+      En las slides del reporte FCS, "Usuarios registrados" de
+      Capacítate para el Empleo corresponde conceptualmente a
+      Beneficiarios (Registrados CPE + Inscritos únicos CPE
+      desde Aprende). Se mantiene ese nombre en la presentación
+      por ahora, pero el concepto real es Beneficiarios.
+      Lo mismo aplica a la fila de Capacítate en la tabla
+      comparativa (Slide 3).
+
+  - key: snapshot_validation
+    description: >
+      Las tablas analytics_snapshot_course_metric y
+      analytics_snapshot_user_metric existen desde abril 2026.
+      Solo para validar comportamiento de cifras, no para
+      histórico completo.
