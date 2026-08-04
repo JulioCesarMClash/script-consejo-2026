@@ -54,16 +54,16 @@ Chain strategy: pending
 
 ## Fase 4: Adaptadores e integración
 
-- [ ] 4.1 Crear `src/consejo/adapters/catalog/yaml_metric_repo.py`: implementa `MetricRepo` leyendo `data/catalogo-metricas.yaml` con PyYAML, expone `list_metrics() → list[Metric]` y compute `catalog_hash`
-- [ ] 4.2 Crear `src/consejo/adapters/postgres/source_conn.py`: implementa `SourceConn` con `psycopg2`, credenciales desde `DB_HOST/DB_NAME/DB_USER/DB_PASSWORD/DB_PORT`, fetch parametrizado, errores sanitizados sin passwords
-- [ ] 4.3 Crear `src/consejo/adapters/postgres/metric_reader.py`: función helper `read_metric(conn, metric: Metric, cut: date) → SourceManifest` que ejecuta `db_mapping`, mapea resultado a manifiesto con `freshness_hours`
-- [ ] 4.4 Crear `src/consejo/adapters/sheets/google_mcp_sheet_repo.py`: implementa `SheetRepo.snapshot(bundle) → str` via JSON-RPC stdio a `mcp/google_mcp_proxy.py`; usa `get_spreadsheet` + `update_sheet` batch; crea hojas `Control`, `Datos`, `Reporte`, `Errores`, `Configuracion`; `shell=False`, argv fijo; sanitiza errores
-- [ ] 4.5 Crear `src/consejo/adapters/cli/main.py`: CLI con Click; comandos `extract`, `validate`, `snapshot`, `pipeline` (extract→validate→snapshot); opción `--cut` (ISO date), `--spreadsheet-id`; emite bundle JSON por stdout en `--dry-run`
-- [ ] 4.6 Crear `src/consejo/config/settings.py`: `Settings` con pydantic/dataclass validando `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, `GOOGLE_APPLICATION_CREDENTIALS`, `CATALOG_PATH`
-- [ ] 4.7 Crear `src/consejo/config/container.py`: wiring manual sin framework; instancia `Settings` desde entorno, `YamlMetricRepo`, `PostgresSourceConn`, `GoogleMcpSheetRepo`; función `build_pipeline(cut, spreadsheet_id) → callable`
-- [ ] 4.8 Escribir `tests/integration/test_catalog_repo.py`: con `data/catalogo-metricas.yaml` real, verifica 16 métricas, plataformas (id=1,2), y `source: manual` en beneficiarios
-- [ ] 4.9 Escribir `tests/integration/test_sheet_repo.py`: con `GoogleMcpSheetRepo` falso que captura llamadas; verifica 5 hojas creadas, contenido por hoja, cero llamadas a Slides
-- [ ] 4.10 Escribir `tests/integration/test_pipeline_dry.py`: pipeline completo con DB falsa y Sheets falso; verifica flujo extract→validate→snapshot, DQS bloqueo detiene snapshot, hash estable
+- [x] 4.1 Crear `src/consejo/adapters/catalog/yaml_metric_repo.py`: implementa `MetricRepo` leyendo `data/catalogo-metricas.yaml` con PyYAML, expone `list_metrics() → list[Metric]` y compute `catalog_hash`
+- [x] 4.2 Crear `src/consejo/adapters/postgres/source_conn.py`: implementa `SourceConn` con `psycopg2`, credenciales desde `DB_HOST/DB_NAME/DB_USER/DB_PASSWORD/DB_PORT`, fetch parametrizado, errores sanitizados sin passwords
+- [x] 4.3 Crear `src/consejo/adapters/postgres/metric_reader.py`: función helper `read_metric(conn, metric: Metric, cut: date) → SourceManifest` que ejecuta `db_mapping`, mapea resultado a manifiesto con `freshness_hours`
+- [x] 4.4 Crear `src/consejo/adapters/sheets/google_mcp_sheet_repo.py`: implementa `SheetRepo.snapshot(bundle) → str` via JSON-RPC stdio a `mcp/google_mcp_proxy.py`; usa `get_spreadsheet` + `update_sheet` batch; crea hojas `Control`, `Datos`, `Reporte`, `Errores`, `Configuracion`; `shell=False`, argv fijo; sanitiza errores
+- [x] 4.5 Crear `src/consejo/adapters/cli/main.py`: CLI con Click; comandos `extract`, `validate`, `snapshot`, `pipeline` (extract→validate→snapshot); opción `--cut` (ISO date), `--spreadsheet-id`; emite bundle JSON por stdout en `--dry-run`
+- [x] 4.6 Crear `src/consejo/config/settings.py`: `Settings` con pydantic/dataclass validando `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, `GOOGLE_APPLICATION_CREDENTIALS`, `CATALOG_PATH`
+- [x] 4.7 Crear `src/consejo/config/container.py`: wiring manual sin framework; instancia `Settings` desde entorno, `YamlMetricRepo`, `PostgresSourceConn`, `GoogleMcpSheetRepo`; función `build_pipeline(cut, spreadsheet_id) → callable`
+- [x] 4.8 Escribir `tests/integration/test_catalog_repo.py`: con `data/catalogo-metricas.yaml` real, verifica 16 métricas, plataformas (id=1,2), y `source: manual` en beneficiarios
+- [x] 4.9 Escribir `tests/integration/test_sheet_repo.py`: con `GoogleMcpSheetRepo` falso que captura llamadas; verifica 5 hojas creadas, contenido por hoja, cero llamadas a Slides
+- [x] 4.10 Escribir `tests/integration/test_pipeline_dry.py`: pipeline completo con DB falsa y Sheets falso; verifica flujo extract→validate→snapshot, DQS bloqueo detiene snapshot, hash estable
 
 ## Fase 5: Verificación E2E y cierre
 

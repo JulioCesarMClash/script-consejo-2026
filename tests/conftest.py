@@ -14,5 +14,5 @@ def tmp_path_fixture(tmp_path: Path) -> Path:
 @pytest.fixture
 def sample_catalog_path() -> Path:
     """Ruta al catálogo de métricas YAML usado en tests."""
-    return Path(__file__).parent.parent.parent / "data" / "catalogo-metricas.yaml"
+    return Path(__file__).resolve().parent.parent / "data" / "catalogo-metricas.yaml"
 
