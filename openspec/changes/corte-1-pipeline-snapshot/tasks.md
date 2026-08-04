@@ -44,13 +44,13 @@ Chain strategy: pending
 
 ## Fase 3: Aplicación (puertos, casos de uso)
 
-- [ ] 3.1 Crear `src/consejo/application/ports.py`: `MetricRepo` (list_metrics), `SourceConn` (fetch con SQL parametrizado), `SheetRepo` (snapshot), `SlidesRepo` (publish, marcado futuro con `raise NotImplementedError`)
-- [ ] 3.2 Crear `src/consejo/application/use_cases/extract_data.py`: `extract_data(run_id, attempt_id, cut) → list[SourceManifest]`; itera catálogo, ejecuta `db_mapping` vía `SourceConn.fetch`, construye 16 manifiestos, respeta `source: manual` sin consulta DB
-- [ ] 3.3 Crear `src/consejo/application/use_cases/validate_bundle.py`: `validate_bundle(manifests, catalog) → Bundle`; ejecuta `domain/dqs.validate()`, si hay fallo lanza `DqsBlockedError` sin construir bundle; bundle canónico con claves ordenadas, ISO 8601 UTC, SHA-256 sin campo `hash`
-- [ ] 3.4 Crear `src/consejo/application/use_cases/create_snapshot.py`: `create_snapshot(bundle, sheet_repo) → str`; delega en `SheetRepo.snapshot(bundle)`, crea/actualiza 5 hojas; si bundle no pasó DQS, aborta sin llamar a Sheets
-- [ ] 3.5 Escribir `tests/unit/application/test_extract_data.py`: con `MetricRepo` y `SourceConn` falsos, verifica 16 manifiestos, `source: manual` sin filas, `empty` como estado
-- [ ] 3.6 Escribir `tests/unit/application/test_validate_bundle.py`: con manifiestos válidos/inválidos, verifica DQS bloqueo, bundle canónico, hash reproducible, idempotencia con mismo `attempt_id`
-- [ ] 3.7 Escribir `tests/unit/application/test_create_snapshot.py`: verifica que `SheetRepo.snapshot` recibe bundle correcto, aborta si `bundle.dqs` tiene fallos, no llama a `SlidesRepo`
+- [x] 3.1 Crear `src/consejo/application/ports.py`: `MetricRepo` (list_metrics), `SourceConn` (fetch con SQL parametrizado), `SheetRepo` (snapshot), `SlidesRepo` (publish, marcado futuro con `raise NotImplementedError`)
+- [x] 3.2 Crear `src/consejo/application/use_cases/extract_data.py`: `extract_data(run_id, attempt_id, cut) → list[SourceManifest]`; itera catálogo, ejecuta `db_mapping` vía `SourceConn.fetch`, construye 16 manifiestos, respeta `source: manual` sin consulta DB
+- [x] 3.3 Crear `src/consejo/application/use_cases/validate_bundle.py`: `validate_bundle(manifests, catalog) → Bundle`; ejecuta `domain/dqs.validate()`, si hay fallo lanza `DqsBlockedError` sin construir bundle; bundle canónico con claves ordenadas, ISO 8601 UTC, SHA-256 sin campo `hash`
+- [x] 3.4 Crear `src/consejo/application/use_cases/create_snapshot.py`: `create_snapshot(bundle, sheet_repo) → str`; delega en `SheetRepo.snapshot(bundle)`, crea/actualiza 5 hojas; si bundle no pasó DQS, aborta sin llamar a Sheets
+- [x] 3.5 Escribir `tests/unit/application/test_extract_data.py`: con `MetricRepo` y `SourceConn` falsos, verifica 16 manifiestos, `source: manual` sin filas, `empty` como estado
+- [x] 3.6 Escribir `tests/unit/application/test_validate_bundle.py`: con manifiestos válidos/inválidos, verifica DQS bloqueo, bundle canónico, hash reproducible, idempotencia con mismo `attempt_id`
+- [x] 3.7 Escribir `tests/unit/application/test_create_snapshot.py`: verifica que `SheetRepo.snapshot` recibe bundle correcto, aborta si `bundle.dqs` tiene fallos, no llama a `SlidesRepo`
 
 ## Fase 4: Adaptadores e integración
 
