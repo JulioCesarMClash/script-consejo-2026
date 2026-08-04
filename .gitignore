@@ -12,3 +12,6 @@ htmlcov/
 *.egg-info/
 # GCP service account keys
 script-consejo-2026-gcp-*.json
+
+# CodeGraph local index (not project source)
+.codegraph/

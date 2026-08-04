@@ -30,20 +30,31 @@ from src.consejo.domain.value_objects import AttemptId, Cut, RunId
 
 
 class FakeSourceConn(SourceConn):
-    """SourceConn falso con datos predefinidos."""
+    """SourceConn falso con datos predefinidos resueltos por orden de llamada.
 
-    def __init__(self, rows_map: dict[str, list[dict]] | None = None):
-        self._rows_map = rows_map or {}
+    La extracción itera el catálogo en orden y ejecuta `fetch` SOLO para las
+    métricas con db_mapping SQL (10 queries). Como el SQL no contiene la key
+    de la métrica, este fake usa call-order matching: devuelve la i-ésima
+    entrada de `rows_sequence` en la i-ésima llamada.
+    """
+
+    def __init__(self, rows_sequence: Sequence[Sequence[Mapping]] | None = None):
+        # Secuencia ordenada en el mismo orden de extracción del catálogo
+        # (solo las 10 métricas SQL-ejecutables).
+        self._sequence: list[list[dict]] = [
+            [dict(r) for r in rows] for rows in (rows_sequence or [])
+        ]
+        self._call_index = 0
         self._calls: list[tuple[str, Mapping]] = []
 
     def fetch(
         self, sql: str, params: Mapping[str, object]
     ) -> Sequence[Mapping[str, object]]:
         self._calls.append((sql, params))
-        sql_upper = sql.upper().strip()
-        for key, rows in self._rows_map.items():
-            if key.upper() in sql_upper:
-                return [dict(r) for r in rows]
+        if self._call_index < len(self._sequence):
+            rows = self._sequence[self._call_index]
+            self._call_index += 1
+            return [dict(r) for r in rows]
         return []
 
 
@@ -61,26 +72,25 @@ class FakeSheetRepo:
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
 
-def _build_rows_map() -> dict[str, list[dict]]:
-    """Construye un mapa de filas simuladas para el catálogo."""
-    return {
-        "registered_cpe": [{"count": 1200}],
-        "registered_aprende": [{"count": 800}],
-        "registered_total": [{"count": 2000}],
-        # beneficiaries y beneficiaries_unique son manuales — sin filas
-        "inscriptions_cpe": [{"count": 15000}],
-        "inscriptions_cpe_from_aprende": [{"count": 5000}],
-        "inscriptions_cpe_total": [{"count": 20000}],
-        "inscribed_unique_cpe": [{"count": 4000}],
-        "inscribed_unique_cpe_from_aprende": [{"count": 1000}],
-        "beneficiaries_unique": [{"count": 5200}],
-        "certifications_cpe": [{"count": 3000}],
-        "certifications_cpe_from_aprende": [{"count": 1200}],
-        "certifications_cpe_total": [{"count": 4200}],
-        "certified_unique_cpe": [{"count": 2500}],
-        "certified_unique_cpe_from_aprende": [{"count": 900}],
-        "certified_unique_cpe_total": [{"count": 3400}],
-    }
+def _build_row_sequence() -> Sequence[Sequence[Mapping]]:
+    """Construye una secuencia ordenada de filas simuladas.
+
+    El orden coincide con el orden de extracción del catálogo para las 10
+    métricas con db_mapping SQL ejecutable (source dim_user/fact_inscription,
+    type SELECT). Las 6 restantes (4 textsum + 2 manual) no disparan fetch.
+    """
+    return [
+        [{"count": 1200}],  # registered_cpe
+        [{"count": 800}],  # registered_aprende
+        [{"count": 15000}],  # inscriptions_cpe
+        [{"count": 5000}],  # inscriptions_cpe_from_aprende
+        [{"count": 4000}],  # inscribed_unique_cpe
+        [{"count": 1000}],  # inscribed_unique_cpe_from_aprende
+        [{"count": 3000}],  # certifications_cpe
+        [{"count": 1200}],  # certifications_cpe_from_aprende
+        [{"count": 2500}],  # certified_unique_cpe
+        [{"count": 900}],  # certified_unique_cpe_from_aprende
+    ]
 
 
 # ── Tests ───────────────────────────────────────────────────────────────────
@@ -95,7 +105,7 @@ class TestPipelineDry:
 
     @pytest.fixture
     def fake_conn(self) -> FakeSourceConn:
-        return FakeSourceConn(_build_rows_map())
+        return FakeSourceConn(_build_row_sequence())
 
     @pytest.fixture
     def fake_sheets(self) -> FakeSheetRepo:
@@ -244,7 +254,7 @@ class TestPipelineDry:
         cut = date(2026, 7, 1)
 
         def _run() -> str:
-            fake = FakeSourceConn(_build_rows_map())
+            fake = FakeSourceConn(_build_row_sequence())
             manifests = extract_data(
                 metric_repo=repo,
                 source_conn=fake,
