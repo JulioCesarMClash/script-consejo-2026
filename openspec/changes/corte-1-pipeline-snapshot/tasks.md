@@ -67,7 +67,7 @@ Chain strategy: feature-branch-chain
 
 ## Fase 5: Verificación E2E y cierre
 
-- [ ] 5.1 Escribir `tests/e2e/test_full_pipeline.py`: ejecuta comando `pipeline --cut <fecha> --spreadsheet-id <id>` en entorno autorizado; verifica 16 manifiestos, bundle con SHA-256, 5 hojas creadas, cero escrituras Slides
-- [ ] 5.2 Escribir `tests/e2e/test_idempotency.py`: reejecución con mismo `attempt_id` produce hash idéntico y no duplica filas en hoja `Datos`
-- [ ] 5.3 Escribir `tests/e2e/test_credential_sanitization.py`: verifica que errores de conexión DB no exponen passwords ni connection strings en logs ni mensajes
-- [ ] 5.4 Revisar `spec-superseded.md` y confirmar que ningún requisito descartado fue reintroducido; validar cobertura completa de las 3 specs contra tasks 1.1–5.3
+- [x] 5.1 Escribir `tests/e2e/test_full_pipeline.py`: ejecuta el pipeline completo con fakes (call-order SourceConn); en entorno autorizado invocaría `pipeline --cut <fecha> --spreadsheet-id <id>`. Verifica 16 manifiestos, bundle con SHA-256 (64 hex), 5 hojas creadas (fakes), cero escrituras Slides. Tests con credenciales reales skipped (ver debajo).
+- [x] 5.2 Escribir `tests/e2e/test_idempotency.py`: reejecución con mismo `attempt_id` produce hash idéntico y no duplica filas en hoja `Datos` (verify con call-order fakes + datetime mock). Test con DB real skipped.
+- [x] 5.3 Escribir `tests/e2e/test_credential_sanitization.py`: verifica shell=False/argv fijo, cero Slides, errores PG/sheets sanitizados, Settings validate() no expone valores. Test con DB real skipped.
+- [x] 5.4 Revisar `spec-superseded.md` y confirmar que ningún requisito descartado fue reintroducido; validar cobertura completa de las 3 specs contra tasks 1.1–5.3. Cobertura 16 métricas (10 SQL + 4 textsum + 2 manual), 5 hojas, DQS 5 gates, idempotencia, trazabilidad. `spec-superseded.md` es el spec monolítico original particionado sin pérdida; nada reintroducido.
