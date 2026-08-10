@@ -349,7 +349,10 @@ def _build_datos_requests(
     (7 columnas Categoría/Sector/Curso/Certificados/Período inicio/
     Período fin/Fuente, =SUM en D) o slide3 (9 columnas Categoría/Programa/
     2025/sep2026/dic2026/Acumulado sep2026/Período inicio/Período fin/
-    Fuente, UNA tabla comparativa que agrupa todos los manifests slide3). Las tablas se escriben consecutivas
+    Fuente, UNA tabla comparativa que agrupa todos los manifests slide3) y
+    slide4 (9 columnas Categoría/Programa/2024/sep2025/dic2025/Acumulado
+    sep2025/Período inicio/Período fin/Fuente, UNA tabla comparativa que
+    agrupa todos los manifests slide4). Las tablas se escriben consecutivas
     separadas por una fila en blanco.
     """
     sheet_id = sheet_ids["Datos"]
@@ -359,8 +362,13 @@ def _build_datos_requests(
     slide3_manifests = [
         m for m in slides if str(m.metric_id).startswith("slide3")
     ]
+    slide4_manifests = [
+        m for m in slides if str(m.metric_id).startswith("slide4")
+    ]
     single_slides = [
-        m for m in slides if not str(m.metric_id).startswith("slide3")
+        m for m in slides
+        if not str(m.metric_id).startswith("slide3")
+        and not str(m.metric_id).startswith("slide4")
     ]
 
     rows_data: list[dict] = []
@@ -378,6 +386,13 @@ def _build_datos_requests(
             rows_data.append(_blank_row())
             row_0based += 1
         block, row_0based = _build_slide3_block(slide3_manifests, row_0based)
+        rows_data.extend(block)
+
+    if slide4_manifests:
+        if rows_data:
+            rows_data.append(_blank_row())
+            row_0based += 1
+        block, row_0based = _build_slide4_block(slide4_manifests, row_0based)
         rows_data.extend(block)
 
     if not rows_data:
@@ -457,6 +472,36 @@ SLIDE3_LABELS = {
     "slide3_academica_labs": "Academica Labs",
 }
 
+# Layout de Slide 4: tabla comparativa de programas de educación y
+# divulgación (mismo contrato columnas que slides 1/2/3).
+SLIDE4_TABLE_HEADERS = [
+    "Categoría",
+    "Programa",
+    "2024",
+    "sep2025",
+    "dic2025",
+    "Acumulado sep2025",
+    "Período inicio",
+    "Período fin",
+    "Fuente",
+]
+
+# Ventanas fijas de los valores visibles de slide 4: 2024 =
+# [2024-01-01, 2025-01-01), sep2025 = [2025-01-01, 2025-10-01),
+# dic2025 = [2025-01-01, 2026-01-01) y acumulado histórico < 2025-10-01
+# (la fecha 2025-09-30 documenta el cierre de la ventana visible). Las
+# filas slide4 de PostgreSQL no traen estos campos.
+SLIDE4_PERIODO_INICIO = "2024-01-01"
+SLIDE4_PERIODO_FIN = "2025-09-30"
+SLIDE4_FUENTE_POSTGRES = "postgres"
+
+# Label legible por key de métrica slide4 (se deriva de la key porque
+# _build_datos_requests no recibe el catálogo).
+SLIDE4_LABELS = {
+    "slide4_aprende_seguridad_vial": "Aprende de seguridad vial",
+    "slide4_cultura_salud_aprende": "Cultura y Salud Aprende (registros)",
+}
+
 # Proyección lineal de dic2026: el total anual estimado se deriva del ritmo
 # mensual observado en la ventana sep2026 (enero a julio completos) aplicado
 # a los meses restantes del año (agosto a diciembre).
@@ -488,6 +533,16 @@ def _slide3_label(key: str) -> str:
     return SLIDE3_LABELS.get(key, key)
 
 
+def _slide4_label(key: str) -> str:
+    """Label legible para un programa de slide 4 a partir de su key.
+
+    'slide4_aprende_seguridad_vial'    -> 'Aprende de seguridad vial'
+    'slide4_cultura_salud_aprende'     -> 'Cultura y Salud Aprende (registros)'
+    Cualquier otra key slide4 se devuelve tal cual.
+    """
+    return SLIDE4_LABELS.get(key, key)
+
+
 def _is_slide_table_manifest(manifest: SourceManifest) -> bool:
     """True si el manifest es una tabla de slide con filas."""
     key = str(manifest.metric_id)
@@ -512,6 +567,8 @@ def _build_slide_block(
         return _build_slide2_block(manifest, row_0based)
     if key.startswith("slide3"):
         return _build_slide3_block([manifest], row_0based)
+    if key.startswith("slide4"):
+        return _build_slide4_block([manifest], row_0based)
     raise ValueError(f"Slide manifest sin layout conocido: {key}")
 
 
@@ -736,6 +793,67 @@ def _build_slide3_block(
             _value_cell(SLIDE3_PERIODO_INICIO),
             _value_cell(SLIDE3_PERIODO_FIN),
             _value_cell(SLIDE3_FUENTE_MYSQL),
+        ]
+        rows.append({"values": cells})
+        row_0based += 1
+
+    return rows, row_0based
+
+
+def _build_slide4_block(
+    manifests: Sequence[SourceManifest], row_0based: int
+) -> tuple[list[dict], int]:
+    """Bloque slide 4: tabla comparativa de programas de educación y divulgación.
+
+    9 columnas (Categoría, Programa, 2024, sep2025, dic2025, Acumulado
+    sep2025, Período inicio, Período fin, Fuente) con la misma nomenclatura
+    de slides 1/2/3 (metric_id 'slide4_*' en Categoría, ventanas de valor,
+    período y fuente).
+
+    Fila fija "Pilotos por la Seguridad Vial" (manual, fuente 'manual',
+    resto vacío) que SIEMPRE está presente, seguida de UNA fila por cada
+    manifest slide4 con filas: Categoría = metric_id tal cual
+    (slide4_aprende_seguridad_vial -> "slide4_aprende_seguridad_vial"),
+    Programa = label legible derivado de la key
+    (slide4_aprende_seguridad_vial -> "Aprende de seguridad vial") y los
+    valores de las columnas de ventana fija "2024", "sep2025", "dic2025" y
+    "acumulado". Los períodos son las ventanas fijas 2024-01-01..2025-09-30
+    y la fuente es 'postgres' (db_source de las métricas slide4 de
+    PostgreSQL). Sin fila TOTAL: el =SUM no tiene sentido entre programas
+    distintos.
+    """
+    rows: list[dict] = []
+    rows.append(_text_row(SLIDE4_TABLE_HEADERS))
+    row_0based += 1
+
+    pilotos = [
+        "slide4_pilotos_seguridad_vial",
+        "Pilotos por la Seguridad Vial",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "manual",
+    ]
+    rows.append({"values": [_value_cell(v) for v in pilotos]})
+    row_0based += 1
+
+    for m in manifests:
+        if not m.rows:
+            continue
+        data = dict(m.rows[0])
+        cells = [
+            _value_cell(str(m.metric_id)),
+            _value_cell(_slide4_label(str(m.metric_id))),
+            _value_cell(data.get("2024", "")),
+            _value_cell(data.get("sep2025", "")),
+            _value_cell(data.get("dic2025", "")),
+            _value_cell(data.get("acumulado", "")),
+            _value_cell(SLIDE4_PERIODO_INICIO),
+            _value_cell(SLIDE4_PERIODO_FIN),
+            _value_cell(SLIDE4_FUENTE_POSTGRES),
         ]
         rows.append({"values": cells})
         row_0based += 1

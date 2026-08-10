@@ -19,7 +19,9 @@ from src.consejo.adapters.sheets.google_mcp_sheet_repo import (
     GoogleMcpSheetRepo,
     SHEET_NAMES,
     SLIDE3_TABLE_HEADERS,
+    SLIDE4_TABLE_HEADERS,
     _build_slide3_block,
+    _build_slide4_block,
     _build_slide_block,
     _project_dic2026,
 )
@@ -181,6 +183,21 @@ _SLIDE3_PROGRAMS: dict[str, dict[str, int]] = {
     },
 }
 
+_SLIDE4_PROGRAMS: dict[str, dict[str, int]] = {
+    "slide4_aprende_seguridad_vial": {
+        "2024": 25254,
+        "sep2025": 18578,
+        "dic2025": 27129,
+        "acumulado": 184288,
+    },
+    "slide4_cultura_salud_aprende": {
+        "2024": 104736,
+        "sep2025": 102916,
+        "dic2025": 134327,
+        "acumulado": 1413528,
+    },
+}
+
 
 @pytest.fixture
 def catalog_with_slide3() -> list[Metric]:
@@ -244,6 +261,71 @@ def bundle_with_slide1_slide2_slide3(
         dqs=(),
         hash=HashSha256("a" * 64),
     )
+
+
+@pytest.fixture
+def bundle_with_slide1_slide2_slide3_slide4(
+    bundle_with_slide1_slide2_slide3: Bundle,
+) -> Bundle:
+    """Bundle con slide1 + slide2 + slide3 + los DOS programas de slide4."""
+    slide4_manifests = []
+    for key, data in _SLIDE4_PROGRAMS.items():
+        slide4_manifests.append(
+            SourceManifest(
+                metric_id=MetricId(key),
+                source=MetricSource.DIM_USER,
+                cut=Cut(date(2026, 7, 1)),
+                fetched_at=datetime(2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
+                freshness_hours=0.5,
+                rows=(
+                    {
+                        "2024": data["2024"],
+                        "sep2025": data["sep2025"],
+                        "dic2025": data["dic2025"],
+                        "acumulado": data["acumulado"],
+                    },
+                ),
+                status=FetchStatus.EXTRACTED,
+            )
+        )
+    return Bundle(
+        run_id=bundle_with_slide1_slide2_slide3.run_id,
+        attempt_id=bundle_with_slide1_slide2_slide3.attempt_id,
+        cut=bundle_with_slide1_slide2_slide3.cut,
+        catalog_hash="8" * 64,
+        manifests=(
+            *bundle_with_slide1_slide2_slide3.manifests,
+            *tuple(slide4_manifests),
+        ),
+        rows=(),
+        dqs=(),
+        hash=HashSha256("b" * 64),
+    )
+
+
+@pytest.fixture
+def catalog_with_slide4() -> list[Metric]:
+    """Catálogo de prueba con las dos métricas slide4 (nombres reales)."""
+    return [
+        Metric(
+            id=MetricId("slide4_aprende_seguridad_vial"),
+            name="Aprende de seguridad vial — certificados únicos por ventana fija (Slide 4)",
+            key="slide4_aprende_seguridad_vial",
+            source=MetricSource.FACT_INSCRIPTION,
+            formula="...",
+            db_mapping="ventana fija seguridad vial",
+            platform_scope=[],
+        ),
+        Metric(
+            id=MetricId("slide4_cultura_salud_aprende"),
+            name="Cultura y Salud Aprende (registros) — usuarios sin inscripción por ventana fija (Slide 4)",
+            key="slide4_cultura_salud_aprende",
+            source=MetricSource.DIM_USER,
+            formula="...",
+            db_mapping="ventana fija cultura salud",
+            platform_scope=[],
+        ),
+    ]
 
 
 @pytest.fixture
@@ -1027,6 +1109,211 @@ class TestGoogleMcpSheetRepo:
         # Carso: dic2026 proyectado = 40884, Acumulado vacío.
         assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 40884
         assert rows[2]["values"][5] == {"userEnteredValue": {}}
+
+    def test_snapshot_datos_includes_slide4_comparative_table(
+        self,
+        bundle_with_slide1_slide2_slide3_slide4: Bundle,
+        catalog_with_both_slides: list[Metric],
+    ) -> None:
+        """Datos debe contener UNA tabla comparativa slide4 agrupando los
+        dos programas: header de 9 cols, fila fija 'Pilotos por la
+        Seguridad Vial' (categoría slide4_* y fuente manual), y una fila
+        por programa (seguridad vial y cultura/salud) con su Categoría
+        slide4_*, valores de 2024/sep2025/dic2025/acumulado, períodos
+        fijos 2024-01-01..2025-09-30 y fuente postgres. NO hay fila TOTAL.
+        """
+        with patch.object(
+            GoogleMcpSheetRepo, "_start_proxy"
+        ), patch.object(
+            GoogleMcpSheetRepo, "_init_handshake"
+        ), patch.object(
+            GoogleMcpSheetRepo, "_get_spreadsheet_meta",
+            return_value=_build_spreadsheet_meta([]),
+        ), patch.object(
+            GoogleMcpSheetRepo, "_call_tool",
+        ) as mock_call:
+            captured: list[dict] = []
+
+            def cap(name: str, args: dict) -> dict:
+                if name == "update_sheet":
+                    captured.append(args)
+                elif name == "get_spreadsheet":
+                    return _build_spreadsheet_meta([])
+                return _add_sheet_response(args)
+
+            mock_call.side_effect = cap
+
+            repo = GoogleMcpSheetRepo()
+            repo.snapshot(
+                bundle_with_slide1_slide2_slide3_slide4,
+                "test-id",
+                catalog_with_both_slides,
+            )
+
+        all_reqs = captured[-1].get("requests", [])
+        datos_updates = [
+            r for r in all_reqs
+            if r.get("updateCells", {}).get("start", {}).get("sheetId") == 101
+        ]
+        assert len(datos_updates) >= 1
+        datos_rows = datos_updates[0]["updateCells"]["rows"]
+
+        # slide1 (7) + blank (1) + slide2 (5) + blank (1) + slide3 (4)
+        # + blank (1) + slide4 (4) = 23
+        assert len(datos_rows) == 23
+
+        # ── Slide 4 (índice 19..22) ──
+        slide4_header = datos_rows[19]["values"]
+        assert len(slide4_header) == 9
+        assert [
+            c["userEnteredValue"]["stringValue"] for c in slide4_header
+        ] == list(SLIDE4_TABLE_HEADERS)
+
+        pilotos = datos_rows[20]["values"]
+        assert len(pilotos) == 9
+        assert (
+            pilotos[0]["userEnteredValue"]["stringValue"]
+            == "slide4_pilotos_seguridad_vial"
+        )
+        assert (
+            pilotos[1]["userEnteredValue"]["stringValue"]
+            == "Pilotos por la Seguridad Vial"
+        )
+        for c in pilotos[2:8]:
+            assert c == {"userEnteredValue": {}}
+        assert (
+            pilotos[8]["userEnteredValue"]["stringValue"] == "manual"
+        )
+
+        seguridad = datos_rows[21]["values"]
+        assert len(seguridad) == 9
+        assert (
+            seguridad[0]["userEnteredValue"]["stringValue"]
+            == "slide4_aprende_seguridad_vial"
+        )
+        assert (
+            seguridad[1]["userEnteredValue"]["stringValue"]
+            == "Aprende de seguridad vial"
+        )
+        assert seguridad[2]["userEnteredValue"]["numberValue"] == 25254
+        assert seguridad[3]["userEnteredValue"]["numberValue"] == 18578
+        assert seguridad[4]["userEnteredValue"]["numberValue"] == 27129
+        assert seguridad[5]["userEnteredValue"]["numberValue"] == 184288
+        assert (
+            seguridad[6]["userEnteredValue"]["stringValue"] == "2024-01-01"
+        )
+        assert (
+            seguridad[7]["userEnteredValue"]["stringValue"] == "2025-09-30"
+        )
+        assert seguridad[8]["userEnteredValue"]["stringValue"] == "postgres"
+
+        cultura = datos_rows[22]["values"]
+        assert len(cultura) == 9
+        assert (
+            cultura[0]["userEnteredValue"]["stringValue"]
+            == "slide4_cultura_salud_aprende"
+        )
+        assert (
+            cultura[1]["userEnteredValue"]["stringValue"]
+            == "Cultura y Salud Aprende (registros)"
+        )
+        assert cultura[2]["userEnteredValue"]["numberValue"] == 104736
+        assert cultura[3]["userEnteredValue"]["numberValue"] == 102916
+        assert cultura[4]["userEnteredValue"]["numberValue"] == 134327
+        assert cultura[5]["userEnteredValue"]["numberValue"] == 1413528
+        assert (
+            cultura[6]["userEnteredValue"]["stringValue"] == "2024-01-01"
+        )
+        assert (
+            cultura[7]["userEnteredValue"]["stringValue"] == "2025-09-30"
+        )
+        assert cultura[8]["userEnteredValue"]["stringValue"] == "postgres"
+
+        # Sin fila TOTAL: el bloque termina en la fila Cultura y Salud.
+        assert len(datos_rows) == 23
+
+    def test_build_slide_block_does_not_raise_for_slide4(self) -> None:
+        """_build_slide_block NO debe lanzar ValueError para keys slide4_*."""
+        manifest = SourceManifest(
+            metric_id=MetricId("slide4_aprende_seguridad_vial"),
+            source=MetricSource.FACT_INSCRIPTION,
+            cut=Cut(date(2026, 7, 1)),
+            fetched_at=datetime(2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
+            freshness_hours=0.5,
+            rows=({"2024": 100, "sep2025": 50, "dic2025": 70, "acumulado": 999},),
+            status=FetchStatus.EXTRACTED,
+        )
+
+        rows, next_row = _build_slide_block(manifest, 0)
+
+        assert next_row == 3
+        assert len(rows) == 3
+        assert (
+            rows[0]["values"][0]["userEnteredValue"]["stringValue"]
+            == "Categoría"
+        )
+        assert (
+            rows[1]["values"][0]["userEnteredValue"]["stringValue"]
+            == "slide4_pilotos_seguridad_vial"
+        )
+        assert (
+            rows[1]["values"][1]["userEnteredValue"]["stringValue"]
+            == "Pilotos por la Seguridad Vial"
+        )
+        assert (
+            rows[1]["values"][8]["userEnteredValue"]["stringValue"]
+            == "manual"
+        )
+        assert (
+            rows[2]["values"][0]["userEnteredValue"]["stringValue"]
+            == "slide4_aprende_seguridad_vial"
+        )
+        assert (
+            rows[2]["values"][1]["userEnteredValue"]["stringValue"]
+            == "Aprende de seguridad vial"
+        )
+        assert rows[2]["values"][2]["userEnteredValue"]["numberValue"] == 100
+        assert rows[2]["values"][3]["userEnteredValue"]["numberValue"] == 50
+        assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 70
+        assert rows[2]["values"][5]["userEnteredValue"]["numberValue"] == 999
+        assert (
+            rows[2]["values"][6]["userEnteredValue"]["stringValue"]
+            == "2024-01-01"
+        )
+        assert (
+            rows[2]["values"][7]["userEnteredValue"]["stringValue"]
+            == "2025-09-30"
+        )
+        assert (
+            rows[2]["values"][8]["userEnteredValue"]["stringValue"]
+            == "postgres"
+        )
+
+    def test_build_slide4_block_keeps_pilotos_manual(self) -> None:
+        """La fila Pilotos queda toda manual (valores y acumulado vacíos)."""
+        seguridad = SourceManifest(
+            metric_id=MetricId("slide4_aprende_seguridad_vial"),
+            source=MetricSource.FACT_INSCRIPTION,
+            cut=Cut(date(2026, 7, 1)),
+            fetched_at=datetime(2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
+            freshness_hours=0.5,
+            rows=({"2024": 25254, "sep2025": 18578, "dic2025": 27129, "acumulado": 184288},),
+            status=FetchStatus.EXTRACTED,
+        )
+
+        rows, next_row = _build_slide4_block([seguridad], 0)
+
+        assert next_row == 3
+        assert len(rows) == 3
+        # Pilotos: todas las celdas de valor (cols 2..7) vacías.
+        for col in range(2, 8):
+            assert rows[1]["values"][col] == {"userEnteredValue": {}}
+        assert rows[1]["values"][8]["userEnteredValue"]["stringValue"] == "manual"
+        # Seguridad vial: todos los valores reales presentes.
+        assert rows[2]["values"][2]["userEnteredValue"]["numberValue"] == 25254
+        assert rows[2]["values"][3]["userEnteredValue"]["numberValue"] == 18578
+        assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 27129
+        assert rows[2]["values"][5]["userEnteredValue"]["numberValue"] == 184288
 
     def test_snapshot_populates_errores_sheet(
         self, bundle_with_dqs_issues: Bundle, sample_catalog: list[Metric]

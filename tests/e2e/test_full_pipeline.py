@@ -172,16 +172,17 @@ class TestFullPipelineE2E:
 
     # ── 5.1.a: 16 manifests ──────────────────────────────────────────────
 
-    def test_pipeline_produces_20_manifests(
+    def test_pipeline_produces_22_manifests(
         self, catalog_path: Path, fake_conn: E2EFakeSourceConn,
         fake_sheets: E2EFakeSheetRepo,
     ) -> None:
-        """El pipeline completo produce exactamente 20 manifiestos."""
+        """El pipeline completo produce exactamente 22 manifiestos."""
         result = _run_full_pipeline(catalog_path, fake_conn, fake_sheets)
-        assert result["manifests_len"] == 20
-        # 10 SQL-fetched EXTRACTED + 6 derived sums builton their parts = 16;
-        # slide2_empleo_incluyente_por_sector, slide1 y las 2 de Slide 3
-        # (MySQL, sin mysql_conn en el fake) vuelven EMPTY (sin fila)
+        assert result["manifests_len"] == 22
+        # 10 SQL-fetched EXTRACTED + 6 derived sums built on their parts = 16;
+        # slide1, slide2_empleo_incluyente_por_sector, las 2 de Slide 3
+        # (MySQL, sin mysql_conn en el fake) y las 2 de Slide 4 (postgres,
+        # sin filas en la secuencia del fake) vuelven EMPTY (sin fila)
         assert result["rows_len"] == 16
 
     # ── 5.1.b: Traceability run_id / attempt_id ──────────────────────────
@@ -359,7 +360,7 @@ class TestFullPipelineE2E:
             catalog_hash=repo.compute_catalog_hash(),
         )
 
-        assert len(manifests) == 20
+        assert len(manifests) == 22
         assert len(bundle.rows) > 0
 
     # ── 5.1.h: Full pipeline with real Sheets (opt-in) ───────────────────

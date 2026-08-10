@@ -23,7 +23,7 @@ class TestCatalogRepo:
 
     def test_returns_20_metrics(self, catalog_repo: YamlMetricRepo) -> None:
         metrics = list(catalog_repo.list_metrics())
-        assert len(metrics) == 20
+        assert len(metrics) == 22
 
     def test_metrics_have_unique_keys(
         self, catalog_repo: YamlMetricRepo
@@ -59,7 +59,7 @@ class TestCatalogRepo:
     ) -> None:
         metrics = list(catalog_repo.list_metrics())
         dim_user = [m for m in metrics if m.source == MetricSource.DIM_USER]
-        assert len(dim_user) == 5
+        assert len(dim_user) == 6
         dim_keys = {m.key for m in dim_user}
         assert dim_keys == {
             "registered_cpe",
@@ -67,6 +67,7 @@ class TestCatalogRepo:
             "registered_total",
             "slide3_capacitate_carso",
             "slide3_academica_labs",
+            "slide4_cultura_salud_aprende",
         }
 
     def test_mysql_metrics_have_db_source_mysql(
@@ -91,6 +92,28 @@ class TestCatalogRepo:
             assert "'2026-08-02'" in m.db_mapping
             assert "'2026-08-01'" in m.db_mapping and "'2027-01-01'" in m.db_mapping
 
+    def test_postgres_metrics_have_db_source_postgres(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        metrics = list(catalog_repo.list_metrics())
+        postgres = [m for m in metrics if m.key in {
+            "slide4_aprende_seguridad_vial",
+            "slide4_cultura_salud_aprende",
+        }]
+        assert len(postgres) == 2
+        for m in postgres:
+            assert m.db_source == "postgres"
+            assert m.db_mapping.strip().startswith("SELECT")
+            # Slide 4 usa ventanas FIJAS de cuatro columnas, sin period_start/end.
+            assert "%(period_start)s" not in m.db_mapping
+            assert "%(period_end)s" not in m.db_mapping
+            assert '"2024"' in m.db_mapping
+            assert '"sep2025"' in m.db_mapping
+            assert '"dic2025"' in m.db_mapping
+            assert '"acumulado"' in m.db_mapping
+            assert "'2024-01-01'" in m.db_mapping
+            assert "'2025-10-01'" in m.db_mapping
+
     def test_finds_fact_inscription_metrics(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
@@ -100,14 +123,14 @@ class TestCatalogRepo:
             for m in metrics
             if m.source == MetricSource.FACT_INSCRIPTION
         ]
-        assert len(fact) == 15
+        assert len(fact) == 16  # 15 previas + slide4_aprende_seguridad_vial
 
     def test_platform_scope_cpe(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
         metrics = list(catalog_repo.list_metrics())
         cpe = [m for m in metrics if "cpe" in m.platform_scope]
-        assert len(cpe) == 17  # 17 de 20 incluyen cpe; las 2 MySQL y registered_aprende no
+        assert len(cpe) == 17  # 17 de 22 incluyen cpe; las 2 MySQL, 2 slide4 y registered_aprende no
 
     def test_metric_has_db_mapping(
         self, catalog_repo: YamlMetricRepo

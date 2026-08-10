@@ -552,6 +552,93 @@ metrics:
       - "db_source mysql: ejecuta contra academica_analisis. MYSQL_DATABASE vacío → prefijo <db>.tabla requerido."
       - "source dim_user documenta el modelo conceptual; el dispatch real lo hace db_source."
 
+  # ── Slide 4 (Educación y divulgación) ──
+  # Fuente: PostgreSQL (analisis_cpe_db). Ventanas FIJAS de la tabla
+  # comparativa: 2024, sep2025, dic2025 y acumulado histórico a sep2025.
+  # Definición operativa dada por el usuario (reemplaza la lámina vieja).
+
+  - key: slide4_aprende_seguridad_vial
+    name: Aprende de seguridad vial — certificados únicos por ventana fija (Slide 4)
+    description: >
+      Personas únicas certificadas con advance = 100 en los 16 cursos de
+      seguridad vial, con certificationDate dentro de cada ventana fija.
+      Devuelve UNA fila con cuatro columnas: "2024" ([2024-01-01,
+      2025-01-01)), "sep2025" ([2025-01-01, 2025-10-01)), "dic2025"
+      ([2025-01-01, 2026-01-01)) y "acumulado" (histórico < 2025-10-01,
+      es decir, todo lo certificado hasta septiembre 2025).
+    formula: >
+      COUNT(DISTINCT fact_inscription.userId) con advance = 100 y
+      certificationDate en la ventana, para los 16 cursos de seguridad vial.
+    type: count_distinct
+    source: fact_inscription
+    platform_scope: []
+    db_source: postgres
+    db_mapping: >
+      SELECT
+        (SELECT COUNT(DISTINCT i."userId") FROM public.fact_inscription i
+         WHERE i."courseId" IN (80,79,352,351,305,100156,100326,175,54,41,202,98,203,204,36,114)
+           AND i.advance = 100
+           AND i."certificationDate" >= '2024-01-01' AND i."certificationDate" < '2025-01-01') AS "2024",
+        (SELECT COUNT(DISTINCT i."userId") FROM public.fact_inscription i
+         WHERE i."courseId" IN (80,79,352,351,305,100156,100326,175,54,41,202,98,203,204,36,114)
+           AND i.advance = 100
+           AND i."certificationDate" >= '2025-01-01' AND i."certificationDate" < '2025-10-01') AS "sep2025",
+        (SELECT COUNT(DISTINCT i."userId") FROM public.fact_inscription i
+         WHERE i."courseId" IN (80,79,352,351,305,100156,100326,175,54,41,202,98,203,204,36,114)
+           AND i.advance = 100
+           AND i."certificationDate" >= '2025-01-01' AND i."certificationDate" < '2026-01-01') AS "dic2025",
+        (SELECT COUNT(DISTINCT i."userId") FROM public.fact_inscription i
+         WHERE i."courseId" IN (80,79,352,351,305,100156,100326,175,54,41,202,98,203,204,36,114)
+           AND i.advance = 100
+           AND i."certificationDate" < '2025-10-01') AS "acumulado"
+    caveats:
+      - "Definición operativa del usuario: certificados únicos (advance = 100) por ventana fija, NO iguala la lámina vieja (183,846/25,260/18,157/20,209)."
+      - "Ventanas FIJAS (ignoran period_start/period_end): tabla comparativa del slide 4 (columnas 2024, sep2025, dic2025 y acumulado)."
+      - "acumulado es TODO el histórico con certificationDate < 2025-10-01 (desde 2015)."
+      - "db_source postgres: ejecuta contra analisis_cpe_db. Columnas camelCase requieren comillas dobles."
+      - "source fact_inscription documenta el modelo conceptual; el dispatch real lo hace db_source."
+
+  - key: slide4_cultura_salud_aprende
+    name: Cultura y Salud Aprende (registros) — usuarios sin inscripción por ventana fija (Slide 4)
+    description: >
+      Usuarios de la plataforma Aprende (plataformaId = 2) registrados dentro
+      de cada ventana fija y SIN ninguna inscripción (NOT EXISTS
+      fact_inscription). Devuelve UNA fila con cuatro columnas: "2024"
+      ([2024-01-01, 2025-01-01)), "sep2025" ([2025-01-01, 2025-10-01)),
+      "dic2025" ([2025-01-01, 2026-01-01)) y "acumulado" (histórico <
+      2025-10-01).
+    formula: >
+      COUNT(DISTINCT dim_user.userId) con plataformaId = 2, registrationDate
+      en la ventana y NOT EXISTS fact_inscription del mismo usuario.
+    type: count_distinct
+    source: dim_user
+    platform_scope: []
+    db_source: postgres
+    db_mapping: >
+      SELECT
+        (SELECT COUNT(DISTINCT u."userId") FROM public.dim_user u
+         WHERE u."plataformaId" = 2
+           AND u."registrationDate" >= '2024-01-01' AND u."registrationDate" < '2025-01-01'
+           AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "2024",
+        (SELECT COUNT(DISTINCT u."userId") FROM public.dim_user u
+         WHERE u."plataformaId" = 2
+           AND u."registrationDate" >= '2025-01-01' AND u."registrationDate" < '2025-10-01'
+           AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "sep2025",
+        (SELECT COUNT(DISTINCT u."userId") FROM public.dim_user u
+         WHERE u."plataformaId" = 2
+           AND u."registrationDate" >= '2025-01-01' AND u."registrationDate" < '2026-01-01'
+           AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "dic2025",
+        (SELECT COUNT(DISTINCT u."userId") FROM public.dim_user u
+         WHERE u."plataformaId" = 2
+           AND u."registrationDate" < '2025-10-01'
+           AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "acumulado"
+    caveats:
+      - "Definición operativa del usuario: registrados Aprende SIN inscripción, NO iguala la lámina vieja (1,318,962/95,801/452,949/480,611)."
+      - "Ventanas FIJAS (ignoran period_start/period_end): tabla comparativa del slide 4."
+      - "acumulado es TODO el histórico con registrationDate < 2025-10-01 (desde 2014)."
+      - "db_source postgres: ejecuta contra analisis_cpe_db. Columnas camelCase requieren comillas dobles."
+      - "source dim_user documenta el modelo conceptual; el dispatch real lo hace db_source."
+
 # ── Notas técnicas ───────────────────────────────────────────────────────
 
 notes:
