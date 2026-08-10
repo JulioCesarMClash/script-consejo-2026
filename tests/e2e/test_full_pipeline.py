@@ -5,12 +5,13 @@ y Sheets falsos. Trazabilidad por run_id/attempt_id, bundle canónico
 UTF-8, hash SHA-256, DQS bloqueo, y zero-rows orphan checks.
 
 Los tests que requieren credenciales reales (PostgreSQL, Google Sheets)
-están marcados con @pytest.mark.skip.
+son opt-in mediante la configuración del entorno.
 """
 
 from __future__ import annotations
 
 import json
+import os
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Mapping, Sequence
@@ -25,7 +26,7 @@ from src.consejo.application.use_cases.validate_bundle import (
     DqsBlockedError,
     validate_bundle,
 )
-from src.consejo.domain.entities import Bundle
+from src.consejo.domain.entities import Bundle, Metric
 from src.consejo.domain.value_objects import AttemptId, Cut, RunId
 
 
@@ -36,8 +37,9 @@ class E2EFakeSourceConn(SourceConn):
     """SourceConn con datos simulados resueltos por orden de llamada.
 
     Call-order matching: la extracción itera el catálogo en orden y ejecuta
-    `fetch` para las 10 métricas SQL (10 queries). Devuelve la i-ésima fila
-    de la secuencia en la i-ésima llamada.
+    `fetch` para las 11 métricas SQL. Devuelve la i-ésima fila de la secuencia
+    en la i-ésima llamada; la 11ª consulta (slide2_empleo... sector) no
+    tiene datos y devuelve vacío. Las métricas sum derivadas no disparan fetch.
     """
 
     def __init__(self, rows_sequence: Sequence[Sequence[Mapping]] | None = None):
@@ -64,7 +66,12 @@ class E2EFakeSheetRepo:
     def __init__(self) -> None:
         self._snapshots: list[Bundle] = []
 
-    def snapshot(self, bundle: Bundle) -> str:
+    def snapshot(
+        self,
+        bundle: Bundle,
+        spreadsheet_id: str,
+        catalogo: Sequence[Metric],
+    ) -> str:
         self._snapshots.append(bundle)
         return "e2e-spreadsheet-id"
 
@@ -75,8 +82,9 @@ class E2EFakeSheetRepo:
 def _build_e2e_sequence() -> Sequence[Sequence[Mapping]]:
     """Datos simulados completos, ordenados por extracción del catálogo.
 
-    10 métricas SQL-ejecutables en orden; las 6 restantes (4 textsum +
-    2 manual) no disparan fetch (EMPTY).
+    10 métricas SQL-ejecutables con datos en orden; las 6 métricas sum
+    derivadas se calculan desde sus partes (sin fetch); slide2_empleo…
+    sector (11ª SQL) devuelve vacío (EMPTY).
     """
     return [
         [{"count": 1500}],  # registered_cpe
@@ -129,7 +137,7 @@ def _run_full_pipeline(
         cut=Cut(cut),
         catalog_hash=catalog_hash,
     )
-    sid = create_snapshot(bundle, fake_sheets)
+    sid = create_snapshot(bundle, fake_sheets, "e2e-spreadsheet-id", catalogo=catalog)
 
     return {
         "run_id": str(run_id),
@@ -164,15 +172,17 @@ class TestFullPipelineE2E:
 
     # ── 5.1.a: 16 manifests ──────────────────────────────────────────────
 
-    def test_pipeline_produces_16_manifests(
+    def test_pipeline_produces_20_manifests(
         self, catalog_path: Path, fake_conn: E2EFakeSourceConn,
         fake_sheets: E2EFakeSheetRepo,
     ) -> None:
-        """El pipeline completo produce exactamente 16 manifiestos."""
+        """El pipeline completo produce exactamente 20 manifiestos."""
         result = _run_full_pipeline(catalog_path, fake_conn, fake_sheets)
-        assert result["manifests_len"] == 16
-        # 10 metrics con SQL ejecutable, 4 totals no-SQL (empty), 2 manual (empty)
-        assert result["rows_len"] == 10
+        assert result["manifests_len"] == 20
+        # 10 SQL-fetched EXTRACTED + 6 derived sums builton their parts = 16;
+        # slide2_empleo_incluyente_por_sector, slide1 y las 2 de Slide 3
+        # (MySQL, sin mysql_conn en el fake) vuelven EMPTY (sin fila)
+        assert result["rows_len"] == 16
 
     # ── 5.1.b: Traceability run_id / attempt_id ──────────────────────────
 
@@ -269,61 +279,177 @@ class TestFullPipelineE2E:
 
     # ── 5.1.f: Manual metrics are empty, not zero ───────────────────────
 
-    def test_manual_metrics_empty_not_zero(
+    def test_beneficiaries_is_derived_not_manual(
         self, catalog_path: Path, fake_conn: E2EFakeSourceConn,
         fake_sheets: E2EFakeSheetRepo,
     ) -> None:
-        """Métricas manuales (beneficiaries) son EMPTY, no cero."""
+        """Beneficiaries es derivada (sum), no manual: EXTRACTED con valor."""
         result = _run_full_pipeline(catalog_path, fake_conn, fake_sheets)
         bundle = result["bundle"]
 
         manual_manifests = [
             m for m in bundle.manifests if m.source.value == "manual"
         ]
-        assert len(manual_manifests) == 2  # beneficiaries + beneficiaries_unique
-        for m in manual_manifests:
-            assert m.status.value == "empty"
-            assert len(m.rows) == 0
+        assert len(manual_manifests) == 0  # el catálogo ya no tiene manuales
 
-    # ── 5.1.g: Full pipeline with real DB (skipped) ─────────────────────
+        beneficiaries = next(
+            m for m in bundle.manifests if str(m.metric_id) == "beneficiaries"
+        )
+        assert beneficiaries.source.value == "fact_inscription"
+        assert beneficiaries.status.value == "extracted"
+        assert beneficiaries.rows == ({"value": 3000},)
 
-    @pytest.mark.skip(
-        reason="Requiere conexión real a PostgreSQL analisis_cpe_db "
-               "(DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT). "
-               "Ejecutar en entorno autorizado con credenciales."
-    )
+    # ── 5.1.g: Full pipeline with real DB (opt-in) ───────────────────────
+
     def test_pipeline_with_real_db_requires_creds(self) -> None:
         """Pipeline completo con PostgreSQL real.
 
         Solo ejecutable en entorno autorizado con credenciales configuradas.
+        No escribe en Google Sheets: verifica extracción y validación reales.
         """
-        from src.consejo.config.container import build_pipeline
+        from src.consejo.adapters.postgres.source_conn import PostgresSourceConn
+        from src.consejo.config.settings import Settings
 
-        pipeline = build_pipeline(
-            cut=date(2026, 7, 1),
-            spreadsheet_id="test-spreadsheet-id",
+        if os.environ.get("RUN_REAL_DB_TESTS") != "1":
+            pytest.skip(
+                "PostgreSQL real no autorizado; configurar RUN_REAL_DB_TESTS=1"
+            )
+
+        try:
+            settings = Settings()
+        except (TypeError, ValueError) as exc:
+            pytest.skip(f"Configuración PostgreSQL no disponible: {type(exc).__name__}")
+
+        required = {
+            "DB_HOST": settings.db_host,
+            "DB_NAME": settings.db_name,
+            "DB_USER": settings.db_user,
+            "DB_PASSWORD": settings.db_password,
+            "DB_PORT": settings.db_port,
+        }
+        missing = [name for name, value in required.items() if not value]
+        if missing:
+            pytest.skip(
+                "Configuración PostgreSQL incompleta; faltan: "
+                + ", ".join(missing)
+            )
+
+        repo = YamlMetricRepo(settings.catalog_path)
+        run_id = RunId.generate()
+        attempt_id = AttemptId.generate()
+        cut = date(2026, 7, 1)
+
+        try:
+            manifests = extract_data(
+                metric_repo=repo,
+                source_conn=PostgresSourceConn(settings),
+                run_id=run_id,
+                attempt_id=attempt_id,
+                cut=cut,
+            )
+        except ConnectionError as exc:
+            pytest.skip(f"PostgreSQL no disponible: {type(exc).__name__}")
+
+        bundle = validate_bundle(
+            manifests=manifests,
+            catalog=list(repo.list_metrics()),
+            run_id=run_id,
+            attempt_id=attempt_id,
+            cut=Cut(cut),
+            catalog_hash=repo.compute_catalog_hash(),
         )
-        result = pipeline()
-        assert result["manifests"] == 16
 
-    # ── 5.1.h: Full pipeline with real Sheets (skipped) ──────────────────
+        assert len(manifests) == 20
+        assert len(bundle.rows) > 0
 
-    @pytest.mark.skip(
-        reason="Requiere credenciales Google Sheets reales "
-               "(GOOGLE_APPLICATION_CREDENTIALS, spreadsheet_id). "
-               "Ejecutar en entorno autorizado con service account."
-    )
+    # ── 5.1.h: Full pipeline with real Sheets (opt-in) ───────────────────
+
     def test_pipeline_with_real_sheets_requires_creds(self) -> None:
         """Pipeline completo con Google Sheets real.
 
-        Solo ejecutable en entorno autorizado con service account.
-        Verifica 5 hojas creadas, cero escrituras Slides.
+        Solo ejecutable con autorización explícita y configuración local.
+        Este test escribe en el spreadsheet configurado.
         """
-        from src.consejo.config.container import build_pipeline
-
-        pipeline = build_pipeline(
-            cut=date(2026, 7, 1),
-            spreadsheet_id="test-spreadsheet-id",
+        from src.consejo.adapters.sheets.google_mcp_sheet_repo import (
+            SHEET_NAMES,
+            GoogleMcpSheetRepo,
+            SheetProxyError,
         )
-        result = pipeline()
-        assert "spreadsheet_id" in result
+        from src.consejo.adapters.postgres.source_conn import PostgresSourceConn
+        from src.consejo.config.settings import Settings
+
+        if os.environ.get("RUN_REAL_SHEETS_TESTS") != "1":
+            pytest.skip(
+                "Google Sheets real no autorizado; configurar RUN_REAL_SHEETS_TESTS=1"
+            )
+
+        try:
+            settings = Settings()
+        except (TypeError, ValueError):
+            pytest.skip("Configuración real no disponible")
+
+        credentials_path = Path(settings.google_application_credentials).expanduser()
+        if not settings.google_application_credentials or not credentials_path.is_file():
+            pytest.skip("Ruta de credenciales Google no disponible")
+        if not settings.google_spreadsheet_id:
+            pytest.skip("GOOGLE_SPREADSHEET_ID no configurado")
+
+        repo = YamlMetricRepo(settings.catalog_path)
+        catalog = list(repo.list_metrics())
+        run_id = RunId.generate()
+        attempt_id = AttemptId.generate()
+        cut = date(2026, 7, 1)
+
+        try:
+            manifests = extract_data(
+                metric_repo=repo,
+                source_conn=PostgresSourceConn(settings),
+                run_id=run_id,
+                attempt_id=attempt_id,
+                cut=cut,
+            )
+            bundle = validate_bundle(
+                manifests=manifests,
+                catalog=catalog,
+                run_id=run_id,
+                attempt_id=attempt_id,
+                cut=Cut(cut),
+                catalog_hash=repo.compute_catalog_hash(),
+            )
+            spreadsheet_id = create_snapshot(
+                bundle,
+                _ConfiguredSheetRepo(GoogleMcpSheetRepo(), settings.google_spreadsheet_id),
+                catalogo=catalog,
+            )
+        except (ConnectionError, FileNotFoundError, SheetProxyError):
+            pytest.skip("Google Sheets o PostgreSQL no disponible")
+
+        assert spreadsheet_id == settings.google_spreadsheet_id
+
+        verifier = GoogleMcpSheetRepo()
+        verifier._start_proxy()
+        try:
+            verifier._init_handshake()
+            metadata = verifier._get_spreadsheet_meta(spreadsheet_id)
+        finally:
+            verifier._stop_proxy()
+
+        actual_titles = {
+            sheet["properties"]["title"]
+            for sheet in (metadata or {}).get("fields", {}).get("sheets", [])
+        }
+        assert actual_titles == set(SHEET_NAMES)
+
+
+class _ConfiguredSheetRepo:
+    def __init__(self, repo: object, spreadsheet_id: str) -> None:
+        self._repo = repo
+        self._spreadsheet_id = spreadsheet_id
+
+    def snapshot(
+        self,
+        bundle: Bundle,
+        spreadsheet_id: str,
+        catalogo: Sequence[Metric],
+    ) -> str:
+        return self._repo.snapshot(bundle, self._spreadsheet_id, catalogo)

@@ -58,6 +58,10 @@ def build_pipeline(
             run_id=run_id,
             attempt_id=attempt_id,
             cut=cut,
+            query_params={
+                "period_start": settings.certificate_period_start.isoformat(),
+                "period_end": settings.certificate_period_end.isoformat(),
+            },
         )
 
         catalog = list(metric_repo.list_metrics())
@@ -72,7 +76,7 @@ def build_pipeline(
             catalog_hash=catalog_hash,
         )
 
-        sid = create_snapshot(bundle, sheet_repo)
+        sid = create_snapshot(bundle, sheet_repo, spreadsheet_id, catalogo=catalog)
 
         return {
             "run_id": str(run_id),

@@ -7,6 +7,7 @@ DQS bloqueo detiene snapshot, y hash estable.
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from dataclasses import replace
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -22,8 +23,14 @@ from src.consejo.application.use_cases.validate_bundle import (
     DqsBlockedError,
     validate_bundle,
 )
-from src.consejo.domain.entities import Bundle
-from src.consejo.domain.value_objects import AttemptId, Cut, RunId
+from src.consejo.domain.entities import Bundle, Metric
+from src.consejo.domain.value_objects import (
+    AttemptId,
+    Cut,
+    FetchStatus,
+    PipelineMode,
+    RunId,
+)
 
 
 # ── Fakes ───────────────────────────────────────────────────────────────────
@@ -33,14 +40,14 @@ class FakeSourceConn(SourceConn):
     """SourceConn falso con datos predefinidos resueltos por orden de llamada.
 
     La extracción itera el catálogo en orden y ejecuta `fetch` SOLO para las
-    métricas con db_mapping SQL (10 queries). Como el SQL no contiene la key
+    métricas con db_mapping SQL (12 queries). Como el SQL no contiene la key
     de la métrica, este fake usa call-order matching: devuelve la i-ésima
     entrada de `rows_sequence` en la i-ésima llamada.
     """
 
     def __init__(self, rows_sequence: Sequence[Sequence[Mapping]] | None = None):
         # Secuencia ordenada en el mismo orden de extracción del catálogo
-        # (solo las 10 métricas SQL-ejecutables).
+        # (solo las 11 métricas SQL-ejecutables).
         self._sequence: list[list[dict]] = [
             [dict(r) for r in rows] for rows in (rows_sequence or [])
         ]
@@ -64,7 +71,12 @@ class FakeSheetRepo:
     def __init__(self) -> None:
         self._snapshots: list[Bundle] = []
 
-    def snapshot(self, bundle: Bundle) -> str:
+    def snapshot(
+        self,
+        bundle: Bundle,
+        spreadsheet_id: str,
+        catalogo: Sequence[Metric],
+    ) -> str:
         self._snapshots.append(bundle)
         return "fake-spreadsheet-id"
 
@@ -75,9 +87,9 @@ class FakeSheetRepo:
 def _build_row_sequence() -> Sequence[Sequence[Mapping]]:
     """Construye una secuencia ordenada de filas simuladas.
 
-    El orden coincide con el orden de extracción del catálogo para las 10
+    El orden coincide con el orden de extracción del catálogo para las 12
     métricas con db_mapping SQL ejecutable (source dim_user/fact_inscription,
-    type SELECT). Las 6 restantes (4 textsum + 2 manual) no disparan fetch.
+    type SELECT/WITH). Las 6 métricas sum derivadas (textsum) no disparan fetch.
     """
     return [
         [{"count": 1200}],  # registered_cpe
@@ -90,6 +102,14 @@ def _build_row_sequence() -> Sequence[Sequence[Mapping]]:
         [{"count": 1200}],  # certifications_cpe_from_aprende
         [{"count": 2500}],  # certified_unique_cpe
         [{"count": 900}],  # certified_unique_cpe_from_aprende
+        [  # slide1_herramientas_pobreza (5 categorías)
+            {"metric_id": "slide1_vivienda", "source": "fact_inscription", "value": 16, "compartidos": 0, "cursos_totales": 16, "certificados": 0, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31"},
+            {"metric_id": "slide1_digital", "source": "fact_inscription", "value": 21, "compartidos": 0, "cursos_totales": 21, "certificados": 0, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31"},
+            {"metric_id": "slide1_alimentos", "source": "fact_inscription", "value": 22, "compartidos": 0, "cursos_totales": 22, "certificados": 0, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31"},
+            {"metric_id": "slide1_desastres", "source": "fact_inscription", "value": 11, "compartidos": 0, "cursos_totales": 11, "certificados": 0, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31"},
+            {"metric_id": "slide1_empleo", "source": "fact_inscription", "value": 26, "compartidos": 0, "cursos_totales": 26, "certificados": 0, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31"},
+        ],
+        [{"count": 42}],  # slide2_empleo_incluyente_por_sector
     ]
 
 
@@ -111,10 +131,10 @@ class TestPipelineDry:
     def fake_sheets(self) -> FakeSheetRepo:
         return FakeSheetRepo()
 
-    def test_extract_produces_16_manifests(
+    def test_extract_produces_20_manifests(
         self, catalog_path: Path, fake_conn: FakeSourceConn
     ) -> None:
-        """La extracción debe producir 16 manifiestos."""
+        """La extracción debe producir 20 manifiestos."""
         repo = YamlMetricRepo(str(catalog_path))
         run_id = RunId.generate()
         attempt_id = AttemptId.generate()
@@ -128,12 +148,12 @@ class TestPipelineDry:
             cut=cut,
         )
 
-        assert len(manifests) == 16
+        assert len(manifests) == 20
 
-    def test_extract_manual_metrics_are_empty(
+    def test_extract_beneficiaries_is_derived_not_manual(
         self, catalog_path: Path, fake_conn: FakeSourceConn
     ) -> None:
-        """Métricas manuales deben tener status EMPTY y sin filas."""
+        """Beneficiaries es derivada (sum), no manual: EXTRACTED con valor."""
         repo = YamlMetricRepo(str(catalog_path))
         manifests = extract_data(
             metric_repo=repo,
@@ -144,10 +164,71 @@ class TestPipelineDry:
         )
 
         manual = [m for m in manifests if m.source.value == "manual"]
-        assert len(manual) == 2
-        for m in manual:
-            assert m.status.value == "empty"
-            assert len(m.rows) == 0
+        assert len(manual) == 0
+
+        beneficiaries = next(
+            m for m in manifests if str(m.metric_id) == "beneficiaries"
+        )
+        assert beneficiaries.source.value == "fact_inscription"
+        assert beneficiaries.status.value == "extracted"
+        assert beneficiaries.rows == ({"value": 2200},)
+
+    def test_extract_computes_beneficiaries_unique_from_unique_parts(
+        self, catalog_path: Path, fake_conn: FakeSourceConn
+    ) -> None:
+        repo = YamlMetricRepo(str(catalog_path))
+        manifests = extract_data(
+            metric_repo=repo,
+            source_conn=fake_conn,
+            run_id=RunId.generate(),
+            attempt_id=AttemptId.generate(),
+            cut=date(2026, 7, 1),
+        )
+
+        automatic = next(
+            m for m in manifests if str(m.metric_id) == "beneficiaries_unique"
+        )
+
+        assert automatic.source.value == "fact_inscription"
+        assert automatic.status.value == "extracted"
+        assert automatic.rows == ({"value": 5000},)
+
+    def test_dqs_reconciles_beneficiaries_unique(
+        self, catalog_path: Path, fake_conn: FakeSourceConn
+    ) -> None:
+        repo = YamlMetricRepo(str(catalog_path))
+        catalog = list(repo.list_metrics())
+        manifests = extract_data(
+            metric_repo=repo,
+            source_conn=fake_conn,
+            run_id=RunId.generate(),
+            attempt_id=AttemptId.generate(),
+            cut=date(2026, 7, 1),
+        )
+        automatic = next(
+            m for m in manifests if str(m.metric_id) == "beneficiaries_unique"
+        )
+        inconsistent = [
+            replace(automatic, rows=({"value": 1},))
+            if m is automatic else m
+            for m in manifests
+        ]
+
+        with pytest.raises(DqsBlockedError) as exc_info:
+            validate_bundle(
+                manifests=inconsistent,
+                catalog=catalog,
+                run_id=RunId.generate(),
+                attempt_id=AttemptId.generate(),
+                cut=Cut(date(2026, 7, 1)),
+                catalog_hash=repo.compute_catalog_hash(),
+            )
+
+        assert any(
+            issue.code == "DQS-002-RECONCILIATION"
+            and issue.details.get("metric") == "beneficiaries_unique"
+            for issue in exc_info.value.issues
+        )
 
     def test_validate_passes_with_valid_data(
         self, catalog_path: Path, fake_conn: FakeSourceConn
@@ -180,7 +261,7 @@ class TestPipelineDry:
         assert bundle.run_id == run_id
         assert bundle.attempt_id == attempt_id
         assert bundle.catalog_hash == catalog_hash
-        assert len(bundle.manifests) == 16
+        assert len(bundle.manifests) == 20
         assert str(bundle.hash) != "0" * 64
 
     def test_validate_blocks_with_empty_manifests(
@@ -237,7 +318,7 @@ class TestPipelineDry:
             catalog_hash=catalog_hash,
         )
 
-        result = create_snapshot(bundle, fake_sheets)
+        result = create_snapshot(bundle, fake_sheets, "fake-spreadsheet-id", catalogo=catalog)
 
         assert result == "fake-spreadsheet-id"
         assert len(fake_sheets._snapshots) == 1
@@ -332,7 +413,7 @@ class TestPipelineDry:
             cut=cut,
             fetched_at=fetched_at,
         )
-        assert len(manifests) == 16
+        assert len(manifests) == 20
 
         # Validate
         bundle = validate_bundle(
@@ -347,6 +428,58 @@ class TestPipelineDry:
         assert bundle.catalog_hash == catalog_hash
 
         # Snapshot
-        sid = create_snapshot(bundle, fake_sheets)
+        sid = create_snapshot(bundle, fake_sheets, "fake-spreadsheet-id", catalogo=catalog)
         assert sid == "fake-spreadsheet-id"
+        assert len(fake_sheets._snapshots) == 1
+
+    def test_production_happy_path_allows_snapshot(
+        self,
+        catalog_path: Path,
+        fake_conn: FakeSourceConn,
+        fake_sheets: FakeSheetRepo,
+    ) -> None:
+        repo = YamlMetricRepo(str(catalog_path))
+        catalog = list(repo.list_metrics())
+        run_id = RunId.generate()
+        attempt_id = AttemptId.generate()
+        cut = date(2026, 7, 1)
+
+        mysql_fake = FakeSourceConn([
+            [{"count": 100}],  # slide3_capacitate_carso
+            [{"count": 50}],  # slide3_academica_labs
+        ])
+        manifests = extract_data(
+            metric_repo=repo,
+            source_conn=fake_conn,
+            run_id=run_id,
+            attempt_id=attempt_id,
+            cut=cut,
+            mysql_conn=mysql_fake,
+        )
+        manifests = [
+            replace(manifest, status=FetchStatus.EXTRACTED)
+            if str(manifest.metric_id) in {
+                "beneficiaries",
+                "registered_total",
+                "inscriptions_cpe_total",
+                "certifications_cpe_total",
+                "certified_unique_cpe_total",
+            }
+            else manifest
+            for manifest in manifests
+        ]
+
+        bundle = validate_bundle(
+            manifests=manifests,
+            catalog=catalog,
+            run_id=run_id,
+            attempt_id=attempt_id,
+            cut=Cut(cut),
+            catalog_hash=repo.compute_catalog_hash(),
+            mode=PipelineMode.PRODUCTION,
+        )
+
+        assert len(bundle.manifests) == len(catalog) == 20
+        assert bundle.dqs == ()
+        assert create_snapshot(bundle, fake_sheets, "fake-spreadsheet-id", catalogo=catalog) == "fake-spreadsheet-id"
         assert len(fake_sheets._snapshots) == 1

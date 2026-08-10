@@ -43,6 +43,7 @@ class Metric:
     db_mapping: str
     platform_scope: list[str] = field(default_factory=list)
     grain: str = ""
+    db_source: str = "postgres"
 
     def __post_init__(self) -> None:
         if not self.name or not self.name.strip():

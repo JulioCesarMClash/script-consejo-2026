@@ -34,6 +34,13 @@ class FetchStatus(str, Enum):
     FAILED = "failed"
 
 
+class PipelineMode(str, Enum):
+    """Execution mode controlling whether incomplete metrics block output."""
+
+    DRY_RUN = "dry_run"
+    PRODUCTION = "production"
+
+
 class RunState(str, Enum):
     """Estados del ciclo de vida de una corrida de snapshot."""
 

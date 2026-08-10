@@ -19,6 +19,7 @@ from src.consejo.domain.value_objects import (
     HashSha256,
     MetricId,
     MetricSource,
+    PipelineMode,
     RunId,
 )
 
@@ -30,6 +31,7 @@ def _make_metric(
     key: str,
     source: MetricSource = MetricSource.DIM_USER,
     grain: str = "scalar",
+    db_mapping: str = "",
 ) -> Metric:
     return Metric(
         id=MetricId(key),
@@ -37,7 +39,7 @@ def _make_metric(
         key=key,
         source=source,
         formula="COUNT(*)",
-        db_mapping="",
+        db_mapping=db_mapping,
         grain=grain,
     )
 
@@ -265,6 +267,182 @@ class TestValidateBundle:
             manifests, catalog, run_id, attempt_id, cut, catalog_hash,
         )
         assert isinstance(bundle, Bundle)
+
+    def test_production_blocks_empty_required_external_metric(
+        self, run_id, attempt_id, cut, catalog_hash,
+    ):
+        catalog = [_make_metric(
+            "registered_cpe", MetricSource.DIM_USER, db_mapping="SELECT 1"
+        )]
+        manifests = [_make_manifest(
+            "registered_cpe",
+            MetricSource.DIM_USER,
+            status=FetchStatus.EMPTY,
+            rows=(),
+        )]
+
+        with pytest.raises(DqsBlockedError) as exc:
+            validate_bundle(
+                manifests, catalog, run_id, attempt_id, cut, catalog_hash,
+                mode=PipelineMode.PRODUCTION,
+            )
+
+        assert any(
+            issue.code == "DQS-003-REQUIRED_METRIC" and
+            issue.details["metric_id"] == "registered_cpe"
+            for issue in exc.value.issues
+        )
+
+    def test_dry_run_warns_on_empty_required_external_metric(
+        self, run_id, attempt_id, cut, catalog_hash,
+    ):
+        catalog = [_make_metric(
+            "registered_cpe", MetricSource.DIM_USER, db_mapping="SELECT 1"
+        )]
+        manifests = [_make_manifest(
+            "registered_cpe",
+            MetricSource.DIM_USER,
+            status=FetchStatus.EMPTY,
+            rows=(),
+        )]
+
+        bundle = validate_bundle(
+            manifests, catalog, run_id, attempt_id, cut, catalog_hash,
+            mode=PipelineMode.DRY_RUN,
+        )
+
+        assert any(
+            issue.code == "DQS-003-REQUIRED_METRIC" and
+            issue.severity == "warning"
+            for issue in bundle.dqs
+        )
+
+    def test_production_blocks_empty_manual_beneficiaries(
+        self, run_id, attempt_id, cut, catalog_hash,
+    ):
+        catalog = [_make_metric("beneficiaries", MetricSource.MANUAL)]
+        manifests = [_make_manifest(
+            "beneficiaries",
+            MetricSource.MANUAL,
+            status=FetchStatus.EMPTY,
+            rows=(),
+        )]
+
+        with pytest.raises(DqsBlockedError):
+            validate_bundle(
+                manifests, catalog, run_id, attempt_id, cut, catalog_hash,
+                mode=PipelineMode.PRODUCTION,
+            )
+
+    def test_production_blocks_empty_automatic_beneficiaries_unique(
+        self, run_id, attempt_id, cut, catalog_hash,
+    ):
+        catalog = [
+            _make_metric("inscribed_unique_cpe", MetricSource.FACT_INSCRIPTION),
+            _make_metric(
+                "inscribed_unique_cpe_from_aprende",
+                MetricSource.FACT_INSCRIPTION,
+            ),
+            _make_metric("beneficiaries_unique", MetricSource.FACT_INSCRIPTION),
+        ]
+        manifests = [
+            _make_manifest(
+                "inscribed_unique_cpe",
+                MetricSource.FACT_INSCRIPTION,
+                status=FetchStatus.EMPTY,
+                rows=(),
+            ),
+            _make_manifest(
+                "inscribed_unique_cpe_from_aprende",
+                MetricSource.FACT_INSCRIPTION,
+                status=FetchStatus.EXTRACTED,
+                rows=[{"value": 10}],
+            ),
+            _make_manifest(
+                "beneficiaries_unique",
+                MetricSource.FACT_INSCRIPTION,
+                status=FetchStatus.EMPTY,
+                rows=(),
+            ),
+        ]
+
+        with pytest.raises(DqsBlockedError) as exc:
+            validate_bundle(
+                manifests, catalog, run_id, attempt_id, cut, catalog_hash,
+                mode=PipelineMode.PRODUCTION,
+            )
+
+        assert any(
+            issue.code == "DQS-003-REQUIRED_METRIC" and
+            issue.details["metric_id"] == "beneficiaries_unique"
+            for issue in exc.value.issues
+        )
+
+    @pytest.mark.parametrize(
+        "metric_key",
+        [
+            "registered_total",
+            "inscriptions_cpe_total",
+            "certifications_cpe_total",
+            "certified_unique_cpe_total",
+            "beneficiaries_unique",
+        ],
+    )
+    def test_production_blocks_empty_explicitly_required_derived_total(
+        self, metric_key, run_id, attempt_id, cut, catalog_hash,
+    ):
+        catalog = [_make_metric(metric_key, MetricSource.DIM_USER)]
+        manifests = [_make_manifest(
+            metric_key,
+            MetricSource.DIM_USER,
+            status=FetchStatus.EMPTY,
+            rows=(),
+        )]
+
+        with pytest.raises(DqsBlockedError) as exc:
+            validate_bundle(
+                manifests, catalog, run_id, attempt_id, cut, catalog_hash,
+                mode=PipelineMode.PRODUCTION,
+            )
+
+        assert any(
+            issue.code == "DQS-003-REQUIRED_METRIC"
+            and issue.details["metric_id"] == metric_key
+            for issue in exc.value.issues
+        )
+
+    @pytest.mark.parametrize(
+        "metric_key",
+        [
+            "registered_total",
+            "inscriptions_cpe_total",
+            "certifications_cpe_total",
+            "certified_unique_cpe_total",
+            "beneficiaries_unique",
+        ],
+    )
+    def test_dry_run_warns_on_empty_explicitly_required_derived_total(
+        self, metric_key, run_id, attempt_id, cut, catalog_hash,
+    ):
+        catalog = [_make_metric(metric_key, MetricSource.DIM_USER)]
+        manifests = [_make_manifest(
+            metric_key,
+            MetricSource.DIM_USER,
+            status=FetchStatus.EMPTY,
+            rows=(),
+        )]
+
+        bundle = validate_bundle(
+            manifests, catalog, run_id, attempt_id, cut, catalog_hash,
+            mode=PipelineMode.DRY_RUN,
+        )
+
+        assert any(
+            issue.code == "DQS-003-REQUIRED_METRIC"
+            and issue.details["metric_id"] == metric_key
+            and issue.severity == "warning"
+            for issue in bundle.dqs
+        )
 
     def test_bundle_rows_are_enriched(
         self, valid_manifests, small_catalog, run_id, attempt_id, cut,

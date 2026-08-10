@@ -1,8 +1,8 @@
-"""Caso de uso: extracción de métricas con manifiestos trazables.
+"""Use case: metric extraction with traceable manifests.
 
-Itera el catálogo de métricas, ejecuta las consultas SQL vía SourceConn,
-y construye un SourceManifest por métrica. Respeta las métricas manuales
-y las fórmulas textuales (tipo sum) sin ejecutar consultas.
+    Iterates the metric catalog, runs SQL queries via SourceConn, and builds a
+    SourceManifest per metric. Derived sum metrics are built from their
+    component manifests without running queries.
 """
 
 from __future__ import annotations
@@ -23,6 +23,31 @@ from src.consejo.domain.value_objects import (
 )
 
 
+# Derived sum metrics: computed from two pre-extracted parts, never fetched
+# directly from the database. Keyed by the derived metric key, mapping to the
+# two component metric keys that must each be EXTRACTED first.
+_SUM_PARTS: dict[str, tuple[str, str]] = {
+    "registered_total": ("registered_cpe", "registered_aprende"),
+    "inscriptions_cpe_total": (
+        "inscriptions_cpe",
+        "inscriptions_cpe_from_aprende",
+    ),
+    "certifications_cpe_total": (
+        "certifications_cpe",
+        "certifications_cpe_from_aprende",
+    ),
+    "certified_unique_cpe_total": (
+        "certified_unique_cpe",
+        "certified_unique_cpe_from_aprende",
+    ),
+    "beneficiaries_unique": (
+        "inscribed_unique_cpe",
+        "inscribed_unique_cpe_from_aprende",
+    ),
+    "beneficiaries": ("registered_cpe", "inscribed_unique_cpe_from_aprende"),
+}
+
+
 def extract_data(
     metric_repo: MetricRepo,
     source_conn: SourceConn,
@@ -30,65 +55,83 @@ def extract_data(
     attempt_id: AttemptId,
     cut: Date,
     fetched_at: datetime | None = None,
+    query_params: Mapping[str, object] | None = None,
+    mysql_conn: SourceConn | None = None,
 ) -> list[SourceManifest]:
-    """Extrae métricas del catálogo y construye manifiestos trazables.
+    """Extracts metrics from the catalog and builds traceable manifests.
 
-    Para cada métrica del catálogo:
-    - source: manual → manifiesto sin consulta DB, sin filas.
-    - db_mapping no SQL (fórmulas textuales sum) → manifiesto vacío.
-    - db_mapping SQL → ejecuta vía SourceConn.fetch, normaliza filas.
-    - Fallo en consulta → manifiesto con status FAILED.
+    Two passes over the catalog, so derived sums are computed regardless of the
+    order in which their parts appear:
+    - Pass 1: extract every metric whose key is NOT in _SUM_PARTS. For those:
+      - source manual -> manifest without a DB query and without rows.
+      - non-SQL db_mapping (other textual formulas) -> EMPTY manifest.
+      - SQL db_mapping -> execute via SourceConn.fetch and normalize rows.
+      - Query failure -> manifest with FAILED status.
+    - Pass 2: for each metric whose key IS in _SUM_PARTS, build the sum from
+      its two pre-extracted parts via _build_automatic_sum.
+
+    Si una métrica tiene `db_source == "mysql"` y se provee `mysql_conn`, la
+    consulta se ejecuta contra MySQL; en caso contrario, se usa
+    `source_conn` (PostgreSQL por default). Si `mysql_conn` es None, todas las
+    métricas se extraen contra `source_conn`, manteniendo compatibilidad
+    hacia atrás.
 
     Args:
-        metric_repo: Repositorio de métricas del catálogo.
-        source_conn: Conexión a base de datos para extracción.
-        run_id: Identificador de la corrida.
-        attempt_id: Identificador del intento.
-        cut: Fecha de corte del snapshot.
-        fetched_at: Timestamp UTC de extracción. Si es None, se usa now().
+        metric_repo: Metric repository backed by the catalog.
+        source_conn: Database connection used for extraction (default PG).
+        run_id: Identifier of the run.
+        attempt_id: Identifier of the attempt.
+        cut: Snapshot cut-off date.
+        fetched_at: UTC extraction timestamp. If None, now() is used.
+        mysql_conn: Conexión MySQL opcional para métricas con
+            `db_source: "mysql"`.
 
     Returns:
-        Lista de 16 SourceManifest, uno por métrica del catálogo.
+        List of SourceManifest, one per catalog metric, in catalog order.
     """
     if fetched_at is None:
         fetched_at = datetime.now(timezone.utc)
 
     metrics = list(metric_repo.list_metrics())
-    manifests: list[SourceManifest] = []
+    by_key: dict[str, SourceManifest] = {}
 
+    # Pass 1: normal extraction (skip derived sum metrics; defer them).
     for metric in metrics:
+        if metric.key in _SUM_PARTS:
+            continue
+
         if metric.source == MetricSource.MANUAL:
-            manifests.append(
-                _build_manifest(
-                    metric_key=metric.key,
-                    source=metric.source,
-                    cut=cut,
-                    fetched_at=fetched_at,
-                    freshness_hours=0.0,
-                    rows=(),
-                    status=FetchStatus.EMPTY,
-                )
+            by_key[metric.key] = _build_manifest(
+                metric_key=metric.key,
+                source=metric.source,
+                cut=cut,
+                fetched_at=fetched_at,
+                freshness_hours=0.0,
+                rows=(),
+                status=FetchStatus.EMPTY,
             )
             continue
 
         db_mapping = metric.db_mapping.strip()
 
         if not _is_executable_sql(db_mapping):
-            manifests.append(
-                _build_manifest(
-                    metric_key=metric.key,
-                    source=metric.source,
-                    cut=cut,
-                    fetched_at=fetched_at,
-                    freshness_hours=0.0,
-                    rows=(),
-                    status=FetchStatus.EMPTY,
-                )
+            by_key[metric.key] = _build_manifest(
+                metric_key=metric.key,
+                source=metric.source,
+                cut=cut,
+                fetched_at=fetched_at,
+                freshness_hours=0.0,
+                rows=(),
+                status=FetchStatus.EMPTY,
             )
             continue
 
+        conn = _select_conn(metric.db_source, source_conn, mysql_conn)
         try:
-            raw_rows = source_conn.fetch(db_mapping, {"cut": cut.isoformat()})
+            params = {"cut": cut.isoformat()}
+            if query_params:
+                params.update(query_params)
+            raw_rows = conn.fetch(db_mapping, params)
             normalized = _normalize_rows(raw_rows)
             freshness = _compute_freshness_hours(fetched_at)
             status = (
@@ -99,19 +142,32 @@ def extract_data(
             freshness = 0.0
             status = FetchStatus.FAILED
 
-        manifests.append(
-            _build_manifest(
-                metric_key=metric.key,
-                source=metric.source,
-                cut=cut,
-                fetched_at=fetched_at,
-                freshness_hours=freshness,
-                rows=tuple(normalized),
-                status=status,
-            )
+        by_key[metric.key] = _build_manifest(
+            metric_key=metric.key,
+            source=metric.source,
+            cut=cut,
+            fetched_at=fetched_at,
+            freshness_hours=freshness,
+            rows=tuple(normalized),
+            status=status,
         )
 
-    return manifests
+    # Pass 2: derived sums, built from their already-extracted parts.
+    for metric in metrics:
+        if metric.key not in _SUM_PARTS:
+            continue
+        part_a_key, part_b_key = _SUM_PARTS[metric.key]
+        by_key[metric.key] = _build_automatic_sum(
+            metric_key=metric.key,
+            source=metric.source,
+            part_a_key=part_a_key,
+            part_b_key=part_b_key,
+            by_key=by_key,
+            cut=cut,
+            fetched_at=fetched_at,
+        )
+
+    return [by_key[metric.key] for metric in metrics]
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
@@ -140,8 +196,31 @@ def _build_manifest(
 
 
 def _is_executable_sql(db_mapping: str) -> bool:
-    """Devuelve True si db_mapping es una consulta SQL ejecutable."""
-    return db_mapping.upper().strip().startswith("SELECT")
+    """Devuelve True si db_mapping es una consulta SQL ejecutable.
+
+    Acepta SELECT y CTEs (WITH ... SELECT), que también son ejecutables.
+    """
+    stripped = db_mapping.upper().strip()
+    return stripped.startswith("SELECT") or stripped.startswith("WITH")
+
+
+def _select_conn(
+    db_source: str,
+    pg_conn: SourceConn,
+    mysql_conn: SourceConn | None,
+) -> SourceConn:
+    """Elige la conexión a usar para una métrica según su `db_source`.
+
+    Convención:
+    - `db_source == "mysql"` y `mysql_conn` provisto -> MySQL.
+    - `db_source == "mysql"` y `mysql_conn` NO provisto -> fallback a PG
+      (la falla se registrará como FAILED en el manifiesto si MySQL no
+      estuviera disponible, evitando crashes silenciosos).
+    - cualquier otro valor (incluido "postgres", default, vacío) -> PG.
+    """
+    if db_source == "mysql" and mysql_conn is not None:
+        return mysql_conn
+    return pg_conn
 
 
 def _normalize_rows(
@@ -168,3 +247,56 @@ def _compute_freshness_hours(fetched_at: datetime) -> float:
     """Calcula las horas transcurridas desde fetched_at."""
     delta = datetime.now(timezone.utc) - fetched_at
     return max(0.0, delta.total_seconds() / 3600.0)
+
+
+def _build_automatic_sum(
+    *,
+    metric_key: str,
+    source: MetricSource,
+    part_a_key: str,
+    part_b_key: str,
+    by_key: Mapping[str, SourceManifest],
+    cut: Date,
+    fetched_at: datetime,
+) -> SourceManifest:
+    """Builds a derived sum metric from its two pre-extracted parts.
+
+    If either part is missing or not EXTRACTED, the derived metric becomes an
+    EMPTY manifest with no rows. Otherwise it sums both part values, marks the
+    manifest EXTRACTED, and uses the freshest of the two parts.
+    """
+    part_a = by_key.get(part_a_key)
+    part_b = by_key.get(part_b_key)
+    values = [_extract_numeric_value(part_a), _extract_numeric_value(part_b)]
+
+    if any(value is None for value in values):
+        return _build_manifest(
+            metric_key=metric_key,
+            source=source,
+            cut=cut,
+            fetched_at=fetched_at,
+            freshness_hours=0.0,
+            rows=(),
+            status=FetchStatus.EMPTY,
+        )
+
+    return _build_manifest(
+        metric_key=metric_key,
+        source=source,
+        cut=cut,
+        fetched_at=fetched_at,
+        freshness_hours=max(
+            part_a.freshness_hours, part_b.freshness_hours
+        ),
+        rows=({"value": sum(values)},),
+        status=FetchStatus.EXTRACTED,
+    )
+
+
+def _extract_numeric_value(manifest: SourceManifest | None) -> int | None:
+    if manifest is None or manifest.status != FetchStatus.EXTRACTED:
+        return None
+    for value in manifest.rows[0].values() if manifest.rows else ():
+        if isinstance(value, (int, float)):
+            return int(value)
+    return None

@@ -16,7 +16,15 @@ from dataclasses import dataclass, field
 from typing import Sequence
 
 from src.consejo.domain.entities import Bundle, DqsIssue, Metric, SourceManifest
-from src.consejo.domain.value_objects import FetchStatus, MetricSource
+from src.consejo.domain.value_objects import FetchStatus, MetricSource, PipelineMode
+
+
+_EXPLICIT_REQUIRED_DERIVED_METRICS = {
+    "registered_total",
+    "inscriptions_cpe_total",
+    "certifications_cpe_total",
+    "certified_unique_cpe_total",
+}
 
 
 # ── Resultado DQS ──────────────────────────────────────────────────────────
@@ -47,6 +55,7 @@ def validate(
     catalog: Sequence[Metric],
     *,
     previous_bundle: Bundle | None = None,
+    mode: PipelineMode = PipelineMode.DRY_RUN,
 ) -> DqsReport:
     """Ejecuta las 5 obligaciones DQS y devuelve el reporte.
 
@@ -64,10 +73,52 @@ def validate(
     _check_cardinalidad(report, manifests, catalog)
     _check_reconciliacion(report, manifests, catalog)
     _check_edge_cases(report, manifests)
+    _check_required_metrics(report, manifests, catalog, mode)
     _check_idempotencia(report, manifests, previous_bundle)
     _check_no_orfanos(report, manifests, catalog)
 
     return report
+
+
+def _check_required_metrics(
+    report: DqsReport,
+    manifests: Sequence[SourceManifest],
+    catalog: Sequence[Metric],
+    mode: PipelineMode,
+) -> None:
+    """Warn or block when a required metric failed or returned no rows."""
+    manifest_by_key = {str(m.metric_id): m for m in manifests}
+    required = {
+        metric.key
+        for metric in catalog
+        if metric.key in {
+            "beneficiaries",
+            "beneficiaries_unique",
+            *_EXPLICIT_REQUIRED_DERIVED_METRICS,
+        }
+        or metric.db_mapping.strip().upper().startswith("SELECT")
+    }
+
+    severity = "blocker" if mode == PipelineMode.PRODUCTION else "warning"
+    for metric_key in sorted(required):
+        manifest = manifest_by_key.get(metric_key)
+        if manifest is None or manifest.status not in {
+            FetchStatus.EMPTY,
+            FetchStatus.FAILED,
+        }:
+            continue
+        status = manifest.status.value if manifest else "missing"
+        report.add_issue(
+            DqsIssue(
+                obligation=3,
+                code="DQS-003-REQUIRED_METRIC",
+                severity=severity,
+                message=(
+                    f"Métrica requerida '{metric_key}' no disponible: {status}."
+                ),
+                details={"metric_id": metric_key, "status": status},
+            )
+        )
 
 
 # ── Gate 1: Cardinalidad exacta por grano ──────────────────────────────────
@@ -138,6 +189,10 @@ def _check_reconciliacion(
         "certified_unique_cpe_total": (
             "certified_unique_cpe",
             "certified_unique_cpe_from_aprende",
+        ),
+        "beneficiaries_unique": (
+            "inscribed_unique_cpe",
+            "inscribed_unique_cpe_from_aprende",
         ),
     }
 

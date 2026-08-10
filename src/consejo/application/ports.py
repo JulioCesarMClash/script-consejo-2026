@@ -32,8 +32,20 @@ class SourceConn(Protocol):
 class SheetRepo(Protocol):
     """Repositorio de Google Sheets para snapshot."""
 
-    def snapshot(self, bundle: Bundle) -> str:
-        """Crea o actualiza las 5 hojas del snapshot. Retorna spreadsheet ID."""
+    def snapshot(
+        self,
+        bundle: Bundle,
+        spreadsheet_id: str,
+        catalogo: Sequence[Metric],
+    ) -> str:
+        """Crea o actualiza las 5 hojas del snapshot. Retorna spreadsheet ID.
+
+        Args:
+            bundle: Bundle canónico validado.
+            spreadsheet_id: ID del spreadsheet destino.
+            catalogo: Catálogo de métricas para resolver nombres y plataformas
+                en las pestañas Reporte y Configuracion.
+        """
         ...
 
 

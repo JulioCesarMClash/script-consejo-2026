@@ -21,9 +21,9 @@ def catalog_repo(sample_catalog_path: Path) -> YamlMetricRepo:
 class TestCatalogRepo:
     """Verifica la lectura del catálogo YAML real."""
 
-    def test_returns_16_metrics(self, catalog_repo: YamlMetricRepo) -> None:
+    def test_returns_20_metrics(self, catalog_repo: YamlMetricRepo) -> None:
         metrics = list(catalog_repo.list_metrics())
-        assert len(metrics) == 16
+        assert len(metrics) == 20
 
     def test_metrics_have_unique_keys(
         self, catalog_repo: YamlMetricRepo
@@ -32,25 +32,64 @@ class TestCatalogRepo:
         keys = [m.key for m in metrics]
         assert len(keys) == len(set(keys))
 
-    def test_finds_manual_metrics(self, catalog_repo: YamlMetricRepo) -> None:
+    def test_no_manual_metrics_in_catalog(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
         metrics = list(catalog_repo.list_metrics())
         manual = [m for m in metrics if m.source == MetricSource.MANUAL]
-        assert len(manual) == 2
-        manual_keys = {m.key for m in manual}
-        assert manual_keys == {"beneficiaries", "beneficiaries_unique"}
+        assert len(manual) == 0  # beneficiaries ya no es manual, es derivada
+        beneficiaries = next(m for m in metrics if m.key == "beneficiaries")
+        assert beneficiaries.source == MetricSource.FACT_INSCRIPTION
+
+    def test_beneficiaries_unique_is_automatic_sum(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "beneficiaries_unique"
+        )
+
+        assert metric.source == MetricSource.FACT_INSCRIPTION
+        assert metric.formula.startswith(
+            "inscribed_unique_cpe + inscribed_unique_cpe_from_aprende"
+        )
 
     def test_finds_dim_user_metrics(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
         metrics = list(catalog_repo.list_metrics())
         dim_user = [m for m in metrics if m.source == MetricSource.DIM_USER]
-        assert len(dim_user) == 3
+        assert len(dim_user) == 5
         dim_keys = {m.key for m in dim_user}
         assert dim_keys == {
             "registered_cpe",
             "registered_aprende",
             "registered_total",
+            "slide3_capacitate_carso",
+            "slide3_academica_labs",
         }
+
+    def test_mysql_metrics_have_db_source_mysql(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        metrics = list(catalog_repo.list_metrics())
+        mysql = [m for m in metrics if m.key in {
+            "slide3_capacitate_carso",
+            "slide3_academica_labs",
+        }]
+        assert len(mysql) == 2
+        for m in mysql:
+            assert m.db_source == "mysql"
+            assert m.db_mapping.strip().startswith("SELECT")
+            # Slide 3 usa ventanas FIJAS de tres columnas, sin period_start/end.
+            assert "%(period_start)s" not in m.db_mapping
+            assert "%(period_end)s" not in m.db_mapping
+            assert '"2025"' in m.db_mapping
+            assert '"sep2026"' in m.db_mapping
+            assert '"base_dic2026"' in m.db_mapping
+            assert "'2025-01-01'" in m.db_mapping
+            assert "'2026-08-02'" in m.db_mapping
+            assert "'2026-08-01'" in m.db_mapping and "'2027-01-01'" in m.db_mapping
 
     def test_finds_fact_inscription_metrics(
         self, catalog_repo: YamlMetricRepo
@@ -61,14 +100,14 @@ class TestCatalogRepo:
             for m in metrics
             if m.source == MetricSource.FACT_INSCRIPTION
         ]
-        assert len(fact) == 11
+        assert len(fact) == 15
 
     def test_platform_scope_cpe(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
         metrics = list(catalog_repo.list_metrics())
         cpe = [m for m in metrics if "cpe" in m.platform_scope]
-        assert len(cpe) == 15  # 15 de 16 incluyen cpe; solo registered_aprende no
+        assert len(cpe) == 17  # 17 de 20 incluyen cpe; las 2 MySQL y registered_aprende no
 
     def test_metric_has_db_mapping(
         self, catalog_repo: YamlMetricRepo
@@ -87,6 +126,7 @@ class TestCatalogRepo:
             "inscriptions_cpe_total",
             "certifications_cpe_total",
             "certified_unique_cpe_total",
+            "beneficiaries_unique",
         }
         for m in metrics:
             if m.key in sum_keys:
@@ -119,6 +159,19 @@ class TestCatalogRepo:
         h2 = catalog_repo.compute_catalog_hash()
         assert h1 == h2
         assert len(h1) == 64
+
+    def test_certificate_queries_use_exclusive_configured_period(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        metrics = [
+            metric for metric in catalog_repo.list_metrics()
+            if metric.key in {"certifications_cpe", "certifications_cpe_from_aprende"}
+        ]
+
+        assert metrics
+        for metric in metrics:
+            assert 'fi."certificationDate" >= %(period_start)s' in metric.db_mapping
+            assert 'fi."certificationDate" < %(period_end)s' in metric.db_mapping
 
     def test_catalog_metrics_are_cached(
         self, catalog_repo: YamlMetricRepo

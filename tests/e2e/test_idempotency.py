@@ -20,7 +20,7 @@ from src.consejo.application.ports import SourceConn
 from src.consejo.application.use_cases.create_snapshot import create_snapshot
 from src.consejo.application.use_cases.extract_data import extract_data
 from src.consejo.application.use_cases.validate_bundle import validate_bundle
-from src.consejo.domain.entities import Bundle
+from src.consejo.domain.entities import Bundle, Metric
 from src.consejo.domain.value_objects import AttemptId, Cut, RunId
 
 
@@ -56,7 +56,12 @@ class IdempotentFakeSheetRepo:
     def __init__(self) -> None:
         self._snapshots: list[Bundle] = []
 
-    def snapshot(self, bundle: Bundle) -> str:
+    def snapshot(
+        self,
+        bundle: Bundle,
+        spreadsheet_id: str,
+        catalogo: Sequence[Metric],
+    ) -> str:
         self._snapshots.append(bundle)
         return "idempotent-spreadsheet-id"
 
@@ -172,7 +177,7 @@ class TestIdempotencyE2E:
         b1 = _execute_pipeline_fixed(
             catalog_path, run_id, attempt_id, cut, fetched_at
         )
-        create_snapshot(b1, sheets1)
+        create_snapshot(b1, sheets1, "idempotent-spreadsheet-id", catalogo=list(repo.list_metrics()))
         assert len(sheets1._snapshots) == 1
         rows_first = len(b1.rows)
 
@@ -181,7 +186,7 @@ class TestIdempotencyE2E:
         b2 = _execute_pipeline_fixed(
             catalog_path, run_id, attempt_id, cut, fetched_at
         )
-        create_snapshot(b2, sheets2)
+        create_snapshot(b2, sheets2, "idempotent-spreadsheet-id", catalogo=list(repo.list_metrics()))
 
         # Mismas filas, no duplicadas
         assert len(b2.rows) == rows_first, (

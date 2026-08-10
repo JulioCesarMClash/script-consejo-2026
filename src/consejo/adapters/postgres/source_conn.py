@@ -44,6 +44,12 @@ class PostgresSourceConn(SourceConn):
                 user=self._settings.db_user,
                 password=self._settings.db_password,
                 port=self._settings.db_port,
+                connect_timeout=5,
+                options=(
+                    f"-c statement_timeout="
+                    f"{self._settings.db_statement_timeout_ms} "
+                    f"-c lock_timeout={self._settings.db_lock_timeout_ms}"
+                ),
             )
         except psycopg2.OperationalError as e:
             raise ConnectionError(

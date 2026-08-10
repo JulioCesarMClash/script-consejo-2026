@@ -16,7 +16,7 @@ from src.consejo.domain.entities import (
     SourceManifest,
 )
 from src.consejo.domain.dqs import validate
-from src.consejo.domain.value_objects import AttemptId, Cut, RunId
+from src.consejo.domain.value_objects import AttemptId, Cut, PipelineMode, RunId
 
 
 class DqsBlockedError(Exception):
@@ -44,6 +44,7 @@ def validate_bundle(
     attempt_id: AttemptId,
     cut: Cut,
     catalog_hash: str,
+    mode: PipelineMode = PipelineMode.DRY_RUN,
 ) -> Bundle:
     """Valida los manifiestos contra las 5 obligaciones DQS.
 
@@ -65,7 +66,7 @@ def validate_bundle(
     Raises:
         DqsBlockedError: Si al menos una obligación DQS bloqueante falla.
     """
-    report = validate(manifests, catalog)
+    report = validate(manifests, catalog, mode=mode)
 
     if not report.passed:
         raise DqsBlockedError(report.issues)

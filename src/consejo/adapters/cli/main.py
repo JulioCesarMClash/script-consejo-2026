@@ -19,6 +19,7 @@ from typing import Optional
 import click
 
 from src.consejo.adapters.catalog.yaml_metric_repo import YamlMetricRepo
+from src.consejo.adapters.mysql.source_conn import MysqlSourceConn
 from src.consejo.adapters.postgres.source_conn import PostgresSourceConn
 from src.consejo.adapters.sheets.google_mcp_sheet_repo import (
     GoogleMcpSheetRepo,
@@ -32,7 +33,7 @@ from src.consejo.application.use_cases.validate_bundle import (
     validate_bundle,
 )
 from src.consejo.config.settings import Settings
-from src.consejo.domain.value_objects import AttemptId, Cut, RunId
+from src.consejo.domain.value_objects import AttemptId, Cut, PipelineMode, RunId
 
 
 @click.group()
@@ -62,16 +63,22 @@ def extract(cut: datetime, dry_run: bool) -> None:
 
     settings = Settings()
     metric_repo = YamlMetricRepo(settings.catalog_path)
-    source_conn = PostgresSourceConn(settings)
+    pg_conn = PostgresSourceConn(settings)
+    mysql_conn = MysqlSourceConn(settings)
 
     try:
         manifests = extract_data(
             metric_repo=metric_repo,
-            source_conn=source_conn,
+            source_conn=pg_conn,
             run_id=run_id,
             attempt_id=attempt_id,
             cut=cut_date,
             fetched_at=fetched_at,
+            query_params={
+                "period_start": settings.certificate_period_start.isoformat(),
+                "period_end": settings.certificate_period_end.isoformat(),
+            },
+            mysql_conn=mysql_conn,
         )
     except ConnectionError as e:
         if dry_run:
@@ -110,15 +117,21 @@ def validate(cut: datetime, dry_run: bool) -> None:
     metric_repo = YamlMetricRepo(settings.catalog_path)
     catalog = list(metric_repo.list_metrics())
     catalog_hash = metric_repo.compute_catalog_hash()
-    source_conn = PostgresSourceConn(settings)
+    pg_conn = PostgresSourceConn(settings)
+    mysql_conn = MysqlSourceConn(settings)
 
     try:
         manifests = extract_data(
             metric_repo=metric_repo,
-            source_conn=source_conn,
+            source_conn=pg_conn,
             run_id=run_id,
             attempt_id=attempt_id,
             cut=cut_date,
+            query_params={
+                "period_start": settings.certificate_period_start.isoformat(),
+                "period_end": settings.certificate_period_end.isoformat(),
+            },
+            mysql_conn=mysql_conn,
         )
     except ConnectionError as e:
         if dry_run:
@@ -138,6 +151,7 @@ def validate(cut: datetime, dry_run: bool) -> None:
             attempt_id=attempt_id,
             cut=Cut(cut_date),
             catalog_hash=catalog_hash,
+            mode=PipelineMode.PRODUCTION if not dry_run else PipelineMode.DRY_RUN,
         )
     except DqsBlockedError as e:
         raise click.ClickException(str(e)) from e
@@ -185,15 +199,21 @@ def snapshot(cut: datetime, spreadsheet_id: str, dry_run: bool) -> None:
     metric_repo = YamlMetricRepo(settings.catalog_path)
     catalog = list(metric_repo.list_metrics())
     catalog_hash = metric_repo.compute_catalog_hash()
-    source_conn = PostgresSourceConn(settings)
+    pg_conn = PostgresSourceConn(settings)
+    mysql_conn = MysqlSourceConn(settings)
 
     try:
         manifests = extract_data(
             metric_repo=metric_repo,
-            source_conn=source_conn,
+            source_conn=pg_conn,
             run_id=run_id,
             attempt_id=attempt_id,
             cut=cut_date,
+            query_params={
+                "period_start": settings.certificate_period_start.isoformat(),
+                "period_end": settings.certificate_period_end.isoformat(),
+            },
+            mysql_conn=mysql_conn,
         )
     except ConnectionError as e:
         raise click.ClickException(str(e)) from e
@@ -206,6 +226,7 @@ def snapshot(cut: datetime, spreadsheet_id: str, dry_run: bool) -> None:
             attempt_id=attempt_id,
             cut=Cut(cut_date),
             catalog_hash=catalog_hash,
+            mode=PipelineMode.PRODUCTION if not dry_run else PipelineMode.DRY_RUN,
         )
     except DqsBlockedError as e:
         raise click.ClickException(str(e)) from e
@@ -216,7 +237,7 @@ def snapshot(cut: datetime, spreadsheet_id: str, dry_run: bool) -> None:
 
     sheet_repo = GoogleMcpSheetRepo()
     try:
-        sid = create_snapshot(bundle, sheet_repo)
+        sid = create_snapshot(bundle, sheet_repo, spreadsheet_id, catalogo=catalog)
         click.echo(f"Snapshot creado: {sid}")
         click.echo(f"Hash: {bundle.hash}")
     except Exception as e:
@@ -252,17 +273,23 @@ def pipeline(cut: datetime, spreadsheet_id: str, dry_run: bool) -> None:
     metric_repo = YamlMetricRepo(settings.catalog_path)
     catalog = list(metric_repo.list_metrics())
     catalog_hash = metric_repo.compute_catalog_hash()
-    source_conn = PostgresSourceConn(settings)
+    pg_conn = PostgresSourceConn(settings)
+    mysql_conn = MysqlSourceConn(settings)
 
     # Extract
     try:
         manifests = extract_data(
             metric_repo=metric_repo,
-            source_conn=source_conn,
+            source_conn=pg_conn,
             run_id=run_id,
             attempt_id=attempt_id,
             cut=cut_date,
             fetched_at=fetched_at,
+            query_params={
+                "period_start": settings.certificate_period_start.isoformat(),
+                "period_end": settings.certificate_period_end.isoformat(),
+            },
+            mysql_conn=mysql_conn,
         )
     except ConnectionError as e:
         raise click.ClickException(str(e)) from e
@@ -279,6 +306,7 @@ def pipeline(cut: datetime, spreadsheet_id: str, dry_run: bool) -> None:
             attempt_id=attempt_id,
             cut=Cut(cut_date),
             catalog_hash=catalog_hash,
+            mode=PipelineMode.PRODUCTION if not dry_run else PipelineMode.DRY_RUN,
         )
     except DqsBlockedError as e:
         raise click.ClickException(str(e)) from e
@@ -294,7 +322,7 @@ def pipeline(cut: datetime, spreadsheet_id: str, dry_run: bool) -> None:
     # Snapshot
     sheet_repo = GoogleMcpSheetRepo()
     try:
-        sid = create_snapshot(bundle, sheet_repo)
+        sid = create_snapshot(bundle, sheet_repo, spreadsheet_id, catalogo=catalog)
         click.echo(f"[snapshot] Creado en {sid}")
     except Exception as e:
         raise click.ClickException(str(e)) from e

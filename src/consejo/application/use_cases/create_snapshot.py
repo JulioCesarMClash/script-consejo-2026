@@ -6,19 +6,26 @@ Si el bundle tiene fallos bloqueantes, aborta sin llamar a Sheets.
 
 from __future__ import annotations
 
+from typing import Sequence
+
 from src.consejo.application.ports import SheetRepo
-from src.consejo.domain.entities import Bundle
+from src.consejo.domain.entities import Bundle, Metric
 
 
 def create_snapshot(
     bundle: Bundle,
     sheet_repo: SheetRepo,
+    spreadsheet_id: str,
+    catalogo: Sequence[Metric],
 ) -> str:
     """Crea o actualiza el snapshot en Google Sheets.
 
     Args:
         bundle: Bundle validado con hash SHA-256.
         sheet_repo: Repositorio de Sheets para escribir el snapshot.
+        spreadsheet_id: ID del spreadsheet destino.
+        catalogo: Catálogo de métricas para resolver nombres y plataformas
+            en Reporte y Configuracion.
 
     Returns:
         El spreadsheet ID devuelto por SheetRepo.snapshot().
@@ -35,4 +42,4 @@ def create_snapshot(
             f"{', '.join(codes)}. Snapshot blocked."
         )
 
-    return sheet_repo.snapshot(bundle)
+    return sheet_repo.snapshot(bundle, spreadsheet_id, catalogo)

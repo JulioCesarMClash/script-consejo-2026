@@ -63,6 +63,7 @@ def _parse_metric(raw: dict) -> Metric:
         db_mapping=raw.get("db_mapping", ""),
         platform_scope=platform_scope,
         grain=grain,
+        db_source=raw.get("db_source", "postgres"),
     )
 
 
@@ -86,4 +87,8 @@ def _infer_grain(key: str, source_str: str) -> str:
         return "evento × origen"
     if "certifications" in key:
         return "evento × origen"
+    if "empleo_incluyente" in key:
+        return "usuario distinto × curso × sector"
+    if key.startswith("slide"):
+        return "categoría × período"
     return "desconocido"
