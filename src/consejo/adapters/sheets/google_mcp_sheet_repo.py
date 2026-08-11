@@ -353,7 +353,10 @@ def _build_datos_requests(
     slide4 (9 columnas Categoría/Programa/2024/sep2025/dic2025/Acumulado
     sep2025/Período inicio/Período fin/Fuente, UNA tabla comparativa que
     agrupa todos los manifests slide4). Las tablas se escriben consecutivas
-    separadas por una fila en blanco.
+    separadas por una fila en blanco. Al final se escriben SIEMPRE los bloques
+    fijos de slide 7 y slide 8 (grillas de plataformas, ver
+    _build_slide7_block y _build_slide8_block), que no provienen de ningún
+    manifest y por lo tanto dejan rows_data no vacío en la práctica.
     """
     sheet_id = sheet_ids["Datos"]
     clear = _clear_sheet_if_exists("Datos", existing, sheet_id)
@@ -394,6 +397,22 @@ def _build_datos_requests(
             row_0based += 1
         block, row_0based = _build_slide4_block(slide4_manifests, row_0based)
         rows_data.extend(block)
+
+    # Slide 7: bloque FIJO al final de la hoja. La grilla de plataformas
+    # siempre se escribe aunque no haya manifests, por lo que rows_data
+    # nunca queda vacío en la práctica.
+    if rows_data:
+        rows_data.append(_blank_row())
+        row_0based += 1
+    block, row_0based = _build_slide7_block(row_0based)
+    rows_data.extend(block)
+
+    # Slide 8: bloque FIJO al final de la hoja (mismo patrón que slide 7).
+    if rows_data:
+        rows_data.append(_blank_row())
+        row_0based += 1
+    block, row_0based = _build_slide8_block(row_0based)
+    rows_data.extend(block)
 
     if not rows_data:
         rows_data = [_text_row(SLIDE_TABLE_HEADERS)]
@@ -484,6 +503,42 @@ SLIDE4_TABLE_HEADERS = [
     "Período inicio",
     "Período fin",
     "Fuente",
+]
+
+# Layout de Slide 7: grilla de plataformas de educación y empleo.
+# Valores aprobados tal cual de la presentación (definición = columna
+# acumulada de slide 3). Ninguno proviene del pipeline: fuente 'manual'
+# para las 3 filas, aunque la definición coincide con la de slide 3.
+SLIDE7_TABLE_HEADERS = [
+    "Categoría",
+    "Programa",
+    "Usuarios",
+    "Período inicio",
+    "Período fin",
+    "Fuente",
+]
+SLIDE7_ROWS = [
+    ("slide7_capacitate_empleo", "Capacítate para el Empleo", 13364056),
+    ("slide7_academica", "Académica.org", 1477363),
+    ("slide7_capacitate_carso", "Capacítate Carso", 558774),
+]
+
+# Layout de Slide 8: grilla de plataformas de educación y divulgación.
+# Valores aprobados tal cual de la presentación (definición = columna
+# acumulada de slide 4). Ninguno proviene del pipeline: fuente 'manual'
+# para las 3 filas, aunque la definición coincide con la de slide 4.
+SLIDE8_TABLE_HEADERS = [
+    "Categoría",
+    "Programa",
+    "Usuarios",
+    "Período inicio",
+    "Período fin",
+    "Fuente",
+]
+SLIDE8_ROWS = [
+    ("slide8_pilotos_seguridad_vial", "Pilotos por la Seguridad Vial", 146132),
+    ("slide8_formacion_penitenciarios", "Formación en Centros Penitenciarios", 1878),
+    ("slide8_aprende_seguridad_vial", "Aprende de Seguridad Vial", 183846),
 ]
 
 # Ventanas fijas de los valores visibles de slide 4: 2024 =
@@ -858,6 +913,61 @@ def _build_slide4_block(
         rows.append({"values": cells})
         row_0based += 1
 
+    return rows, row_0based
+
+
+def _build_slide7_block(row_0based: int) -> tuple[list[dict], int]:
+    """Bloque slide 7: grilla de plataformas de educación y empleo.
+
+    6 columnas (Categoría, Programa, Usuarios, Período inicio, Período fin,
+    Fuente). Bloque FIJO: las 6 plataformas se escriben siempre con los
+    valores aprobados tal cual de la presentación (definición = columna
+    acumulada de slide 3). No recibe manifests: ningún valor de esta grilla
+    proviene del pipeline. Períodos vacíos y fuente 'manual' para todas las
+    filas. Sin fila TOTAL: el =SUM no tiene sentido entre plataformas
+    distintas.
+    """
+    rows: list[dict] = []
+    rows.append(_text_row(SLIDE7_TABLE_HEADERS))
+    row_0based += 1
+    for metric_id, programa, usuarios in SLIDE7_ROWS:
+        cells = [
+            _value_cell(metric_id),
+            _value_cell(programa),
+            _value_cell(usuarios),
+            _value_cell(""),
+            _value_cell(""),
+            _value_cell("manual"),
+        ]
+        rows.append({"values": cells})
+        row_0based += 1
+    return rows, row_0based
+
+
+def _build_slide8_block(row_0based: int) -> tuple[list[dict], int]:
+    """Bloque slide 8: grilla de plataformas de educación y divulgación.
+
+    6 columnas (Categoría, Programa, Usuarios, Período inicio, Período fin,
+    Fuente). Bloque FIJO: las 8 plataformas se escriben siempre con los
+    valores aprobados tal cual de la presentación (definición = columna
+    acumulada de slide 4). No recibe manifests: ningún valor de esta grilla
+    proviene del pipeline. Períodos vacíos y fuente 'manual' para todas las
+    filas. Sin fila TOTAL.
+    """
+    rows: list[dict] = []
+    rows.append(_text_row(SLIDE8_TABLE_HEADERS))
+    row_0based += 1
+    for metric_id, programa, usuarios in SLIDE8_ROWS:
+        cells = [
+            _value_cell(metric_id),
+            _value_cell(programa),
+            _value_cell(usuarios),
+            _value_cell(""),
+            _value_cell(""),
+            _value_cell("manual"),
+        ]
+        rows.append({"values": cells})
+        row_0based += 1
     return rows, row_0based
 
 
