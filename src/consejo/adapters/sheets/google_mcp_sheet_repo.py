@@ -417,6 +417,15 @@ def _build_datos_requests(
     block, row_0based = _build_slide8_block(row_0based)
     rows_data.extend(block)
 
+    # Slide 13: bloque FIJO después de slide 8 (mismo patrón: blank row
+    # de separación + tabla sin TOTAL). Tarjeta de KPIs de "Formación en
+    # Centros Penitenciarios" con 6 métricas aprobadas.
+    if rows_data:
+        rows_data.append(_blank_row())
+        row_0based += 1
+    block, row_0based = _build_slide13_block(row_0based)
+    rows_data.extend(block)
+
     if not rows_data:
         rows_data = [_text_row(SLIDE_TABLE_HEADERS)]
 
@@ -565,6 +574,29 @@ SLIDE8_ROWS = [
     ("slide8_pilotos_seguridad_vial", "Pilotos por la Seguridad Vial", 146132),
     ("slide8_formacion_penitenciarios", "Formación en Centros Penitenciarios", 1878),
     ("slide8_aprende_seguridad_vial", "Aprende de Seguridad Vial", 183846),
+]
+
+# Layout de Slide 13: tarjeta de KPIs del programa "Formación en Centros
+# Penitenciarios" — 6 métricas aprobadas tal cual de la presentación
+# (objectId g3735641ff7a_1_115 en la presentación del Consejo 2026).
+# Bloque FIJO: ningún valor proviene del pipeline, fuente 'manual' para
+# todas las filas. Sin TOTAL: cada métrica es independiente (no suman
+# entre sí). El texto narrativo de la slide original queda en la
+# presentación de Slides — el Sheet "Datos" solo escribe las tablas de
+# datos, igual que slide 7 y slide 8.
+SLIDE13_METRIC_ID = "slide13_penitenciarios"
+SLIDE13_TABLE_HEADERS = [
+    "Categoría",
+    "Métrica",
+    "Valor",
+]
+SLIDE13_ROWS = [
+    ("Centros", 7),
+    ("Certificados", 641),
+    ("Usuarios registrados", 335),
+    ("Cursos ofertados", 98),
+    ("Inscripciones totales", 1878),
+    ("Cursos promedio por persona", 5.61),
 ]
 
 # Ventanas fijas de los valores visibles de slide 4: 2024 =
@@ -1200,6 +1232,37 @@ def _build_slide8_block(row_0based: int) -> tuple[list[dict], int]:
             _value_cell(""),
             _value_cell(""),
             _value_cell("manual"),
+        ]
+        rows.append({"values": cells})
+        row_0based += 1
+    return rows, row_0based
+
+
+def _build_slide13_block(row_0based: int) -> tuple[list[dict], int]:
+    """Bloque slide 13: tarjeta de KPIs de "Formación en Centros
+    Penitenciarios".
+
+    3 columnas (Categoría, Métrica, Valor). Bloque FIJO: las 6 métricas se
+    escriben siempre con los valores aprobados tal cual de la presentación
+    del Consejo 2026 (objectId g3735641ff7a_1_115). No recibe manifests:
+    ningún valor proviene del pipeline (los datos no vienen de BD, son
+    cifras aprobadas de la operación del programa de centros
+    penitenciarios). Sin fila TOTAL: cada métrica es independiente (no
+    suman entre sí, son KPIs distintos).
+
+    La columna Categoría lleva el metric_id de la slide
+    (SLIDE13_METRIC_ID) en todas las filas, misma nomenclatura que
+    slide12_rutas_aprendizaje y slide1_alimentos (categoría = a qué
+    slide pertenece la fila).
+    """
+    rows: list[dict] = []
+    rows.append(_text_row(SLIDE13_TABLE_HEADERS))
+    row_0based += 1
+    for metrica, valor in SLIDE13_ROWS:
+        cells = [
+            _value_cell(SLIDE13_METRIC_ID),
+            _value_cell(metrica),
+            _value_cell(valor),
         ]
         rows.append({"values": cells})
         row_0based += 1

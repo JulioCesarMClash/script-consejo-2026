@@ -23,11 +23,15 @@ from src.consejo.adapters.sheets.google_mcp_sheet_repo import (
     SLIDE7_TABLE_HEADERS,
     SLIDE8_TABLE_HEADERS,
     SLIDE12_TABLE_HEADERS,
+    SLIDE13_METRIC_ID,
+    SLIDE13_ROWS,
+    SLIDE13_TABLE_HEADERS,
     _build_slide3_block,
     _build_slide4_block,
     _build_slide7_block,
     _build_slide8_block,
     _build_slide12_block,
+    _build_slide13_block,
     _build_slide_block,
     _project_dic2026,
 )
@@ -681,7 +685,8 @@ class TestGoogleMcpSheetRepo:
         self, bundle_with_dqs_issues: Bundle, sample_catalog: list[Metric]
     ) -> None:
         """Sin manifest de slide, Datos queda solo con los bloques fijos
-        slide 7 (header + 6 plataformas) y slide 8 (header + 8)."""
+        slide 7 (header + 3 plataformas), slide 8 (header + 3) y slide
+        13 (header + 6 métricas)."""
         with patch.object(
             GoogleMcpSheetRepo, "_start_proxy"
         ), patch.object(
@@ -714,8 +719,8 @@ class TestGoogleMcpSheetRepo:
         assert len(datos_updates) >= 1
         datos_rows = datos_updates[0]["updateCells"]["rows"]
         # sin slides: solo bloques fijos de slide 7 (header + 3) + blank
-        # + slide 8 (header + 3) = 9
-        assert len(datos_rows) == 9
+        # + slide 8 (header + 3) + blank + slide 13 (header + 6) = 17
+        assert len(datos_rows) == 17
 
     def test_snapshot_populates_datos_sheet_with_slide_tables(
         self, bundle_with_slide1: Bundle, sample_catalog: list[Metric]
@@ -753,8 +758,8 @@ class TestGoogleMcpSheetRepo:
         assert len(datos_updates) >= 1
         datos_rows = datos_updates[0]["updateCells"]["rows"]
         # header + 5 categorías + TOTAL (7) + blank (1) + slide7 (4)
-        # + blank (1) + slide8 (4) = 17
-        assert len(datos_rows) == 17
+        # + blank (1) + slide8 (4) + blank (1) + slide13 (7) = 25
+        assert len(datos_rows) == 25
 
         header = datos_rows[0]["values"]
         assert len(header) == 8
@@ -820,8 +825,8 @@ class TestGoogleMcpSheetRepo:
 
         # slide1 (header + 5 data + TOTAL = 7) + blank (1) + slide2
         # (header + 3 data + TOTAL = 5) = 13 + blank (1) + slide7 (4)
-        # + blank (1) + slide8 (4) = 23
-        assert len(datos_rows) == 23
+        # + blank (1) + slide8 (4) + blank (1) + slide13 (7) = 31
+        assert len(datos_rows) == 31
 
         # ── Slide 1 (índice 0..6) ──
         slide1_header = datos_rows[0]["values"]
@@ -963,8 +968,9 @@ class TestGoogleMcpSheetRepo:
         datos_rows = datos_updates[0]["updateCells"]["rows"]
 
         # slide1 (7) + blank (1) + slide2 (5) + blank (1) + slide3 (4) = 18
-        # + blank (1) + slide7 (4) + blank (1) + slide8 (4) = 28
-        assert len(datos_rows) == 28
+        # + blank (1) + slide7 (4) + blank (1) + slide8 (4)
+        # + blank (1) + slide13 (7) = 36
+        assert len(datos_rows) == 36
 
         # ── Slide 3 (índice 14..17) ──
         slide3_header = datos_rows[14]["values"]
@@ -1035,7 +1041,7 @@ class TestGoogleMcpSheetRepo:
         assert academica[8]["userEnteredValue"]["stringValue"] == "mysql"
 
         # Sin fila TOTAL: el bloque termina en la fila Academica Labs.
-        assert len(datos_rows) == 28
+        assert len(datos_rows) == 36
 
     def test_build_slide_block_does_not_raise_for_slide3(self) -> None:
         """_build_slide_block NO debe lanzar ValueError para keys slide3_*."""
@@ -1180,8 +1186,8 @@ class TestGoogleMcpSheetRepo:
 
         # slide1 (7) + blank (1) + slide2 (5) + blank (1) + slide3 (4)
         # + blank (1) + slide4 (4) = 23 + blank (1) + slide7 (4)
-        # + blank (1) + slide8 (4) = 33
-        assert len(datos_rows) == 33
+        # + blank (1) + slide8 (4) + blank (1) + slide13 (7) = 41
+        assert len(datos_rows) == 41
 
         # ── Slide 4 (índice 19..22) ──
         slide4_header = datos_rows[19]["values"]
@@ -1251,7 +1257,7 @@ class TestGoogleMcpSheetRepo:
         assert cultura[8]["userEnteredValue"]["stringValue"] == "postgres"
 
         # Sin fila TOTAL: el bloque termina en la fila Cultura y Salud.
-        assert len(datos_rows) == 33
+        assert len(datos_rows) == 41
 
     def test_build_slide_block_does_not_raise_for_slide4(self) -> None:
         """_build_slide_block NO debe lanzar ValueError para keys slide4_*."""
@@ -1644,8 +1650,9 @@ class TestGoogleMcpSheetRepo:
     ) -> None:
         """Datos debe contener el bloque FIJO slide 7: header de 6 cols
         y las 3 plataformas aprobadas (Categoría slide7_*, Programa legible,
-        Usuarios numérico y fuente manual). El bloque se escribe siempre
-        después de slide4 y antes del bloque fijo de slide 8."""
+        Usuarios numérico y fuente manual). Se busca por contenido del
+        header (no por índice) porque el orden relativo de los bloques
+        fijos puede cambiar cuando se agregan más slides."""
         with patch.object(
             GoogleMcpSheetRepo, "_start_proxy"
         ), patch.object(
@@ -1682,9 +1689,33 @@ class TestGoogleMcpSheetRepo:
         assert len(datos_updates) >= 1
         datos_rows = datos_updates[0]["updateCells"]["rows"]
 
-        # ── Slide 7 (índice -9..-6, antes del blank + slide 8) ──
-        slide7_header = datos_rows[-9]["values"]
-        assert len(slide7_header) == 6
+        # Buscamos el header de slide 7 por contenido: celda B1 = "Programa"
+        # y la primera fila de datos tiene "Capacítate para el Empleo" en
+        # col B (distintivo de slide 7, vs "Pilotos por la Seguridad Vial"
+        # de slide 8).
+        slide7_header_idx = None
+        for idx, fila in enumerate(datos_rows):
+            values = fila["values"]
+            if (
+                len(values) == 6
+                and values[0].get("userEnteredValue", {}).get(
+                    "stringValue"
+                ) == "Categoría"
+                and idx + 1 < len(datos_rows)
+            ):
+                next_b = datos_rows[idx + 1]["values"]
+                if (
+                    len(next_b) == 6
+                    and next_b[1].get("userEnteredValue", {}).get(
+                        "stringValue"
+                    ) == "Capacítate para el Empleo"
+                ):
+                    slide7_header_idx = idx
+                    break
+        assert slide7_header_idx is not None, (
+            "No se encontró el header del bloque slide 7 en Datos"
+        )
+        slide7_header = datos_rows[slide7_header_idx]["values"]
         assert [
             c["userEnteredValue"]["stringValue"] for c in slide7_header
         ] == list(SLIDE7_TABLE_HEADERS)
@@ -1695,7 +1726,8 @@ class TestGoogleMcpSheetRepo:
             ("slide7_capacitate_carso", "Capacítate Carso", 558774),
         ]
         for fila, (categoria, programa, usuarios) in zip(
-            datos_rows[-8:-5], expect
+            datos_rows[slide7_header_idx + 1 : slide7_header_idx + 4],
+            expect,
         ):
             values = fila["values"]
             assert len(values) == 6
@@ -1749,15 +1781,54 @@ class TestGoogleMcpSheetRepo:
                 values[5]["userEnteredValue"]["stringValue"] == "manual"
             )
 
+    def test_build_slide13_block_fixed_rows(self) -> None:
+        """El bloque slide 13 es fijo: header de 3 cols (Categoría | Métrica
+        | Valor) + las 6 métricas aprobadas de "Formación en Centros
+        Penitenciarios" (Centros, Certificados, Usuarios registrados,
+        Cursos ofertados, Inscripciones totales, Cursos promedio por
+        persona). Devuelve 7 filas y next_row = 7."""
+        rows, next_row = _build_slide13_block(0)
+
+        assert next_row == 7
+        assert len(rows) == 7
+
+        header = rows[0]["values"]
+        assert len(header) == 3
+        assert [
+            c["userEnteredValue"]["stringValue"] for c in header
+        ] == list(SLIDE13_TABLE_HEADERS)
+
+        for fila, (expected_metrica, expected_valor) in zip(
+            rows[1:], SLIDE13_ROWS
+        ):
+            values = fila["values"]
+            assert len(values) == 3
+            assert (
+                values[0]["userEnteredValue"]["stringValue"]
+                == SLIDE13_METRIC_ID
+            )
+            assert (
+                values[1]["userEnteredValue"]["stringValue"]
+                == expected_metrica
+            )
+            # 5.61 es decimal (Cursos promedio por persona); los demás
+            # son enteros. Verificamos numberValue directamente para
+            # aceptar ambos.
+            assert (
+                values[2]["userEnteredValue"]["numberValue"]
+                == expected_valor
+            )
+
     def test_snapshot_datos_includes_slide8_fixed_table(
         self,
         bundle_with_slide1_slide2_slide3_slide4: Bundle,
         catalog_with_both_slides: list[Metric],
     ) -> None:
-        """Datos debe terminar con el bloque FIJO slide 8: header de 6 cols
-        y las 3 plataformas aprobadas (Categoría slide8_*, Programa legible,
-        Usuarios numérico y fuente manual). El bloque se escribe siempre al
-        final de la hoja, después del bloque fijo de slide 7."""
+        """Datos debe incluir el bloque FIJO slide 8: header de 6 cols y
+        las 3 plataformas aprobadas (Categoría slide8_*, Programa legible,
+        Usuarios numérico y fuente manual). Se busca por contenido del
+        header (no por índice) porque el bloque ya no es necesariamente
+        el último (slide 13 va después)."""
         with patch.object(
             GoogleMcpSheetRepo, "_start_proxy"
         ), patch.object(
@@ -1794,9 +1865,33 @@ class TestGoogleMcpSheetRepo:
         assert len(datos_updates) >= 1
         datos_rows = datos_updates[0]["updateCells"]["rows"]
 
-        # ── Slide 8 al final (índice -4..-1) ──
-        slide8_header = datos_rows[-4]["values"]
-        assert len(slide8_header) == 6
+        # Buscamos el header de slide 8 por contenido de la celda A1
+        # ("Categoría") + verificación de que la primera fila de datos
+        # tenga "Pilotos por la Seguridad Vial" en col B (distintivo de
+        # slide 8, vs "Capacítate para el Empleo" de slide 7).
+        slide8_header_idx = None
+        for idx, fila in enumerate(datos_rows):
+            values = fila["values"]
+            if (
+                len(values) == 6
+                and values[0].get("userEnteredValue", {}).get(
+                    "stringValue"
+                ) == "Categoría"
+                and idx + 1 < len(datos_rows)
+            ):
+                next_b = datos_rows[idx + 1]["values"]
+                if (
+                    len(next_b) == 6
+                    and next_b[1].get("userEnteredValue", {}).get(
+                        "stringValue"
+                    ) == "Pilotos por la Seguridad Vial"
+                ):
+                    slide8_header_idx = idx
+                    break
+        assert slide8_header_idx is not None, (
+            "No se encontró el header del bloque slide 8 en Datos"
+        )
+        slide8_header = datos_rows[slide8_header_idx]["values"]
         assert [
             c["userEnteredValue"]["stringValue"] for c in slide8_header
         ] == list(SLIDE8_TABLE_HEADERS)
@@ -1807,7 +1902,8 @@ class TestGoogleMcpSheetRepo:
             ("slide8_aprende_seguridad_vial", "Aprende de Seguridad Vial", 183846),
         ]
         for fila, (categoria, programa, usuarios) in zip(
-            datos_rows[-3:], expect
+            datos_rows[slide8_header_idx + 1 : slide8_header_idx + 4],
+            expect,
         ):
             values = fila["values"]
             assert len(values) == 6
@@ -1824,6 +1920,103 @@ class TestGoogleMcpSheetRepo:
             assert values[4] == {"userEnteredValue": {}}
             assert (
                 values[5]["userEnteredValue"]["stringValue"] == "manual"
+            )
+
+    def test_snapshot_datos_includes_slide13_fixed_table(
+        self,
+        bundle_with_slide1_slide2_slide3_slide4: Bundle,
+        catalog_with_both_slides: list[Metric],
+    ) -> None:
+        """Datos debe terminar con el bloque FIJO slide 13: header de 3 cols
+        (Categoría | Métrica | Valor) y las 6 métricas aprobadas de
+        "Formación en Centros Penitenciarios". El bloque se escribe
+        siempre al final de la hoja, después del bloque fijo de slide 8
+        (con su blank row de separación)."""
+        with patch.object(
+            GoogleMcpSheetRepo, "_start_proxy"
+        ), patch.object(
+            GoogleMcpSheetRepo, "_init_handshake"
+        ), patch.object(
+            GoogleMcpSheetRepo, "_get_spreadsheet_meta",
+            return_value=_build_spreadsheet_meta([]),
+        ), patch.object(
+            GoogleMcpSheetRepo, "_call_tool",
+        ) as mock_call:
+            captured: list[dict] = []
+
+            def cap(name: str, args: dict) -> dict:
+                if name == "update_sheet":
+                    captured.append(args)
+                elif name == "get_spreadsheet":
+                    return _build_spreadsheet_meta([])
+                return _add_sheet_response(args)
+
+            mock_call.side_effect = cap
+
+            repo = GoogleMcpSheetRepo()
+            repo.snapshot(
+                bundle_with_slide1_slide2_slide3_slide4,
+                "test-id",
+                catalog_with_both_slides,
+            )
+
+        all_reqs = captured[-1].get("requests", [])
+        datos_updates = [
+            r for r in all_reqs
+            if r.get("updateCells", {}).get("start", {}).get("sheetId") == 101
+        ]
+        assert len(datos_updates) >= 1
+        datos_rows = datos_updates[0]["updateCells"]["rows"]
+
+        # Buscamos el header de slide 13 por contenido (no por índice,
+        # porque depende de cuántos bloques dinámicos haya antes).
+        slide13_header_idx = None
+        for idx, fila in enumerate(datos_rows):
+            values = fila["values"]
+            if len(values) == 3 and values[0].get("userEnteredValue", {}).get(
+                "stringValue"
+            ) == "Categoría" and values[2].get("userEnteredValue", {}).get(
+                "stringValue"
+            ) == "Valor":
+                # Verificamos que la siguiente fila (datos) tenga
+                # SLIDE13_METRIC_ID en col A para distinguirlo de
+                # otros headers de 3 cols.
+                if idx + 1 < len(datos_rows):
+                    next_values = datos_rows[idx + 1]["values"]
+                    if len(next_values) == 3 and next_values[
+                        0
+                    ].get("userEnteredValue", {}).get(
+                        "stringValue"
+                    ) == SLIDE13_METRIC_ID:
+                        slide13_header_idx = idx
+                        break
+        assert slide13_header_idx is not None, (
+            "No se encontró el header del bloque slide 13 en Datos"
+        )
+        slide13_header = datos_rows[slide13_header_idx]["values"]
+        assert [
+            c["userEnteredValue"]["stringValue"] for c in slide13_header
+        ] == list(SLIDE13_TABLE_HEADERS)
+
+        # Las 6 filas de datos de slide 13 vienen inmediatamente después
+        # del header (sin blank row dentro del bloque; el blank row va
+        # ANTES del header, separando slide 8 de slide 13).
+        slide13_data = datos_rows[
+            slide13_header_idx + 1 : slide13_header_idx + 1 + len(SLIDE13_ROWS)
+        ]
+        assert len(slide13_data) == len(SLIDE13_ROWS)
+        for fila, (metrica, valor) in zip(slide13_data, SLIDE13_ROWS):
+            values = fila["values"]
+            assert len(values) == 3
+            assert (
+                values[0]["userEnteredValue"]["stringValue"]
+                == SLIDE13_METRIC_ID
+            )
+            assert (
+                values[1]["userEnteredValue"]["stringValue"] == metrica
+            )
+            assert (
+                values[2]["userEnteredValue"]["numberValue"] == valor
             )
 
     def test_snapshot_populates_errores_sheet(
