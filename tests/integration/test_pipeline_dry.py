@@ -131,6 +131,10 @@ def _build_row_sequence() -> Sequence[Sequence[Mapping]]:
             {"seccion": "Emprendimiento", "ruta": "Servicio y ventas de tu negocio", "value": 6, "inscripciones": 60, "certificados": 40, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
             {"seccion": "Emprendimiento", "ruta": "Mi negocio en internet", "value": 5, "inscripciones": 50, "certificados": 30, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
         ],
+        [{"value": 2753, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide13_penitenciarios_inscripciones
+        [{"value": 806, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide13_penitenciarios_certificados
+        [{"value": 276, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide13_penitenciarios_usuarios_registrados
+        [{"value": 98, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide13_penitenciarios_cursos_ofertados
         [{"count": 42}],  # slide2_empleo_incluyente_por_sector
         [  # slide4_aprende_seguridad_vial
             {"2024": 25254, "sep2025": 18578, "dic2025": 27129, "acumulado": 184288},
@@ -176,7 +180,7 @@ class TestPipelineDry:
             cut=cut,
         )
 
-        assert len(manifests) == 23
+        assert len(manifests) == 27
 
     def test_extract_beneficiaries_is_derived_not_manual(
         self, catalog_path: Path, fake_conn: FakeSourceConn
@@ -289,7 +293,7 @@ class TestPipelineDry:
         assert bundle.run_id == run_id
         assert bundle.attempt_id == attempt_id
         assert bundle.catalog_hash == catalog_hash
-        assert len(bundle.manifests) == 23
+        assert len(bundle.manifests) == 27
         assert str(bundle.hash) != "0" * 64
 
     def test_validate_blocks_with_empty_manifests(
@@ -441,7 +445,7 @@ class TestPipelineDry:
             cut=cut,
             fetched_at=fetched_at,
         )
-        assert len(manifests) == 23
+        assert len(manifests) == 27
 
         # Validate
         bundle = validate_bundle(
@@ -507,7 +511,7 @@ class TestPipelineDry:
             mode=PipelineMode.PRODUCTION,
         )
 
-        assert len(bundle.manifests) == len(catalog) == 23
+        assert len(bundle.manifests) == len(catalog) == 27
         assert bundle.dqs == ()
         assert create_snapshot(bundle, fake_sheets, "fake-spreadsheet-id", catalogo=catalog) == "fake-spreadsheet-id"
         assert len(fake_sheets._snapshots) == 1

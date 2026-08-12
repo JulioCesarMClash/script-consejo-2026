@@ -371,10 +371,19 @@ def _build_datos_requests(
     slide4_manifests = [
         m for m in slides if str(m.metric_id).startswith("slide4")
     ]
+    # slide13_* se agrupa en un solo bloque (la tarjeta de KPIs de
+    # Centros Penitenciarios junta las 4 métricas en 5 filas; ver
+    # _build_slide13_block). Excluir de single_slides para que NO se
+    # rutee via _build_slide_block (que rechazaría slide13 con
+    # ValueError).
+    slide13_manifests = [
+        m for m in slides if str(m.metric_id).startswith("slide13")
+    ]
     single_slides = [
         m for m in slides
         if not str(m.metric_id).startswith("slide3")
         and not str(m.metric_id).startswith("slide4")
+        and not str(m.metric_id).startswith("slide13")
     ]
 
     rows_data: list[dict] = []
@@ -417,14 +426,18 @@ def _build_datos_requests(
     block, row_0based = _build_slide8_block(row_0based)
     rows_data.extend(block)
 
-    # Slide 13: bloque FIJO después de slide 8 (mismo patrón: blank row
-    # de separación + tabla sin TOTAL). Tarjeta de KPIs de "Formación en
-    # Centros Penitenciarios" con 6 métricas aprobadas.
-    if rows_data:
-        rows_data.append(_blank_row())
-        row_0based += 1
-    block, row_0based = _build_slide13_block(row_0based)
-    rows_data.extend(block)
+    # Slide 13: bloque dinámico con 4 KPIs desde el pipeline (Centros
+    # Penitenciarios: inscripciones, certificados, usuarios únicos,
+    # cursos únicos) + 1 KPI hardcoded (Centros, sin query natural).
+    # Solo se escribe si hay manifests de slide13 en el bundle.
+    if slide13_manifests:
+        if rows_data:
+            rows_data.append(_blank_row())
+            row_0based += 1
+        block, row_0based = _build_slide13_block(
+            slide13_manifests, row_0based
+        )
+        rows_data.extend(block)
 
     if not rows_data:
         rows_data = [_text_row(SLIDE_TABLE_HEADERS)]
@@ -577,26 +590,25 @@ SLIDE8_ROWS = [
 ]
 
 # Layout de Slide 13: tarjeta de KPIs del programa "Formación en Centros
-# Penitenciarios" — 6 métricas aprobadas tal cual de la presentación
-# (objectId g3735641ff7a_1_115 en la presentación del Consejo 2026).
-# Bloque FIJO: ningún valor proviene del pipeline, fuente 'manual' para
-# todas las filas. Sin TOTAL: cada métrica es independiente (no suman
-# entre sí). El texto narrativo de la slide original queda en la
-# presentación de Slides — el Sheet "Datos" solo escribe las tablas de
-# datos, igual que slide 7 y slide 8.
+# Penitenciarios" (objectId g3735641ff7a_1_115 en la presentación del
+# Consejo 2026). 4 KPIs vienen de las métricas `slide13_*` del catálogo
+# (inscripciones, certificados, usuarios únicos, cursos únicos) que
+# consultan la BD con las queries del archivo
+# `Consultas_consejo_panel.sql` (filtro por brandId IN (16, 18) — los
+# únicos brands relacionados a Centros Penitenciarios en la BD: 16 =
+# DETPCDMX y 18 = CEFERESOS — más la lista de 100 course IDs del
+# programa). 1 KPI ("Centros": 7) queda hardcoded porque no tiene query
+# natural — es la cantidad de penitenciarías físicas operadas por el
+# programa, dato aprobado de la presentación que no se infiere de la BD.
+# Sin TOTAL: cada métrica es independiente. El texto narrativo de la
+# slide original queda en la presentación de Slides — el Sheet "Datos"
+# solo escribe las tablas de datos.
 SLIDE13_METRIC_ID = "slide13_penitenciarios"
+SLIDE13_CENTROS = 7
 SLIDE13_TABLE_HEADERS = [
     "Categoría",
     "Métrica",
     "Valor",
-]
-SLIDE13_ROWS = [
-    ("Centros", 7),
-    ("Certificados", 641),
-    ("Usuarios registrados", 335),
-    ("Cursos ofertados", 98),
-    ("Inscripciones totales", 1878),
-    ("Cursos promedio por persona", 5.61),
 ]
 
 # Ventanas fijas de los valores visibles de slide 4: 2024 =
@@ -679,6 +691,15 @@ def _build_slide_block(
     # de slide1 (si no, slide12 caería en _build_slide1_block).
     if key.startswith("slide12"):
         return _build_slide12_block(manifest, row_0based)
+    # 'slide13_*' (Centros Penitenciarios): se rutean desde el caller
+    # _build_datos_requests que junta los 4 manifests de slide13 en un
+    # solo bloque. Si llega acá con un solo manifest, levantamos
+    # ValueError para no escribir un bloque parcial.
+    if key.startswith("slide13"):
+        raise ValueError(
+            f"slide13_* debe rutearse via _build_slide13_block con todos "
+            f"los manifests juntos, no via _build_slide_block (key={key})"
+        )
     if key.startswith("slide1"):
         return _build_slide1_block(manifest, row_0based)
     if key.startswith("slide2"):
@@ -1238,27 +1259,73 @@ def _build_slide8_block(row_0based: int) -> tuple[list[dict], int]:
     return rows, row_0based
 
 
-def _build_slide13_block(row_0based: int) -> tuple[list[dict], int]:
+def _build_slide13_block(
+    manifests: Sequence[SourceManifest], row_0based: int
+) -> tuple[list[dict], int]:
     """Bloque slide 13: tarjeta de KPIs de "Formación en Centros
     Penitenciarios".
 
-    3 columnas (Categoría, Métrica, Valor). Bloque FIJO: las 6 métricas se
-    escriben siempre con los valores aprobados tal cual de la presentación
-    del Consejo 2026 (objectId g3735641ff7a_1_115). No recibe manifests:
-    ningún valor proviene del pipeline (los datos no vienen de BD, son
-    cifras aprobadas de la operación del programa de centros
-    penitenciarios). Sin fila TOTAL: cada métrica es independiente (no
-    suman entre sí, son KPIs distintos).
+    3 columnas (Categoría, Métrica, Valor). 4 KPIs (Centros,
+    Certificados, Usuarios registrados, Inscripciones totales, Cursos
+    ofertados) se extraen de los manifests del catálogo con prefijo
+    `slide13_` (4 métricas en `data/catalogo-metricas.yaml`); 1 KPI
+    (Centros) queda hardcoded porque no tiene query natural (es la
+    cantidad de penitenciarías físicas, no de brands ni de cursos).
 
-    La columna Categoría lleva el metric_id de la slide
-    (SLIDE13_METRIC_ID) en todas las filas, misma nomenclatura que
-    slide12_rutas_aprendizaje y slide1_alimentos (categoría = a qué
-    slide pertenece la fila).
+    Cada manifest de slide13_* devuelve 1 fila con `value` numérico.
+    Resolvemos el valor buscando por metric_id en un dict; si falta
+    alguno, levantamos ValueError para no escribir un bloque parcial
+    silenciosamente.
+
+    Sin fila TOTAL: cada métrica es independiente (no suman entre sí).
+    La columna Categoría lleva SLIDE13_METRIC_ID en todas las filas,
+    misma nomenclatura que slide12_rutas_aprendizaje y
+    slide1_alimentos (categoría = a qué slide pertenece la fila).
     """
+    # Indexar los manifests de slide13 por key → value de su primera fila
+    by_key: dict[str, object] = {}
+    for m in manifests:
+        key = str(m.metric_id)
+        if not key.startswith("slide13"):
+            continue
+        if not m.rows:
+            raise ValueError(
+                f"Manifest {key} sin filas — slide 13 requiere 1 fila "
+                f"con 'value' numérico"
+            )
+        by_key[key] = m.rows[0].get("value")
+
     rows: list[dict] = []
     rows.append(_text_row(SLIDE13_TABLE_HEADERS))
     row_0based += 1
-    for metrica, valor in SLIDE13_ROWS:
+
+    # Orden de las 5 filas (4 desde manifests + 1 hardcoded "Centros")
+    # 1) Inscripciones totales (KPIs desde BD)
+    # 2) Certificados (KPIs desde BD)
+    # 3) Usuarios registrados (KPIs desde BD)
+    # 4) Cursos ofertados (KPIs desde BD)
+    # 5) Centros: hardcoded (no hay query natural — son penitenciarías
+    #    físicas distintas de los brands administrativos CEFERESOS+DETPCDMX)
+    plan: list[tuple[str, object]] = [
+        (
+            "Inscripciones totales",
+            by_key["slide13_penitenciarios_inscripciones"],
+        ),
+        (
+            "Certificados",
+            by_key["slide13_penitenciarios_certificados"],
+        ),
+        (
+            "Usuarios registrados",
+            by_key["slide13_penitenciarios_usuarios_registrados"],
+        ),
+        (
+            "Cursos ofertados",
+            by_key["slide13_penitenciarios_cursos_ofertados"],
+        ),
+        ("Centros", SLIDE13_CENTROS),
+    ]
+    for metrica, valor in plan:
         cells = [
             _value_cell(SLIDE13_METRIC_ID),
             _value_cell(metrica),

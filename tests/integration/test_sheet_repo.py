@@ -23,8 +23,8 @@ from src.consejo.adapters.sheets.google_mcp_sheet_repo import (
     SLIDE7_TABLE_HEADERS,
     SLIDE8_TABLE_HEADERS,
     SLIDE12_TABLE_HEADERS,
+    SLIDE13_CENTROS,
     SLIDE13_METRIC_ID,
-    SLIDE13_ROWS,
     SLIDE13_TABLE_HEADERS,
     _build_slide3_block,
     _build_slide4_block,
@@ -315,6 +315,73 @@ def bundle_with_slide1_slide2_slide3_slide4(
         manifests=(
             *bundle_with_slide1_slide2_slide3.manifests,
             *tuple(slide4_manifests),
+        ),
+        rows=(),
+        dqs=(),
+        hash=HashSha256("b" * 64),
+    )
+
+
+@pytest.fixture
+def bundle_with_slide1_slide2_slide3_slide4_slide13(
+    bundle_with_slide1_slide2_slide3_slide4: Bundle,
+) -> Bundle:
+    """Bundle con slide1 + slide2 + slide3 + slide4 + los 4 KPIs de slide13
+    (inscripciones, certificados, usuarios únicos, cursos únicos)."""
+    slide13_manifests = [
+        SourceManifest(
+            metric_id=MetricId(
+                "slide13_penitenciarios_inscripciones"
+            ),
+            source=MetricSource.FACT_INSCRIPTION,
+            cut=Cut(date(2026, 7, 1)),
+            fetched_at=datetime(2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
+            freshness_hours=0.5,
+            rows=({"value": 2753},),
+            status=FetchStatus.EXTRACTED,
+        ),
+        SourceManifest(
+            metric_id=MetricId(
+                "slide13_penitenciarios_certificados"
+            ),
+            source=MetricSource.FACT_INSCRIPTION,
+            cut=Cut(date(2026, 7, 1)),
+            fetched_at=datetime(2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
+            freshness_hours=0.5,
+            rows=({"value": 806},),
+            status=FetchStatus.EXTRACTED,
+        ),
+        SourceManifest(
+            metric_id=MetricId(
+                "slide13_penitenciarios_usuarios_registrados"
+            ),
+            source=MetricSource.FACT_INSCRIPTION,
+            cut=Cut(date(2026, 7, 1)),
+            fetched_at=datetime(2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
+            freshness_hours=0.5,
+            rows=({"value": 276},),
+            status=FetchStatus.EXTRACTED,
+        ),
+        SourceManifest(
+            metric_id=MetricId(
+                "slide13_penitenciarios_cursos_ofertados"
+            ),
+            source=MetricSource.FACT_INSCRIPTION,
+            cut=Cut(date(2026, 7, 1)),
+            fetched_at=datetime(2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
+            freshness_hours=0.5,
+            rows=({"value": 98},),
+            status=FetchStatus.EXTRACTED,
+        ),
+    ]
+    return Bundle(
+        run_id=bundle_with_slide1_slide2_slide3_slide4.run_id,
+        attempt_id=bundle_with_slide1_slide2_slide3_slide4.attempt_id,
+        cut=bundle_with_slide1_slide2_slide3_slide4.cut,
+        catalog_hash="8" * 64,
+        manifests=(
+            *bundle_with_slide1_slide2_slide3_slide4.manifests,
+            *tuple(slide13_manifests),
         ),
         rows=(),
         dqs=(),
@@ -718,9 +785,10 @@ class TestGoogleMcpSheetRepo:
         ]
         assert len(datos_updates) >= 1
         datos_rows = datos_updates[0]["updateCells"]["rows"]
-        # sin slides: solo bloques fijos de slide 7 (header + 3) + blank
-        # + slide 8 (header + 3) + blank + slide 13 (header + 6) = 17
-        assert len(datos_rows) == 17
+        # sin slides dinámicos: solo bloques fijos slide 7 (header + 3)
+        # + blank + slide 8 (header + 3) = 9. Slide 13 NO se escribe sin
+        # manifests slide13_* en el bundle.
+        assert len(datos_rows) == 9
 
     def test_snapshot_populates_datos_sheet_with_slide_tables(
         self, bundle_with_slide1: Bundle, sample_catalog: list[Metric]
@@ -758,8 +826,9 @@ class TestGoogleMcpSheetRepo:
         assert len(datos_updates) >= 1
         datos_rows = datos_updates[0]["updateCells"]["rows"]
         # header + 5 categorías + TOTAL (7) + blank (1) + slide7 (4)
-        # + blank (1) + slide8 (4) + blank (1) + slide13 (7) = 25
-        assert len(datos_rows) == 25
+        # + blank (1) + slide8 (4) = 17. Slide 13 NO se escribe sin
+        # manifests slide13_* en el bundle.
+        assert len(datos_rows) == 17
 
         header = datos_rows[0]["values"]
         assert len(header) == 8
@@ -825,8 +894,9 @@ class TestGoogleMcpSheetRepo:
 
         # slide1 (header + 5 data + TOTAL = 7) + blank (1) + slide2
         # (header + 3 data + TOTAL = 5) = 13 + blank (1) + slide7 (4)
-        # + blank (1) + slide8 (4) + blank (1) + slide13 (7) = 31
-        assert len(datos_rows) == 31
+        # + blank (1) + slide8 (4) = 23. Slide 13 NO se escribe sin
+        # manifests slide13_* en el bundle.
+        assert len(datos_rows) == 23
 
         # ── Slide 1 (índice 0..6) ──
         slide1_header = datos_rows[0]["values"]
@@ -968,9 +1038,9 @@ class TestGoogleMcpSheetRepo:
         datos_rows = datos_updates[0]["updateCells"]["rows"]
 
         # slide1 (7) + blank (1) + slide2 (5) + blank (1) + slide3 (4) = 18
-        # + blank (1) + slide7 (4) + blank (1) + slide8 (4)
-        # + blank (1) + slide13 (7) = 36
-        assert len(datos_rows) == 36
+        # + blank (1) + slide7 (4) + blank (1) + slide8 (4) = 28. Slide
+        # 13 NO se escribe sin manifests slide13_* en el bundle.
+        assert len(datos_rows) == 28
 
         # ── Slide 3 (índice 14..17) ──
         slide3_header = datos_rows[14]["values"]
@@ -1041,7 +1111,7 @@ class TestGoogleMcpSheetRepo:
         assert academica[8]["userEnteredValue"]["stringValue"] == "mysql"
 
         # Sin fila TOTAL: el bloque termina en la fila Academica Labs.
-        assert len(datos_rows) == 36
+        assert len(datos_rows) == 28
 
     def test_build_slide_block_does_not_raise_for_slide3(self) -> None:
         """_build_slide_block NO debe lanzar ValueError para keys slide3_*."""
@@ -1186,8 +1256,9 @@ class TestGoogleMcpSheetRepo:
 
         # slide1 (7) + blank (1) + slide2 (5) + blank (1) + slide3 (4)
         # + blank (1) + slide4 (4) = 23 + blank (1) + slide7 (4)
-        # + blank (1) + slide8 (4) + blank (1) + slide13 (7) = 41
-        assert len(datos_rows) == 41
+        # + blank (1) + slide8 (4) = 33. Slide 13 NO se escribe sin
+        # manifests slide13_* en el bundle.
+        assert len(datos_rows) == 33
 
         # ── Slide 4 (índice 19..22) ──
         slide4_header = datos_rows[19]["values"]
@@ -1257,7 +1328,7 @@ class TestGoogleMcpSheetRepo:
         assert cultura[8]["userEnteredValue"]["stringValue"] == "postgres"
 
         # Sin fila TOTAL: el bloque termina en la fila Cultura y Salud.
-        assert len(datos_rows) == 41
+        assert len(datos_rows) == 33
 
     def test_build_slide_block_does_not_raise_for_slide4(self) -> None:
         """_build_slide_block NO debe lanzar ValueError para keys slide4_*."""
@@ -1782,15 +1853,79 @@ class TestGoogleMcpSheetRepo:
             )
 
     def test_build_slide13_block_fixed_rows(self) -> None:
-        """El bloque slide 13 es fijo: header de 3 cols (Categoría | Métrica
-        | Valor) + las 6 métricas aprobadas de "Formación en Centros
-        Penitenciarios" (Centros, Certificados, Usuarios registrados,
-        Cursos ofertados, Inscripciones totales, Cursos promedio por
-        persona). Devuelve 7 filas y next_row = 7."""
-        rows, next_row = _build_slide13_block(0)
+        """El bloque slide 13 arma la tarjeta de KPIs de "Formación en
+        Centros Penitenciarios" desde manifests del pipeline (4 KPIs) +
+        1 hardcoded (Centros). Header de 3 cols (Categoría | Métrica |
+        Valor) + 5 filas (Inscripciones totales, Certificados, Usuarios
+        registrados, Cursos ofertados, Centros). Devuelve 6 filas y
+        next_row = 6."""
+        manifests = [
+            SourceManifest(
+                metric_id=MetricId(
+                    "slide13_penitenciarios_inscripciones"
+                ),
+                source=MetricSource.FACT_INSCRIPTION,
+                cut=Cut(date(2026, 7, 1)),
+                fetched_at=datetime(
+                    2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc
+                ),
+                freshness_hours=0.5,
+                rows=({"value": 2753, "periodo_inicio": "Acumulado",
+                       "periodo_fin": "2026-08-01",
+                       "source": "fact_inscription"},),
+                status=FetchStatus.EXTRACTED,
+            ),
+            SourceManifest(
+                metric_id=MetricId(
+                    "slide13_penitenciarios_certificados"
+                ),
+                source=MetricSource.FACT_INSCRIPTION,
+                cut=Cut(date(2026, 7, 1)),
+                fetched_at=datetime(
+                    2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc
+                ),
+                freshness_hours=0.5,
+                rows=({"value": 806, "periodo_inicio": "Acumulado",
+                       "periodo_fin": "2026-08-01",
+                       "source": "fact_inscription"},),
+                status=FetchStatus.EXTRACTED,
+            ),
+            SourceManifest(
+                metric_id=MetricId(
+                    "slide13_penitenciarios_usuarios_registrados"
+                ),
+                source=MetricSource.FACT_INSCRIPTION,
+                cut=Cut(date(2026, 7, 1)),
+                fetched_at=datetime(
+                    2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc
+                ),
+                freshness_hours=0.5,
+                rows=({"value": 276, "periodo_inicio": "Acumulado",
+                       "periodo_fin": "2026-08-01",
+                       "source": "fact_inscription"},),
+                status=FetchStatus.EXTRACTED,
+            ),
+            SourceManifest(
+                metric_id=MetricId(
+                    "slide13_penitenciarios_cursos_ofertados"
+                ),
+                source=MetricSource.FACT_INSCRIPTION,
+                cut=Cut(date(2026, 7, 1)),
+                fetched_at=datetime(
+                    2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc
+                ),
+                freshness_hours=0.5,
+                rows=({"value": 98, "periodo_inicio": "Acumulado",
+                       "periodo_fin": "2026-08-01",
+                       "source": "fact_inscription"},),
+                status=FetchStatus.EXTRACTED,
+            ),
+        ]
 
-        assert next_row == 7
-        assert len(rows) == 7
+        rows, next_row = _build_slide13_block(manifests, 0)
+
+        assert next_row == 6
+        assert len(rows) == 6
 
         header = rows[0]["values"]
         assert len(header) == 3
@@ -1798,8 +1933,17 @@ class TestGoogleMcpSheetRepo:
             c["userEnteredValue"]["stringValue"] for c in header
         ] == list(SLIDE13_TABLE_HEADERS)
 
+        # Plan: Inscripciones totales | Certificados | Usuarios
+        # registrados | Cursos ofertados | Centros (hardcoded)
+        expected = [
+            ("Inscripciones totales", 2753),
+            ("Certificados", 806),
+            ("Usuarios registrados", 276),
+            ("Cursos ofertados", 98),
+            ("Centros", SLIDE13_CENTROS),
+        ]
         for fila, (expected_metrica, expected_valor) in zip(
-            rows[1:], SLIDE13_ROWS
+            rows[1:], expected
         ):
             values = fila["values"]
             assert len(values) == 3
@@ -1811,13 +1955,32 @@ class TestGoogleMcpSheetRepo:
                 values[1]["userEnteredValue"]["stringValue"]
                 == expected_metrica
             )
-            # 5.61 es decimal (Cursos promedio por persona); los demás
-            # son enteros. Verificamos numberValue directamente para
-            # aceptar ambos.
             assert (
                 values[2]["userEnteredValue"]["numberValue"]
                 == expected_valor
             )
+
+    def test_build_slide13_block_raises_if_manifest_missing(self) -> None:
+        """Si falta alguno de los 4 manifests de slide13_*, _build_slide13_block
+        debe levantar ValueError en lugar de escribir un bloque parcial
+        silencioso. Caso: solo se pasa el manifest de inscripciones."""
+        manifests = [
+            SourceManifest(
+                metric_id=MetricId(
+                    "slide13_penitenciarios_inscripciones"
+                ),
+                source=MetricSource.FACT_INSCRIPTION,
+                cut=Cut(date(2026, 7, 1)),
+                fetched_at=datetime(
+                    2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc
+                ),
+                freshness_hours=0.5,
+                rows=({"value": 2753},),
+                status=FetchStatus.EXTRACTED,
+            ),
+        ]
+        with pytest.raises(KeyError):
+            _build_slide13_block(manifests, 0)
 
     def test_snapshot_datos_includes_slide8_fixed_table(
         self,
@@ -1922,16 +2085,18 @@ class TestGoogleMcpSheetRepo:
                 values[5]["userEnteredValue"]["stringValue"] == "manual"
             )
 
-    def test_snapshot_datos_includes_slide13_fixed_table(
+    def test_snapshot_datos_includes_slide13_from_pipeline(
         self,
-        bundle_with_slide1_slide2_slide3_slide4: Bundle,
+        bundle_with_slide1_slide2_slide3_slide4_slide13: Bundle,
         catalog_with_both_slides: list[Metric],
     ) -> None:
-        """Datos debe terminar con el bloque FIJO slide 13: header de 3 cols
-        (Categoría | Métrica | Valor) y las 6 métricas aprobadas de
-        "Formación en Centros Penitenciarios". El bloque se escribe
-        siempre al final de la hoja, después del bloque fijo de slide 8
-        (con su blank row de separación)."""
+        """Datos debe incluir el bloque slide 13 al final (después del
+        bloque fijo slide 8 + blank row de separación): header de 3
+        cols (Categoría | Métrica | Valor) y 5 filas (Inscripciones
+        totales, Certificados, Usuarios registrados, Cursos ofertados
+        desde manifests del pipeline, + Centros hardcoded). Se busca
+        el header por contenido (no por índice) para que el test sea
+        robusto a cambios en el orden de los bloques."""
         with patch.object(
             GoogleMcpSheetRepo, "_start_proxy"
         ), patch.object(
@@ -1955,7 +2120,7 @@ class TestGoogleMcpSheetRepo:
 
             repo = GoogleMcpSheetRepo()
             repo.snapshot(
-                bundle_with_slide1_slide2_slide3_slide4,
+                bundle_with_slide1_slide2_slide3_slide4_slide13,
                 "test-id",
                 catalog_with_both_slides,
             )
@@ -1968,8 +2133,9 @@ class TestGoogleMcpSheetRepo:
         assert len(datos_updates) >= 1
         datos_rows = datos_updates[0]["updateCells"]["rows"]
 
-        # Buscamos el header de slide 13 por contenido (no por índice,
-        # porque depende de cuántos bloques dinámicos haya antes).
+        # Buscamos el header de slide 13 por contenido: 3 cols con
+        # "Categoría" + "Valor" + verificación de que la primera fila
+        # de datos tenga SLIDE13_METRIC_ID en col A.
         slide13_header_idx = None
         for idx, fila in enumerate(datos_rows):
             values = fila["values"]
@@ -1978,9 +2144,6 @@ class TestGoogleMcpSheetRepo:
             ) == "Categoría" and values[2].get("userEnteredValue", {}).get(
                 "stringValue"
             ) == "Valor":
-                # Verificamos que la siguiente fila (datos) tenga
-                # SLIDE13_METRIC_ID en col A para distinguirlo de
-                # otros headers de 3 cols.
                 if idx + 1 < len(datos_rows):
                     next_values = datos_rows[idx + 1]["values"]
                     if len(next_values) == 3 and next_values[
@@ -1998,14 +2161,20 @@ class TestGoogleMcpSheetRepo:
             c["userEnteredValue"]["stringValue"] for c in slide13_header
         ] == list(SLIDE13_TABLE_HEADERS)
 
-        # Las 6 filas de datos de slide 13 vienen inmediatamente después
-        # del header (sin blank row dentro del bloque; el blank row va
-        # ANTES del header, separando slide 8 de slide 13).
-        slide13_data = datos_rows[
-            slide13_header_idx + 1 : slide13_header_idx + 1 + len(SLIDE13_ROWS)
+        # Las 5 filas de datos de slide 13 (4 desde manifests + 1
+        # Centros hardcoded) vienen inmediatamente después del header.
+        expected_plan = [
+            ("Inscripciones totales", 2753),
+            ("Certificados", 806),
+            ("Usuarios registrados", 276),
+            ("Cursos ofertados", 98),
+            ("Centros", SLIDE13_CENTROS),
         ]
-        assert len(slide13_data) == len(SLIDE13_ROWS)
-        for fila, (metrica, valor) in zip(slide13_data, SLIDE13_ROWS):
+        slide13_data = datos_rows[
+            slide13_header_idx + 1 : slide13_header_idx + 1 + len(expected_plan)
+        ]
+        assert len(slide13_data) == len(expected_plan)
+        for fila, (metrica, valor) in zip(slide13_data, expected_plan):
             values = fila["values"]
             assert len(values) == 3
             assert (

@@ -492,6 +492,148 @@ metrics:
       - "El curso 342 es el ÚNICO compartido entre rutas: pertenece a 'Seguridad, higiene y cuidado de la salud' Y a 'Actuar en caso de desastres naturales'."
       - "'Planea tu negocio' incluye el curso 100327 'Plan de negocios' (confirmado en tabla course) que no aparece en el spreadsheet."
 
+  # Formación en Centros Penitenciarios — Slide 13 ──
+
+  - key: slide13_penitenciarios_inscripciones
+    name: Slide 13 — Inscripciones totales (Centros Penitenciarios)
+    description: >
+      Métrica de Slide 13 "Formación en Centros Penitenciarios":
+      total acumulado de inscripciones a los cursos del programa en los
+      centros penitenciarios administrados por los brands CEFERESOS (id 18)
+      y DETPCDMX (id 16), con corte < '2026-08-01'. La lista de course IDs
+      (100 cursos únicos entre CEFERESOS+DETPCDMX) viene del archivo
+      Consultas_consejo_panel.sql (secciones "Numero de inscripciones
+      de CEFERESOS a cursos" y "Numero de inscripciones de Reclusorio
+      norte a cursos"). Sin filtro de plataforma (los usuarios de
+      penitenciarías pueden tener plataformaId = 1 o 2; el filtro es
+      por brand).
+    formula: >
+      COUNT(*) de fact_inscription JOIN bridge_user_brand (brandId IN
+      (16, 18)) WHERE courseId IN (lista 100 cursos del panel) AND
+      inscripcionDate < '2026-08-01'.
+    type: count
+    source: fact_inscription
+    platform_scope: []
+    db_mapping: >
+      WITH pen_cursos AS (
+        SELECT * FROM (VALUES
+          (ARRAY[3,4,5,8,9,12,20,21,23,24,26,27,31,32,33,35,36,37,40,57,78,86,95,98,114,120,131,137,138,140,213,244,282,291,367,100157]::bigint[]),
+          (ARRAY[2,6,11,14,15,16,18,25,28,30,41,42,48,51,52,58,66,77,99,100,101,107,109,118,141,142,143,144,151,152,155,156,157,159,170,177,178,201,211,212,228,232,241,246,263,272,275,280,285,293,297,298,301,305,312,354,376,387,408,100012,100064,100092,100214,100320]::bigint[])
+        ) AS RECORDS(curso_ids)
+      )
+      SELECT COUNT(fi."userId") AS value,
+             'Acumulado' AS periodo_inicio,
+             '2026-08-01' AS periodo_fin,
+             'fact_inscription' AS source
+      FROM fact_inscription fi
+      JOIN bridge_user_brand bub ON bub."userId" = fi."userId"
+      WHERE bub."brandId" IN (16, 18)
+        AND fi."courseId" = ANY((SELECT unnest(curso_ids) FROM pen_cursos))
+        AND fi."inscripcionDate" < '2026-08-01'
+    caveats:
+      - "Lista de 100 course IDs viene del archivo Consultas_consejo_panel.sql (sección Centros Penitenciarios: 36 cursos CEFERESOS + 64 cursos DETPCDMX/Reclusorio norte). El panel original cortaba en '2025-09-30'; aquí usamos '2026-08-01' para alinear con la decisión de negocio del resto del script."
+      - "Filtro por brand (brandId IN 16,18), NO por plataformaId — los usuarios de penitenciarías pueden tener plataformaId 1 (CPE) o 2 (Aprende)."
+      - "Brand 16 (DETPCDMX) y 18 (CEFERESOS) son los únicos relacionados al programa de Centros Penitenciarios en la BD."
+
+  - key: slide13_penitenciarios_certificados
+    name: Slide 13 — Certificados (Centros Penitenciarios)
+    description: >
+      Métrica de Slide 13: total acumulado de certificados (advance =
+      100) del programa Centros Penitenciarios (brand 16+18), con
+      lista de course IDs del panel y corte < '2026-08-01'.
+    formula: >
+      COUNT(*) de fact_inscription JOIN bridge_user_brand WHERE
+      brandId IN (16, 18), courseId IN (lista 100 cursos), advance
+      = 100 AND certificationDate < '2026-08-01'.
+    type: count
+    source: fact_inscription
+    platform_scope: []
+    db_mapping: >
+      WITH pen_cursos AS (
+        SELECT * FROM (VALUES
+          (ARRAY[3,4,5,8,9,12,20,21,23,24,26,27,31,32,33,35,36,37,40,57,78,86,95,98,114,120,131,137,138,140,213,244,282,291,367,100157]::bigint[]),
+          (ARRAY[2,6,11,14,15,16,18,25,28,30,41,42,48,51,52,58,66,77,99,100,101,107,109,118,141,142,143,144,151,152,155,156,157,159,170,177,178,201,211,212,228,232,241,246,263,272,275,280,285,293,297,298,301,305,312,354,376,387,408,100012,100064,100092,100214,100320]::bigint[])
+        ) AS RECORDS(curso_ids)
+      )
+      SELECT COUNT(fi."userId") AS value,
+             'Acumulado' AS periodo_inicio,
+             '2026-08-01' AS periodo_fin,
+             'fact_inscription' AS source
+      FROM fact_inscription fi
+      JOIN bridge_user_brand bub ON bub."userId" = fi."userId"
+      WHERE bub."brandId" IN (16, 18)
+        AND fi."courseId" = ANY((SELECT unnest(curso_ids) FROM pen_cursos))
+        AND fi.advance = 100
+        AND fi."certificationDate" < '2026-08-01'
+    caveats:
+      - "Misma lista de course IDs y filtros de brand que slide13_penitenciarios_inscripciones."
+
+  - key: slide13_penitenciarios_usuarios_registrados
+    name: Slide 13 — Usuarios únicos inscritos (Centros Penitenciarios)
+    description: >
+      Métrica de Slide 13: cantidad de usuarios únicos (DISTINCT) que
+      tienen al menos una inscripción a cursos del programa Centros
+      Penitenciarios (brand 16+18), con lista de course IDs del panel y
+      corte < '2026-08-01'.
+    formula: >
+      COUNT(DISTINCT fi.userId) de fact_inscription JOIN bridge_user_brand
+      WHERE brandId IN (16, 18), courseId IN (lista 100 cursos) AND
+      inscripcionDate < '2026-08-01'.
+    type: count_distinct
+    source: fact_inscription
+    platform_scope: []
+    db_mapping: >
+      WITH pen_cursos AS (
+        SELECT * FROM (VALUES
+          (ARRAY[3,4,5,8,9,12,20,21,23,24,26,27,31,32,33,35,36,37,40,57,78,86,95,98,114,120,131,137,138,140,213,244,282,291,367,100157]::bigint[]),
+          (ARRAY[2,6,11,14,15,16,18,25,28,30,41,42,48,51,52,58,66,77,99,100,101,107,109,118,141,142,143,144,151,152,155,156,157,159,170,177,178,201,211,212,228,232,241,246,263,272,275,280,285,293,297,298,301,305,312,354,376,387,408,100012,100064,100092,100214,100320]::bigint[])
+        ) AS RECORDS(curso_ids)
+      )
+      SELECT COUNT(DISTINCT fi."userId") AS value,
+             'Acumulado' AS periodo_inicio,
+             '2026-08-01' AS periodo_fin,
+             'fact_inscription' AS source
+      FROM fact_inscription fi
+      JOIN bridge_user_brand bub ON bub."userId" = fi."userId"
+      WHERE bub."brandId" IN (16, 18)
+        AND fi."courseId" = ANY((SELECT unnest(curso_ids) FROM pen_cursos))
+        AND fi."inscripcionDate" < '2026-08-01'
+    caveats:
+      - "Misma lista de course IDs y filtros de brand que slide13_penitenciarios_inscripciones."
+
+  - key: slide13_penitenciarios_cursos_ofertados
+    name: Slide 13 — Cursos ofertados únicos (Centros Penitenciarios)
+    description: >
+      Métrica de Slide 13: cantidad de cursos distintos del programa
+      Centros Penitenciarios (brand 16+18) que tienen al menos una
+      inscripción, con corte < '2026-08-01'.
+    formula: >
+      COUNT(DISTINCT fi.courseId) de fact_inscription JOIN bridge_user_brand
+      WHERE brandId IN (16, 18), courseId IN (lista 100 cursos) AND
+      inscripcionDate < '2026-08-01'.
+    type: count_distinct
+    source: fact_inscription
+    platform_scope: []
+    db_mapping: >
+      WITH pen_cursos AS (
+        SELECT * FROM (VALUES
+          (ARRAY[3,4,5,8,9,12,20,21,23,24,26,27,31,32,33,35,36,37,40,57,78,86,95,98,114,120,131,137,138,140,213,244,282,291,367,100157]::bigint[]),
+          (ARRAY[2,6,11,14,15,16,18,25,28,30,41,42,48,51,52,58,66,77,99,100,101,107,109,118,141,142,143,144,151,152,155,156,157,159,170,177,178,201,211,212,228,232,241,246,263,272,275,280,285,293,297,298,301,305,312,354,376,387,408,100012,100064,100092,100214,100320]::bigint[])
+        ) AS RECORDS(curso_ids)
+      )
+      SELECT COUNT(DISTINCT fi."courseId") AS value,
+             'Acumulado' AS periodo_inicio,
+             '2026-08-01' AS periodo_fin,
+             'fact_inscription' AS source
+      FROM fact_inscription fi
+      JOIN bridge_user_brand bub ON bub."userId" = fi."userId"
+      WHERE bub."brandId" IN (16, 18)
+        AND fi."courseId" = ANY((SELECT unnest(curso_ids) FROM pen_cursos))
+        AND fi."inscripcionDate" < '2026-08-01'
+    caveats:
+      - "Misma lista de course IDs y filtros de brand que slide13_penitenciarios_inscripciones."
+      - "Este conteo (98 cursos únicos) coincide exacto con el valor aprobado de la presentación Slides original ('Cursos ofertados: 98'), lo que valida la lista de course IDs del panel como la fuente correcta."
+
   # Certificados por sector empleo incluyente ── Slide 2 (Pobreza moderada) ──
 
   - key: slide2_empleo_incluyente_por_sector
