@@ -1337,13 +1337,15 @@ class TestGoogleMcpSheetRepo:
         assert rows[2]["values"][5]["userEnteredValue"]["numberValue"] == 184288
 
     def test_build_slide12_block(self) -> None:
-        """El bloque slide 12 tiene header de 8 cols, UNA fila por ruta
-        (seccion/ruta/value/inscripciones/certificados/periodo/source), un
-        SUBTOTAL por cada sección (=SUM en C/D/E sobre las filas de ESA
-        sección) y una fila TOTAL global que suma SOLO los subtotales (sin
-        duplicar conteos)."""
+        """El bloque slide 12 tiene header de 9 cols (Categoría | Sección |
+        Ruta | Cursos | Inscripciones | Certificados | Período inicio |
+        Período fin | Fuente), UNA fila por ruta (con metric_id en Categoría,
+        seccion en Sección, ruta en Ruta), un SUBTOTAL por cada sección
+        (=SUM en D/E/F sobre las filas de ESA sección) y una fila TOTAL
+        global que suma SOLO los subtotales (sin duplicar conteos)."""
         rutas = [
             {
+                "metric_id": "slide12_rutas_aprendizaje",
                 "seccion": "Construcción",
                 "ruta": "Proyectos constructivos y mantenimiento",
                 "value": 16,
@@ -1354,6 +1356,7 @@ class TestGoogleMcpSheetRepo:
                 "source": "fact_inscription",
             },
             {
+                "metric_id": "slide12_rutas_aprendizaje",
                 "seccion": "Emprendimiento",
                 "ruta": "Mi negocio en internet",
                 "value": 5,
@@ -1382,49 +1385,55 @@ class TestGoogleMcpSheetRepo:
         assert len(rows) == 6
 
         header = rows[0]["values"]
-        assert len(header) == 8
+        assert len(header) == 9
         assert [
             c["userEnteredValue"]["stringValue"] for c in header
         ] == list(SLIDE12_TABLE_HEADERS)
 
-        # Una fila por ruta, con seccion/ruta/value/inscripciones/
-        # certificados/periodo_inicio/periodo_fin/source en ese orden.
+        # Una fila por ruta, con metric_id en Categoría (A), seccion en
+        # Sección (B), ruta en Ruta (C), y los valores numéricos y strings
+        # en las siguientes 6 columnas (D-I).
         primera = rows[1]["values"]
-        assert len(primera) == 8
+        assert len(primera) == 9
         assert (
-            primera[0]["userEnteredValue"]["stringValue"] == "Construcción"
+            primera[0]["userEnteredValue"]["stringValue"]
+            == "slide12_rutas_aprendizaje"
         )
         assert (
-            primera[1]["userEnteredValue"]["stringValue"]
+            primera[1]["userEnteredValue"]["stringValue"] == "Construcción"
+        )
+        assert (
+            primera[2]["userEnteredValue"]["stringValue"]
             == "Proyectos constructivos y mantenimiento"
         )
-        assert primera[2]["userEnteredValue"]["numberValue"] == 16
-        assert primera[3]["userEnteredValue"]["numberValue"] == 200
-        assert primera[4]["userEnteredValue"]["numberValue"] == 150
+        assert primera[3]["userEnteredValue"]["numberValue"] == 16
+        assert primera[4]["userEnteredValue"]["numberValue"] == 200
+        assert primera[5]["userEnteredValue"]["numberValue"] == 150
         assert (
-            primera[5]["userEnteredValue"]["stringValue"] == "2025-09-01"
+            primera[6]["userEnteredValue"]["stringValue"] == "2025-09-01"
         )
         assert (
-            primera[6]["userEnteredValue"]["stringValue"] == "2026-07-31"
+            primera[7]["userEnteredValue"]["stringValue"] == "2026-07-31"
         )
         assert (
-            primera[7]["userEnteredValue"]["stringValue"] == "fact_inscription"
+            primera[8]["userEnteredValue"]["stringValue"] == "fact_inscription"
         )
 
-        # Subtotal Construcción (1-indexed fila 3): col A el nombre, C/D/E
-        # =SUM sobre la única fila de datos de la sección (1-indexed 2),
-        # resto de celdas vacías.
+        # Subtotal Construcción (1-indexed fila 3): col A el metric_id,
+        # col B "Subtotal Construcción", col C (Ruta) vacía, D/E/F =SUM
+        # sobre la única fila de datos de la sección (1-indexed 2), resto
+        # de celdas vacías.
         subtotal_construccion = rows[2]["values"]
-        assert len(subtotal_construccion) == 8
+        assert len(subtotal_construccion) == 9
         assert (
             subtotal_construccion[0]["userEnteredValue"]["stringValue"]
+            == "slide12_rutas_aprendizaje"
+        )
+        assert (
+            subtotal_construccion[1]["userEnteredValue"]["stringValue"]
             == "Subtotal Construcción"
         )
-        assert subtotal_construccion[1] == {"userEnteredValue": {}}
-        assert (
-            subtotal_construccion[2]["userEnteredValue"]["formulaValue"]
-            == "=SUM(C2:C2)"
-        )
+        assert subtotal_construccion[2] == {"userEnteredValue": {}}
         assert (
             subtotal_construccion[3]["userEnteredValue"]["formulaValue"]
             == "=SUM(D2:D2)"
@@ -1433,31 +1442,39 @@ class TestGoogleMcpSheetRepo:
             subtotal_construccion[4]["userEnteredValue"]["formulaValue"]
             == "=SUM(E2:E2)"
         )
-        assert subtotal_construccion[5] == {"userEnteredValue": {}}
+        assert (
+            subtotal_construccion[5]["userEnteredValue"]["formulaValue"]
+            == "=SUM(F2:F2)"
+        )
         assert subtotal_construccion[6] == {"userEnteredValue": {}}
         assert subtotal_construccion[7] == {"userEnteredValue": {}}
+        assert subtotal_construccion[8] == {"userEnteredValue": {}}
 
         # Ruta Emprendimiento: primera fila de su sección.
         emprendimiento = rows[3]["values"]
-        assert emprendimiento[0]["userEnteredValue"]["stringValue"] == (
+        assert (
+            emprendimiento[0]["userEnteredValue"]["stringValue"]
+            == "slide12_rutas_aprendizaje"
+        )
+        assert emprendimiento[1]["userEnteredValue"]["stringValue"] == (
             "Emprendimiento"
         )
         assert (
-            emprendimiento[1]["userEnteredValue"]["stringValue"]
+            emprendimiento[2]["userEnteredValue"]["stringValue"]
             == "Mi negocio en internet"
         )
-        assert emprendimiento[2]["userEnteredValue"]["numberValue"] == 5
+        assert emprendimiento[3]["userEnteredValue"]["numberValue"] == 5
 
         # Subtotal Emprendimiento (1-indexed fila 5): =SUM sobre la única
         # fila de datos de la sección (1-indexed 4).
         subtotal_emprendimiento = rows[4]["values"]
         assert (
             subtotal_emprendimiento[0]["userEnteredValue"]["stringValue"]
-            == "Subtotal Emprendimiento"
+            == "slide12_rutas_aprendizaje"
         )
         assert (
-            subtotal_emprendimiento[2]["userEnteredValue"]["formulaValue"]
-            == "=SUM(C4:C4)"
+            subtotal_emprendimiento[1]["userEnteredValue"]["stringValue"]
+            == "Subtotal Emprendimiento"
         )
         assert (
             subtotal_emprendimiento[3]["userEnteredValue"]["formulaValue"]
@@ -1467,33 +1484,42 @@ class TestGoogleMcpSheetRepo:
             subtotal_emprendimiento[4]["userEnteredValue"]["formulaValue"]
             == "=SUM(E4:E4)"
         )
+        assert (
+            subtotal_emprendimiento[5]["userEnteredValue"]["formulaValue"]
+            == "=SUM(F4:F4)"
+        )
 
-        # Fila TOTAL global: suma SOLO los subtotales (fijas 1-indexed 3 y 5)
-        # con suma aditiva, nunca un rango continuo sobre los datos ni un
+        # Fila TOTAL global: col A metric_id, col B "TOTAL", col C (Ruta)
+        # vacía, suma SOLO los subtotales (fijas 1-indexed 3 y 5) con suma
+        # aditiva en D/E/F, nunca un rango continuo sobre los datos ni un
         # rango discontinuo con comas (Google Sheets devolvió #ERROR! al
-        # evaluar `=SUM(C3,C5)` en este contexto; la suma aditiva con `+`
+        # evaluar `=SUM(D3,D5)` en este contexto; la suma aditiva con `+`
         # es la sintaxis que evalúa consistentemente).
         total = rows[5]["values"]
-        assert len(total) == 8
-        assert total[0]["userEnteredValue"]["stringValue"] == "TOTAL"
+        assert len(total) == 9
         assert (
-            total[2]["userEnteredValue"]["formulaValue"] == "=C3+C5"
+            total[0]["userEnteredValue"]["stringValue"]
+            == "slide12_rutas_aprendizaje"
         )
+        assert total[1]["userEnteredValue"]["stringValue"] == "TOTAL"
+        assert total[2] == {"userEnteredValue": {}}
         assert (
             total[3]["userEnteredValue"]["formulaValue"] == "=D3+D5"
         )
         assert (
             total[4]["userEnteredValue"]["formulaValue"] == "=E3+E5"
         )
-        assert total[1] == {"userEnteredValue": {}}
-        assert total[5] == {"userEnteredValue": {}}
+        assert (
+            total[5]["userEnteredValue"]["formulaValue"] == "=F3+F5"
+        )
         assert total[6] == {"userEnteredValue": {}}
         assert total[7] == {"userEnteredValue": {}}
+        assert total[8] == {"userEnteredValue": {}}
 
     def test_build_slide_block_routes_slide12_before_slide1(self) -> None:
         """La key 'slide12_rutas_aprendizaje' empieza con 'slide1', pero el
-        routing la debe mandar a _build_slide12_block (8 cols, header
-        Sección/Ruta/...), NO al bloque slide1."""
+        routing la debe mandar a _build_slide12_block (9 cols, header
+        Categoría/Sección/Ruta/...), NO al bloque slide1."""
         manifest = SourceManifest(
             metric_id=MetricId("slide12_rutas_aprendizaje"),
             source=MetricSource.FACT_INSCRIPTION,
@@ -1502,6 +1528,7 @@ class TestGoogleMcpSheetRepo:
             freshness_hours=0.5,
             rows=(
                 {
+                    "metric_id": "slide12_rutas_aprendizaje",
                     "seccion": "Emprendimiento",
                     "ruta": "Mi negocio en internet",
                     "value": 5,
@@ -1524,21 +1551,27 @@ class TestGoogleMcpSheetRepo:
         assert [
             c["userEnteredValue"]["stringValue"] for c in header
         ] == list(SLIDE12_TABLE_HEADERS)
-        # Slide 1 usaría 'Categoría' en la primera columna; slide 12 usa
-        # 'Sección'.
+        # Slide 1 usaría 'Categoría' como primera columna; slide 12 también
+        # usa 'Categoría' (con el metric_id en cada fila), seguido de
+        # 'Sección' y 'Ruta'.
         assert (
             rows[0]["values"][0]["userEnteredValue"]["stringValue"]
+            == "Categoría"
+        )
+        assert (
+            rows[0]["values"][1]["userEnteredValue"]["stringValue"]
             == "Sección"
         )
-        # El subtotal de Emprendimiento pone =SUM en C/D/E (índices 2,3,4)
+        # El subtotal de Emprendimiento pone =SUM en D/E/F (índices 3,4,5)
         # sobre la única fila de datos de la sección (1-indexed 2).
         subtotal = rows[2]["values"]
         assert (
             subtotal[0]["userEnteredValue"]["stringValue"]
-            == "Subtotal Emprendimiento"
+            == "slide12_rutas_aprendizaje"
         )
         assert (
-            subtotal[2]["userEnteredValue"]["formulaValue"] == "=SUM(C2:C2)"
+            subtotal[1]["userEnteredValue"]["stringValue"]
+            == "Subtotal Emprendimiento"
         )
         assert (
             subtotal[3]["userEnteredValue"]["formulaValue"] == "=SUM(D2:D2)"
@@ -1546,19 +1579,27 @@ class TestGoogleMcpSheetRepo:
         assert (
             subtotal[4]["userEnteredValue"]["formulaValue"] == "=SUM(E2:E2)"
         )
+        assert (
+            subtotal[5]["userEnteredValue"]["formulaValue"] == "=SUM(F2:F2)"
+        )
         # La fila TOTAL global suma el subtotal (1-indexed 3) sin duplicar.
         # Usa suma aditiva con `+` (Google Sheets devolvió #ERROR! al
-        # evaluar `=SUM(C3)` con rango discontinuo en este contexto; ver
+        # evaluar `=SUM(D3)` con rango discontinuo en este contexto; ver
         # docstring de _slide12_global_total_row).
         total = rows[3]["values"]
         assert (
-            total[2]["userEnteredValue"]["formulaValue"] == "=C3"
+            total[0]["userEnteredValue"]["stringValue"]
+            == "slide12_rutas_aprendizaje"
         )
+        assert total[1]["userEnteredValue"]["stringValue"] == "TOTAL"
         assert (
             total[3]["userEnteredValue"]["formulaValue"] == "=D3"
         )
         assert (
             total[4]["userEnteredValue"]["formulaValue"] == "=E3"
+        )
+        assert (
+            total[5]["userEnteredValue"]["formulaValue"] == "=F3"
         )
 
     def test_build_slide7_block_fixed_rows(self) -> None:
