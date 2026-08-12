@@ -593,22 +593,31 @@ SLIDE8_ROWS = [
 # Penitenciarios" (objectId g3735641ff7a_1_115 en la presentación del
 # Consejo 2026). 4 KPIs vienen de las métricas `slide13_*` del catálogo
 # (inscripciones, certificados, usuarios únicos, cursos únicos) que
-# consultan la BD con las queries del archivo
+# consultan la BD MySQL `capacitate_analisis` con las queries del archivo
 # `Consultas_consejo_panel.sql` (filtro por brandId IN (16, 18) — los
 # únicos brands relacionados a Centros Penitenciarios en la BD: 16 =
-# DETPCDMX y 18 = CEFERESOS — más la lista de 100 course IDs del
-# programa). 1 KPI ("Centros": 7) queda hardcoded porque no tiene query
-# natural — es la cantidad de penitenciarías físicas operadas por el
-# programa, dato aprobado de la presentación que no se infiere de la BD.
+# DETPCDMX y 18 = CEFERESOS — más la lista de 98 course IDs del
+# programa; se excluyen 2 cursos con `course.hide = 1`: ID 100
+# 'Management operativo' e ID 297 'Prácticas de cortesía'). 1 KPI
+# ("Centros": 7) queda hardcoded porque no tiene query natural — es la
+# cantidad de penitenciarías físicas operadas por el programa, dato
+# aprobado de la presentación que no se infiere de la BD.
 # Sin TOTAL: cada métrica es independiente. El texto narrativo de la
 # slide original queda en la presentación de Slides — el Sheet "Datos"
-# solo escribe las tablas de datos.
+# solo escribe las tablas de datos. Mismo formato de 6 columnas que las
+# otras slides (Período inicio / Período fin / Fuente al final).
 SLIDE13_METRIC_ID = "slide13_penitenciarios"
 SLIDE13_CENTROS = 7
+SLIDE13_PERIODO_INICIO = "Acumulado"
+SLIDE13_PERIODO_FIN = "2026-08-01"
+SLIDE13_FUENTE_INSCRIPCION = "inscription"
 SLIDE13_TABLE_HEADERS = [
     "Categoría",
     "Métrica",
     "Valor",
+    "Período inicio",
+    "Período fin",
+    "Fuente",
 ]
 
 # Ventanas fijas de los valores visibles de slide 4: 2024 =
@@ -1265,12 +1274,13 @@ def _build_slide13_block(
     """Bloque slide 13: tarjeta de KPIs de "Formación en Centros
     Penitenciarios".
 
-    3 columnas (Categoría, Métrica, Valor). 4 KPIs (Centros,
-    Certificados, Usuarios registrados, Inscripciones totales, Cursos
-    ofertados) se extraen de los manifests del catálogo con prefijo
-    `slide13_` (4 métricas en `data/catalogo-metricas.yaml`); 1 KPI
-    (Centros) queda hardcoded porque no tiene query natural (es la
-    cantidad de penitenciarías físicas, no de brands ni de cursos).
+    6 columnas (Categoría, Métrica, Valor, Período inicio, Período fin,
+    Fuente). 4 KPIs (Inscripciones totales, Certificados, Usuarios
+    registrados, Cursos ofertados) se extraen de los manifests del
+    catálogo con prefijo `slide13_` (4 métricas en
+    `data/catalogo-metricas.yaml`); 1 KPI (Centros) queda hardcoded
+    porque no tiene query natural (es la cantidad de penitenciarías
+    físicas, no de brands ni de cursos).
 
     Cada manifest de slide13_* devuelve 1 fila con `value` numérico.
     Resolvemos el valor buscando por metric_id en un dict; si falta
@@ -1281,6 +1291,12 @@ def _build_slide13_block(
     La columna Categoría lleva SLIDE13_METRIC_ID en todas las filas,
     misma nomenclatura que slide12_rutas_aprendizaje y
     slide1_alimentos (categoría = a qué slide pertenece la fila).
+
+    Las 4 KPIs del pipeline llevan "Acumulado" / "2026-08-01" /
+    "inscription" como Período inicio / Período fin / Fuente (la query
+    ataca `capacitate_analisis.inscription` en MySQL). El KPI Centros
+    hardcoded lleva "2026-08-01" / "2026-08-01" / "manual" porque no
+    tiene query — es un dato aprobado de la presentación.
     """
     # Indexar los manifests de slide13 por key → value de su primera fila
     by_key: dict[str, object] = {}
@@ -1299,37 +1315,54 @@ def _build_slide13_block(
     rows.append(_text_row(SLIDE13_TABLE_HEADERS))
     row_0based += 1
 
-    # Orden de las 5 filas (4 desde manifests + 1 hardcoded "Centros")
-    # 1) Inscripciones totales (KPIs desde BD)
-    # 2) Certificados (KPIs desde BD)
-    # 3) Usuarios registrados (KPIs desde BD)
-    # 4) Cursos ofertados (KPIs desde BD)
-    # 5) Centros: hardcoded (no hay query natural — son penitenciarías
-    #    físicas distintas de los brands administrativos CEFERESOS+DETPCDMX)
-    plan: list[tuple[str, object]] = [
+    # Plan: (etiqueta legible, valor, periodo_inicio, periodo_fin, fuente).
+    # Las 4 KPIs desde pipeline comparten Período/Fuente. Centros usa
+    # fecha fija y fuente manual porque es hardcoded (sin query).
+    plan: list[tuple[str, object, str, str, str]] = [
         (
             "Inscripciones totales",
             by_key["slide13_penitenciarios_inscripciones"],
+            SLIDE13_PERIODO_INICIO,
+            SLIDE13_PERIODO_FIN,
+            SLIDE13_FUENTE_INSCRIPCION,
         ),
         (
             "Certificados",
             by_key["slide13_penitenciarios_certificados"],
+            SLIDE13_PERIODO_INICIO,
+            SLIDE13_PERIODO_FIN,
+            SLIDE13_FUENTE_INSCRIPCION,
         ),
         (
             "Usuarios registrados",
             by_key["slide13_penitenciarios_usuarios_registrados"],
+            SLIDE13_PERIODO_INICIO,
+            SLIDE13_PERIODO_FIN,
+            SLIDE13_FUENTE_INSCRIPCION,
         ),
         (
             "Cursos ofertados",
             by_key["slide13_penitenciarios_cursos_ofertados"],
+            SLIDE13_PERIODO_INICIO,
+            SLIDE13_PERIODO_FIN,
+            SLIDE13_FUENTE_INSCRIPCION,
         ),
-        ("Centros", SLIDE13_CENTROS),
+        (
+            "Centros",
+            SLIDE13_CENTROS,
+            SLIDE13_PERIODO_FIN,  # hardcoded — sin query
+            SLIDE13_PERIODO_FIN,
+            "manual",
+        ),
     ]
-    for metrica, valor in plan:
+    for metrica, valor, periodo_inicio, periodo_fin, fuente in plan:
         cells = [
             _value_cell(SLIDE13_METRIC_ID),
             _value_cell(metrica),
             _value_cell(valor),
+            _value_cell(periodo_inicio),
+            _value_cell(periodo_fin),
+            _value_cell(fuente),
         ]
         rows.append({"values": cells})
         row_0based += 1

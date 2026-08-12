@@ -500,7 +500,7 @@ metrics:
       Métrica de Slide 13 "Formación en Centros Penitenciarios":
       total acumulado de inscripciones a los cursos del programa en los
       centros penitenciarios administrados por los brands CEFERESOS (id 18)
-      y DETPCDMX (id 16), con corte < '2026-08-01'. Lista de course IDs
+      y DETPCDMX (id 16), con corte < '2026-08-01'., con corte < '2026-08-01'. Lista de course IDs
       (100 cursos: 36 CEFERESOS + 64 DETPCDMX/Reclusorio norte) viene del
       archivo Consultas_consejo_panel.sql. Sin filtro de plataforma
       (los usuarios de penitenciarías pueden tener plataformaId = 1 o
@@ -534,14 +534,13 @@ metrics:
           UNION ALL SELECT 114 AS id UNION ALL SELECT 120 AS id UNION ALL SELECT 131 AS id
           UNION ALL SELECT 137 AS id UNION ALL SELECT 138 AS id UNION ALL SELECT 140 AS id
           UNION ALL SELECT 213 AS id UNION ALL SELECT 244 AS id UNION ALL SELECT 282 AS id
-          UNION ALL SELECT 291 AS id UNION ALL SELECT 367 AS id UNION ALL SELECT 100157 AS id
-          UNION ALL SELECT 2 AS id UNION ALL SELECT 6 AS id UNION ALL SELECT 11 AS id
+          UNION ALL SELECT 291 AS id UNION ALL SELECT 367 AS id UNION ALL SELECT 100157 AS id UNION ALL SELECT 2 AS id UNION ALL SELECT 6 AS id UNION ALL SELECT 11 AS id
           UNION ALL SELECT 14 AS id UNION ALL SELECT 15 AS id UNION ALL SELECT 16 AS id
           UNION ALL SELECT 18 AS id UNION ALL SELECT 25 AS id UNION ALL SELECT 28 AS id
           UNION ALL SELECT 30 AS id UNION ALL SELECT 41 AS id UNION ALL SELECT 42 AS id
           UNION ALL SELECT 48 AS id UNION ALL SELECT 51 AS id UNION ALL SELECT 52 AS id
           UNION ALL SELECT 58 AS id UNION ALL SELECT 66 AS id UNION ALL SELECT 77 AS id
-          UNION ALL SELECT 99 AS id UNION ALL SELECT 100 AS id UNION ALL SELECT 101 AS id
+          UNION ALL SELECT 99 AS id UNION ALL SELECT 101 AS id
           UNION ALL SELECT 107 AS id UNION ALL SELECT 109 AS id UNION ALL SELECT 118 AS id
           UNION ALL SELECT 141 AS id UNION ALL SELECT 142 AS id UNION ALL SELECT 143 AS id
           UNION ALL SELECT 144 AS id UNION ALL SELECT 151 AS id UNION ALL SELECT 152 AS id
@@ -551,19 +550,17 @@ metrics:
           UNION ALL SELECT 212 AS id UNION ALL SELECT 228 AS id UNION ALL SELECT 232 AS id
           UNION ALL SELECT 241 AS id UNION ALL SELECT 246 AS id UNION ALL SELECT 263 AS id
           UNION ALL SELECT 272 AS id UNION ALL SELECT 275 AS id UNION ALL SELECT 280 AS id
-          UNION ALL SELECT 285 AS id UNION ALL SELECT 293 AS id UNION ALL SELECT 297 AS id
-          UNION ALL SELECT 298 AS id UNION ALL SELECT 301 AS id UNION ALL SELECT 305 AS id
+          UNION ALL SELECT 285 AS id UNION ALL SELECT 293 AS id UNION ALL SELECT 298 AS id UNION ALL SELECT 301 AS id UNION ALL SELECT 305 AS id
           UNION ALL SELECT 312 AS id UNION ALL SELECT 354 AS id UNION ALL SELECT 376 AS id
-          UNION ALL SELECT 387 AS id UNION ALL SELECT 408 AS id
-          UNION ALL SELECT 100012 AS id UNION ALL SELECT 100064 AS id
-          UNION ALL SELECT 100092 AS id UNION ALL SELECT 100214 AS id
+          UNION ALL SELECT 387 AS id UNION ALL SELECT 408 AS id UNION ALL SELECT 100012 AS id
+          UNION ALL SELECT 100064 AS id UNION ALL SELECT 100092 AS id UNION ALL SELECT 100214 AS id
           UNION ALL SELECT 100320 AS id
-        ) AS pen_cursos ON pen_cursos.id = c.id
+                  ) AS pen_cursos ON pen_cursos.id = c.id
       WHERE b.id IN (16, 18)
         AND i.inscripcionDate < '2026-08-01'
     caveats:
       - "BD de análisis: MySQL local `capacitate_analisis` (MYSQL_HOST=127.0.0.1:8889). El plan del proyecto declara MySQL como fuente temporal; esta métrica aterriza las queries del archivo Consultas_consejo_panel.sql en el esquema nativo `capacitate_analisis.*` en lugar de traducirlas a PostgreSQL public.*."
-      - "Lista de 100 course IDs viene del archivo Consultas_consejo_panel.sql (sección Centros Penitenciarios: 36 cursos CEFERESOS + 64 cursos DETPCDMX/Reclusorio norte). Se expande con UNION ALL porque MySQL 5.7 no soporta arrays literales en IN."
+      - "Lista de 98 course IDs viene del archivo Consultas_consejo_panel.sql (100 cursos menos 2 con `course.hide = 1`: ID 100 'Management operativo' e ID 297 'Prácticas de cortesía') (sección Centros Penitenciarios: 36 cursos CEFERESOS + 64 cursos DETPCDMX/Reclusorio norte). Se expande con UNION ALL porque MySQL 5.7 no soporta arrays literales en IN. Se excluyen cursos con `course.hide = 1` para alinearse con la distribución de slide 13 según el sheet 'Copia de Septiembre - 2025 V2'."
       - "Filtro por brand (brandId IN 16,18 = DETPCDMX, CEFERESOS), NO por plataformaId — los usuarios de penitenciarías pueden tener plataformaId 1 (CPE) o 2 (Aprende)."
       - "Corte duro a '2026-08-01' (alineado con la decisión de negocio del resto del script; el panel original cortaba en '2025-09-30')."
 
@@ -572,6 +569,7 @@ metrics:
     description: >
       Métrica de Slide 13: total acumulado de certificados (advance =
       100) del programa Centros Penitenciarios (brand 16+18), con
+      corte < '2026-08-01'., con
       lista de course IDs del panel y corte < '2026-08-01'.
     formula: >
       COUNT(*) de capacitate_analisis.inscription JOIN userbrand JOIN
@@ -602,14 +600,13 @@ metrics:
           UNION ALL SELECT 114 AS id UNION ALL SELECT 120 AS id UNION ALL SELECT 131 AS id
           UNION ALL SELECT 137 AS id UNION ALL SELECT 138 AS id UNION ALL SELECT 140 AS id
           UNION ALL SELECT 213 AS id UNION ALL SELECT 244 AS id UNION ALL SELECT 282 AS id
-          UNION ALL SELECT 291 AS id UNION ALL SELECT 367 AS id UNION ALL SELECT 100157 AS id
-          UNION ALL SELECT 2 AS id UNION ALL SELECT 6 AS id UNION ALL SELECT 11 AS id
+          UNION ALL SELECT 291 AS id UNION ALL SELECT 367 AS id UNION ALL SELECT 100157 AS id UNION ALL SELECT 2 AS id UNION ALL SELECT 6 AS id UNION ALL SELECT 11 AS id
           UNION ALL SELECT 14 AS id UNION ALL SELECT 15 AS id UNION ALL SELECT 16 AS id
           UNION ALL SELECT 18 AS id UNION ALL SELECT 25 AS id UNION ALL SELECT 28 AS id
           UNION ALL SELECT 30 AS id UNION ALL SELECT 41 AS id UNION ALL SELECT 42 AS id
           UNION ALL SELECT 48 AS id UNION ALL SELECT 51 AS id UNION ALL SELECT 52 AS id
           UNION ALL SELECT 58 AS id UNION ALL SELECT 66 AS id UNION ALL SELECT 77 AS id
-          UNION ALL SELECT 99 AS id UNION ALL SELECT 100 AS id UNION ALL SELECT 101 AS id
+          UNION ALL SELECT 99 AS id UNION ALL SELECT 101 AS id
           UNION ALL SELECT 107 AS id UNION ALL SELECT 109 AS id UNION ALL SELECT 118 AS id
           UNION ALL SELECT 141 AS id UNION ALL SELECT 142 AS id UNION ALL SELECT 143 AS id
           UNION ALL SELECT 144 AS id UNION ALL SELECT 151 AS id UNION ALL SELECT 152 AS id
@@ -619,14 +616,12 @@ metrics:
           UNION ALL SELECT 212 AS id UNION ALL SELECT 228 AS id UNION ALL SELECT 232 AS id
           UNION ALL SELECT 241 AS id UNION ALL SELECT 246 AS id UNION ALL SELECT 263 AS id
           UNION ALL SELECT 272 AS id UNION ALL SELECT 275 AS id UNION ALL SELECT 280 AS id
-          UNION ALL SELECT 285 AS id UNION ALL SELECT 293 AS id UNION ALL SELECT 297 AS id
-          UNION ALL SELECT 298 AS id UNION ALL SELECT 301 AS id UNION ALL SELECT 305 AS id
+          UNION ALL SELECT 285 AS id UNION ALL SELECT 293 AS id UNION ALL SELECT 298 AS id UNION ALL SELECT 301 AS id UNION ALL SELECT 305 AS id
           UNION ALL SELECT 312 AS id UNION ALL SELECT 354 AS id UNION ALL SELECT 376 AS id
-          UNION ALL SELECT 387 AS id UNION ALL SELECT 408 AS id
-          UNION ALL SELECT 100012 AS id UNION ALL SELECT 100064 AS id
-          UNION ALL SELECT 100092 AS id UNION ALL SELECT 100214 AS id
+          UNION ALL SELECT 387 AS id UNION ALL SELECT 408 AS id UNION ALL SELECT 100012 AS id
+          UNION ALL SELECT 100064 AS id UNION ALL SELECT 100092 AS id UNION ALL SELECT 100214 AS id
           UNION ALL SELECT 100320 AS id
-        ) AS pen_cursos ON pen_cursos.id = c.id
+                  ) AS pen_cursos ON pen_cursos.id = c.id
       WHERE b.id IN (16, 18)
         AND i.advance = 100
         AND i.certificationDate < '2026-08-01'
@@ -638,7 +633,7 @@ metrics:
     description: >
       Métrica de Slide 13: cantidad de usuarios únicos (DISTINCT) que
       tienen al menos una inscripción a cursos del programa Centros
-      Penitenciarios (brand 16+18), con lista de course IDs del panel y
+      Penitenciarios (brand 16+18), con corte < '2026-08-01'., con lista de course IDs del panel y
       corte < '2026-08-01'.
     formula: >
       COUNT(DISTINCT i.userId) de capacitate_analisis.inscription JOIN
@@ -669,14 +664,13 @@ metrics:
           UNION ALL SELECT 114 AS id UNION ALL SELECT 120 AS id UNION ALL SELECT 131 AS id
           UNION ALL SELECT 137 AS id UNION ALL SELECT 138 AS id UNION ALL SELECT 140 AS id
           UNION ALL SELECT 213 AS id UNION ALL SELECT 244 AS id UNION ALL SELECT 282 AS id
-          UNION ALL SELECT 291 AS id UNION ALL SELECT 367 AS id UNION ALL SELECT 100157 AS id
-          UNION ALL SELECT 2 AS id UNION ALL SELECT 6 AS id UNION ALL SELECT 11 AS id
+          UNION ALL SELECT 291 AS id UNION ALL SELECT 367 AS id UNION ALL SELECT 100157 AS id UNION ALL SELECT 2 AS id UNION ALL SELECT 6 AS id UNION ALL SELECT 11 AS id
           UNION ALL SELECT 14 AS id UNION ALL SELECT 15 AS id UNION ALL SELECT 16 AS id
           UNION ALL SELECT 18 AS id UNION ALL SELECT 25 AS id UNION ALL SELECT 28 AS id
           UNION ALL SELECT 30 AS id UNION ALL SELECT 41 AS id UNION ALL SELECT 42 AS id
           UNION ALL SELECT 48 AS id UNION ALL SELECT 51 AS id UNION ALL SELECT 52 AS id
           UNION ALL SELECT 58 AS id UNION ALL SELECT 66 AS id UNION ALL SELECT 77 AS id
-          UNION ALL SELECT 99 AS id UNION ALL SELECT 100 AS id UNION ALL SELECT 101 AS id
+          UNION ALL SELECT 99 AS id UNION ALL SELECT 101 AS id
           UNION ALL SELECT 107 AS id UNION ALL SELECT 109 AS id UNION ALL SELECT 118 AS id
           UNION ALL SELECT 141 AS id UNION ALL SELECT 142 AS id UNION ALL SELECT 143 AS id
           UNION ALL SELECT 144 AS id UNION ALL SELECT 151 AS id UNION ALL SELECT 152 AS id
@@ -686,14 +680,12 @@ metrics:
           UNION ALL SELECT 212 AS id UNION ALL SELECT 228 AS id UNION ALL SELECT 232 AS id
           UNION ALL SELECT 241 AS id UNION ALL SELECT 246 AS id UNION ALL SELECT 263 AS id
           UNION ALL SELECT 272 AS id UNION ALL SELECT 275 AS id UNION ALL SELECT 280 AS id
-          UNION ALL SELECT 285 AS id UNION ALL SELECT 293 AS id UNION ALL SELECT 297 AS id
-          UNION ALL SELECT 298 AS id UNION ALL SELECT 301 AS id UNION ALL SELECT 305 AS id
+          UNION ALL SELECT 285 AS id UNION ALL SELECT 293 AS id UNION ALL SELECT 298 AS id UNION ALL SELECT 301 AS id UNION ALL SELECT 305 AS id
           UNION ALL SELECT 312 AS id UNION ALL SELECT 354 AS id UNION ALL SELECT 376 AS id
-          UNION ALL SELECT 387 AS id UNION ALL SELECT 408 AS id
-          UNION ALL SELECT 100012 AS id UNION ALL SELECT 100064 AS id
-          UNION ALL SELECT 100092 AS id UNION ALL SELECT 100214 AS id
+          UNION ALL SELECT 387 AS id UNION ALL SELECT 408 AS id UNION ALL SELECT 100012 AS id
+          UNION ALL SELECT 100064 AS id UNION ALL SELECT 100092 AS id UNION ALL SELECT 100214 AS id
           UNION ALL SELECT 100320 AS id
-        ) AS pen_cursos ON pen_cursos.id = c.id
+                  ) AS pen_cursos ON pen_cursos.id = c.id
       WHERE b.id IN (16, 18)
         AND i.inscripcionDate < '2026-08-01'
     caveats:
@@ -704,7 +696,7 @@ metrics:
     description: >
       Métrica de Slide 13: cantidad de cursos distintos del programa
       Centros Penitenciarios (brand 16+18) que tienen al menos una
-      inscripción, con corte < '2026-08-01'.
+      inscripción, con corte < '2026-08-01'., con corte < '2026-08-01'.
     formula: >
       COUNT(DISTINCT i.courseId) de capacitate_analisis.inscription JOIN
       userbrand JOIN brand WHERE brandId IN (16, 18), courseId IN
@@ -734,14 +726,13 @@ metrics:
           UNION ALL SELECT 114 AS id UNION ALL SELECT 120 AS id UNION ALL SELECT 131 AS id
           UNION ALL SELECT 137 AS id UNION ALL SELECT 138 AS id UNION ALL SELECT 140 AS id
           UNION ALL SELECT 213 AS id UNION ALL SELECT 244 AS id UNION ALL SELECT 282 AS id
-          UNION ALL SELECT 291 AS id UNION ALL SELECT 367 AS id UNION ALL SELECT 100157 AS id
-          UNION ALL SELECT 2 AS id UNION ALL SELECT 6 AS id UNION ALL SELECT 11 AS id
+          UNION ALL SELECT 291 AS id UNION ALL SELECT 367 AS id UNION ALL SELECT 100157 AS id UNION ALL SELECT 2 AS id UNION ALL SELECT 6 AS id UNION ALL SELECT 11 AS id
           UNION ALL SELECT 14 AS id UNION ALL SELECT 15 AS id UNION ALL SELECT 16 AS id
           UNION ALL SELECT 18 AS id UNION ALL SELECT 25 AS id UNION ALL SELECT 28 AS id
           UNION ALL SELECT 30 AS id UNION ALL SELECT 41 AS id UNION ALL SELECT 42 AS id
           UNION ALL SELECT 48 AS id UNION ALL SELECT 51 AS id UNION ALL SELECT 52 AS id
           UNION ALL SELECT 58 AS id UNION ALL SELECT 66 AS id UNION ALL SELECT 77 AS id
-          UNION ALL SELECT 99 AS id UNION ALL SELECT 100 AS id UNION ALL SELECT 101 AS id
+          UNION ALL SELECT 99 AS id UNION ALL SELECT 101 AS id
           UNION ALL SELECT 107 AS id UNION ALL SELECT 109 AS id UNION ALL SELECT 118 AS id
           UNION ALL SELECT 141 AS id UNION ALL SELECT 142 AS id UNION ALL SELECT 143 AS id
           UNION ALL SELECT 144 AS id UNION ALL SELECT 151 AS id UNION ALL SELECT 152 AS id
@@ -751,14 +742,12 @@ metrics:
           UNION ALL SELECT 212 AS id UNION ALL SELECT 228 AS id UNION ALL SELECT 232 AS id
           UNION ALL SELECT 241 AS id UNION ALL SELECT 246 AS id UNION ALL SELECT 263 AS id
           UNION ALL SELECT 272 AS id UNION ALL SELECT 275 AS id UNION ALL SELECT 280 AS id
-          UNION ALL SELECT 285 AS id UNION ALL SELECT 293 AS id UNION ALL SELECT 297 AS id
-          UNION ALL SELECT 298 AS id UNION ALL SELECT 301 AS id UNION ALL SELECT 305 AS id
+          UNION ALL SELECT 285 AS id UNION ALL SELECT 293 AS id UNION ALL SELECT 298 AS id UNION ALL SELECT 301 AS id UNION ALL SELECT 305 AS id
           UNION ALL SELECT 312 AS id UNION ALL SELECT 354 AS id UNION ALL SELECT 376 AS id
-          UNION ALL SELECT 387 AS id UNION ALL SELECT 408 AS id
-          UNION ALL SELECT 100012 AS id UNION ALL SELECT 100064 AS id
-          UNION ALL SELECT 100092 AS id UNION ALL SELECT 100214 AS id
+          UNION ALL SELECT 387 AS id UNION ALL SELECT 408 AS id UNION ALL SELECT 100012 AS id
+          UNION ALL SELECT 100064 AS id UNION ALL SELECT 100092 AS id UNION ALL SELECT 100214 AS id
           UNION ALL SELECT 100320 AS id
-        ) AS pen_cursos ON pen_cursos.id = c.id
+                  ) AS pen_cursos ON pen_cursos.id = c.id
       WHERE b.id IN (16, 18)
         AND i.inscripcionDate < '2026-08-01'
     caveats:

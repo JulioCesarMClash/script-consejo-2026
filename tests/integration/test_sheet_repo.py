@@ -1855,10 +1855,10 @@ class TestGoogleMcpSheetRepo:
     def test_build_slide13_block_fixed_rows(self) -> None:
         """El bloque slide 13 arma la tarjeta de KPIs de "Formación en
         Centros Penitenciarios" desde manifests del pipeline (4 KPIs) +
-        1 hardcoded (Centros). Header de 3 cols (Categoría | Métrica |
-        Valor) + 5 filas (Inscripciones totales, Certificados, Usuarios
-        registrados, Cursos ofertados, Centros). Devuelve 6 filas y
-        next_row = 6."""
+        1 hardcoded (Centros). Header de 6 cols (Categoría | Métrica |
+        Valor | Período inicio | Período fin | Fuente) + 5 filas
+        (Inscripciones totales, Certificados, Usuarios registrados,
+        Cursos ofertados, Centros). Devuelve 6 filas y next_row = 6."""
         manifests = [
             SourceManifest(
                 metric_id=MetricId(
@@ -1928,25 +1928,25 @@ class TestGoogleMcpSheetRepo:
         assert len(rows) == 6
 
         header = rows[0]["values"]
-        assert len(header) == 3
+        assert len(header) == 6
         assert [
             c["userEnteredValue"]["stringValue"] for c in header
         ] == list(SLIDE13_TABLE_HEADERS)
 
-        # Plan: Inscripciones totales | Certificados | Usuarios
-        # registrados | Cursos ofertados | Centros (hardcoded)
+        # Plan: (metrica, valor, periodo_inicio, periodo_fin, fuente)
         expected = [
-            ("Inscripciones totales", 2753),
-            ("Certificados", 806),
-            ("Usuarios registrados", 276),
-            ("Cursos ofertados", 98),
-            ("Centros", SLIDE13_CENTROS),
+            ("Inscripciones totales", 2753, "Acumulado", "2026-08-01", "inscription"),
+            ("Certificados", 806, "Acumulado", "2026-08-01", "inscription"),
+            ("Usuarios registrados", 276, "Acumulado", "2026-08-01", "inscription"),
+            ("Cursos ofertados", 98, "Acumulado", "2026-08-01", "inscription"),
+            ("Centros", SLIDE13_CENTROS, "2026-08-01", "2026-08-01", "manual"),
         ]
-        for fila, (expected_metrica, expected_valor) in zip(
-            rows[1:], expected
-        ):
+        for fila, (
+            expected_metrica, expected_valor,
+            expected_periodo_inicio, expected_periodo_fin, expected_fuente
+        ) in zip(rows[1:], expected):
             values = fila["values"]
-            assert len(values) == 3
+            assert len(values) == 6
             assert (
                 values[0]["userEnteredValue"]["stringValue"]
                 == SLIDE13_METRIC_ID
@@ -1958,6 +1958,18 @@ class TestGoogleMcpSheetRepo:
             assert (
                 values[2]["userEnteredValue"]["numberValue"]
                 == expected_valor
+            )
+            assert (
+                values[3]["userEnteredValue"]["stringValue"]
+                == expected_periodo_inicio
+            )
+            assert (
+                values[4]["userEnteredValue"]["stringValue"]
+                == expected_periodo_fin
+            )
+            assert (
+                values[5]["userEnteredValue"]["stringValue"]
+                == expected_fuente
             )
 
     def test_build_slide13_block_raises_if_manifest_missing(self) -> None:
@@ -2139,14 +2151,14 @@ class TestGoogleMcpSheetRepo:
         slide13_header_idx = None
         for idx, fila in enumerate(datos_rows):
             values = fila["values"]
-            if len(values) == 3 and values[0].get("userEnteredValue", {}).get(
+            if len(values) == 6 and values[0].get("userEnteredValue", {}).get(
                 "stringValue"
             ) == "Categoría" and values[2].get("userEnteredValue", {}).get(
                 "stringValue"
             ) == "Valor":
                 if idx + 1 < len(datos_rows):
                     next_values = datos_rows[idx + 1]["values"]
-                    if len(next_values) == 3 and next_values[
+                    if len(next_values) == 6 and next_values[
                         0
                     ].get("userEnteredValue", {}).get(
                         "stringValue"
@@ -2164,19 +2176,22 @@ class TestGoogleMcpSheetRepo:
         # Las 5 filas de datos de slide 13 (4 desde manifests + 1
         # Centros hardcoded) vienen inmediatamente después del header.
         expected_plan = [
-            ("Inscripciones totales", 2753),
-            ("Certificados", 806),
-            ("Usuarios registrados", 276),
-            ("Cursos ofertados", 98),
-            ("Centros", SLIDE13_CENTROS),
+            ("Inscripciones totales", 2753, "Acumulado", "2026-08-01", "inscription"),
+            ("Certificados", 806, "Acumulado", "2026-08-01", "inscription"),
+            ("Usuarios registrados", 276, "Acumulado", "2026-08-01", "inscription"),
+            ("Cursos ofertados", 98, "Acumulado", "2026-08-01", "inscription"),
+            ("Centros", SLIDE13_CENTROS, "2026-08-01", "2026-08-01", "manual"),
         ]
         slide13_data = datos_rows[
             slide13_header_idx + 1 : slide13_header_idx + 1 + len(expected_plan)
         ]
         assert len(slide13_data) == len(expected_plan)
-        for fila, (metrica, valor) in zip(slide13_data, expected_plan):
+        for fila, (
+            metrica, valor,
+            periodo_inicio, periodo_fin, fuente,
+        ) in zip(slide13_data, expected_plan):
             values = fila["values"]
-            assert len(values) == 3
+            assert len(values) == 6
             assert (
                 values[0]["userEnteredValue"]["stringValue"]
                 == SLIDE13_METRIC_ID
@@ -2186,6 +2201,17 @@ class TestGoogleMcpSheetRepo:
             )
             assert (
                 values[2]["userEnteredValue"]["numberValue"] == valor
+            )
+            assert (
+                values[3]["userEnteredValue"]["stringValue"]
+                == periodo_inicio
+            )
+            assert (
+                values[4]["userEnteredValue"]["stringValue"]
+                == periodo_fin
+            )
+            assert (
+                values[5]["userEnteredValue"]["stringValue"] == fuente
             )
 
     def test_snapshot_populates_errores_sheet(
