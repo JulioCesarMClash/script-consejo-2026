@@ -479,6 +479,10 @@ class TestPipelineDry:
         mysql_fake = FakeSourceConn([
             [{"count": 100}],  # slide3_capacitate_carso
             [{"count": 50}],  # slide3_academica_labs
+            [{"value": 2753, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_inscripciones
+            [{"value": 806, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_certificados
+            [{"value": 276, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_usuarios_registrados
+            [{"value": 98, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_cursos_ofertados
         ])
         manifests = extract_data(
             metric_repo=repo,
