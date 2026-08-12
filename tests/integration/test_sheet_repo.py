@@ -22,10 +22,12 @@ from src.consejo.adapters.sheets.google_mcp_sheet_repo import (
     SLIDE4_TABLE_HEADERS,
     SLIDE7_TABLE_HEADERS,
     SLIDE8_TABLE_HEADERS,
+    SLIDE12_TABLE_HEADERS,
     _build_slide3_block,
     _build_slide4_block,
     _build_slide7_block,
     _build_slide8_block,
+    _build_slide12_block,
     _build_slide_block,
     _project_dic2026,
 )
@@ -90,6 +92,15 @@ def sample_catalog() -> list[Metric]:
             id=MetricId("slide1_herramientas_pobreza"),
             name="Herramientas de capacitación combate pobreza extrema (Slide 1)",
             key="slide1_herramientas_pobreza",
+            source=MetricSource.FACT_INSCRIPTION,
+            formula="...",
+            db_mapping="fact_inscription",
+            platform_scope=["CPE", "Aprende"],
+        ),
+        Metric(
+            id=MetricId("slide12_rutas_aprendizaje"),
+            name="Rutas de aprendizaje (Slide 12)",
+            key="slide12_rutas_aprendizaje",
             source=MetricSource.FACT_INSCRIPTION,
             formula="...",
             db_mapping="fact_inscription",
@@ -1324,6 +1335,231 @@ class TestGoogleMcpSheetRepo:
         assert rows[2]["values"][3]["userEnteredValue"]["numberValue"] == 18578
         assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 27129
         assert rows[2]["values"][5]["userEnteredValue"]["numberValue"] == 184288
+
+    def test_build_slide12_block(self) -> None:
+        """El bloque slide 12 tiene header de 8 cols, UNA fila por ruta
+        (seccion/ruta/value/inscripciones/certificados/periodo/source), un
+        SUBTOTAL por cada sección (=SUM en C/D/E sobre las filas de ESA
+        sección) y una fila TOTAL global que suma SOLO los subtotales (sin
+        duplicar conteos)."""
+        rutas = [
+            {
+                "seccion": "Construcción",
+                "ruta": "Proyectos constructivos y mantenimiento",
+                "value": 16,
+                "inscripciones": 200,
+                "certificados": 150,
+                "periodo_inicio": "2025-09-01",
+                "periodo_fin": "2026-07-31",
+                "source": "fact_inscription",
+            },
+            {
+                "seccion": "Emprendimiento",
+                "ruta": "Mi negocio en internet",
+                "value": 5,
+                "inscripciones": 40,
+                "certificados": 30,
+                "periodo_inicio": "2025-09-01",
+                "periodo_fin": "2026-07-31",
+                "source": "fact_inscription",
+            },
+        ]
+        manifest = SourceManifest(
+            metric_id=MetricId("slide12_rutas_aprendizaje"),
+            source=MetricSource.FACT_INSCRIPTION,
+            cut=Cut(date(2026, 7, 1)),
+            fetched_at=datetime(2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
+            freshness_hours=0.5,
+            rows=rutas,
+            status=FetchStatus.EXTRACTED,
+        )
+
+        rows, next_row = _build_slide12_block(manifest, 0)
+
+        # header + ruta Construcción + Subtotal Construcción + ruta
+        # Emprendimiento + Subtotal Emprendimiento + TOTAL = 6 filas
+        assert next_row == 6
+        assert len(rows) == 6
+
+        header = rows[0]["values"]
+        assert len(header) == 8
+        assert [
+            c["userEnteredValue"]["stringValue"] for c in header
+        ] == list(SLIDE12_TABLE_HEADERS)
+
+        # Una fila por ruta, con seccion/ruta/value/inscripciones/
+        # certificados/periodo_inicio/periodo_fin/source en ese orden.
+        primera = rows[1]["values"]
+        assert len(primera) == 8
+        assert (
+            primera[0]["userEnteredValue"]["stringValue"] == "Construcción"
+        )
+        assert (
+            primera[1]["userEnteredValue"]["stringValue"]
+            == "Proyectos constructivos y mantenimiento"
+        )
+        assert primera[2]["userEnteredValue"]["numberValue"] == 16
+        assert primera[3]["userEnteredValue"]["numberValue"] == 200
+        assert primera[4]["userEnteredValue"]["numberValue"] == 150
+        assert (
+            primera[5]["userEnteredValue"]["stringValue"] == "2025-09-01"
+        )
+        assert (
+            primera[6]["userEnteredValue"]["stringValue"] == "2026-07-31"
+        )
+        assert (
+            primera[7]["userEnteredValue"]["stringValue"] == "fact_inscription"
+        )
+
+        # Subtotal Construcción (1-indexed fila 3): col A el nombre, C/D/E
+        # =SUM sobre la única fila de datos de la sección (1-indexed 2),
+        # resto de celdas vacías.
+        subtotal_construccion = rows[2]["values"]
+        assert len(subtotal_construccion) == 8
+        assert (
+            subtotal_construccion[0]["userEnteredValue"]["stringValue"]
+            == "Subtotal Construcción"
+        )
+        assert subtotal_construccion[1] == {"userEnteredValue": {}}
+        assert (
+            subtotal_construccion[2]["userEnteredValue"]["formulaValue"]
+            == "=SUM(C2:C2)"
+        )
+        assert (
+            subtotal_construccion[3]["userEnteredValue"]["formulaValue"]
+            == "=SUM(D2:D2)"
+        )
+        assert (
+            subtotal_construccion[4]["userEnteredValue"]["formulaValue"]
+            == "=SUM(E2:E2)"
+        )
+        assert subtotal_construccion[5] == {"userEnteredValue": {}}
+        assert subtotal_construccion[6] == {"userEnteredValue": {}}
+        assert subtotal_construccion[7] == {"userEnteredValue": {}}
+
+        # Ruta Emprendimiento: primera fila de su sección.
+        emprendimiento = rows[3]["values"]
+        assert emprendimiento[0]["userEnteredValue"]["stringValue"] == (
+            "Emprendimiento"
+        )
+        assert (
+            emprendimiento[1]["userEnteredValue"]["stringValue"]
+            == "Mi negocio en internet"
+        )
+        assert emprendimiento[2]["userEnteredValue"]["numberValue"] == 5
+
+        # Subtotal Emprendimiento (1-indexed fila 5): =SUM sobre la única
+        # fila de datos de la sección (1-indexed 4).
+        subtotal_emprendimiento = rows[4]["values"]
+        assert (
+            subtotal_emprendimiento[0]["userEnteredValue"]["stringValue"]
+            == "Subtotal Emprendimiento"
+        )
+        assert (
+            subtotal_emprendimiento[2]["userEnteredValue"]["formulaValue"]
+            == "=SUM(C4:C4)"
+        )
+        assert (
+            subtotal_emprendimiento[3]["userEnteredValue"]["formulaValue"]
+            == "=SUM(D4:D4)"
+        )
+        assert (
+            subtotal_emprendimiento[4]["userEnteredValue"]["formulaValue"]
+            == "=SUM(E4:E4)"
+        )
+
+        # Fila TOTAL global: suma SOLO los subtotales (fijas 1-indexed 3 y 5)
+        # con suma aditiva, nunca un rango continuo sobre los datos ni un
+        # rango discontinuo con comas (Google Sheets devolvió #ERROR! al
+        # evaluar `=SUM(C3,C5)` en este contexto; la suma aditiva con `+`
+        # es la sintaxis que evalúa consistentemente).
+        total = rows[5]["values"]
+        assert len(total) == 8
+        assert total[0]["userEnteredValue"]["stringValue"] == "TOTAL"
+        assert (
+            total[2]["userEnteredValue"]["formulaValue"] == "=C3+C5"
+        )
+        assert (
+            total[3]["userEnteredValue"]["formulaValue"] == "=D3+D5"
+        )
+        assert (
+            total[4]["userEnteredValue"]["formulaValue"] == "=E3+E5"
+        )
+        assert total[1] == {"userEnteredValue": {}}
+        assert total[5] == {"userEnteredValue": {}}
+        assert total[6] == {"userEnteredValue": {}}
+        assert total[7] == {"userEnteredValue": {}}
+
+    def test_build_slide_block_routes_slide12_before_slide1(self) -> None:
+        """La key 'slide12_rutas_aprendizaje' empieza con 'slide1', pero el
+        routing la debe mandar a _build_slide12_block (8 cols, header
+        Sección/Ruta/...), NO al bloque slide1."""
+        manifest = SourceManifest(
+            metric_id=MetricId("slide12_rutas_aprendizaje"),
+            source=MetricSource.FACT_INSCRIPTION,
+            cut=Cut(date(2026, 7, 1)),
+            fetched_at=datetime(2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
+            freshness_hours=0.5,
+            rows=(
+                {
+                    "seccion": "Emprendimiento",
+                    "ruta": "Mi negocio en internet",
+                    "value": 5,
+                    "inscripciones": 40,
+                    "certificados": 30,
+                    "periodo_inicio": "2025-09-01",
+                    "periodo_fin": "2026-07-31",
+                    "source": "fact_inscription",
+                },
+            ),
+            status=FetchStatus.EXTRACTED,
+        )
+
+        rows, next_row = _build_slide_block(manifest, 0)
+
+        # header + ruta + Subtotal Emprendimiento + TOTAL = 4 filas
+        assert next_row == 4
+        assert len(rows) == 4
+        header = rows[0]["values"]
+        assert [
+            c["userEnteredValue"]["stringValue"] for c in header
+        ] == list(SLIDE12_TABLE_HEADERS)
+        # Slide 1 usaría 'Categoría' en la primera columna; slide 12 usa
+        # 'Sección'.
+        assert (
+            rows[0]["values"][0]["userEnteredValue"]["stringValue"]
+            == "Sección"
+        )
+        # El subtotal de Emprendimiento pone =SUM en C/D/E (índices 2,3,4)
+        # sobre la única fila de datos de la sección (1-indexed 2).
+        subtotal = rows[2]["values"]
+        assert (
+            subtotal[0]["userEnteredValue"]["stringValue"]
+            == "Subtotal Emprendimiento"
+        )
+        assert (
+            subtotal[2]["userEnteredValue"]["formulaValue"] == "=SUM(C2:C2)"
+        )
+        assert (
+            subtotal[3]["userEnteredValue"]["formulaValue"] == "=SUM(D2:D2)"
+        )
+        assert (
+            subtotal[4]["userEnteredValue"]["formulaValue"] == "=SUM(E2:E2)"
+        )
+        # La fila TOTAL global suma el subtotal (1-indexed 3) sin duplicar.
+        # Usa suma aditiva con `+` (Google Sheets devolvió #ERROR! al
+        # evaluar `=SUM(C3)` con rango discontinuo en este contexto; ver
+        # docstring de _slide12_global_total_row).
+        total = rows[3]["values"]
+        assert (
+            total[2]["userEnteredValue"]["formulaValue"] == "=C3"
+        )
+        assert (
+            total[3]["userEnteredValue"]["formulaValue"] == "=D3"
+        )
+        assert (
+            total[4]["userEnteredValue"]["formulaValue"] == "=E3"
+        )
 
     def test_build_slide7_block_fixed_rows(self) -> None:
         """El bloque slide 7 es fijo: header de 6 cols + las 3 plataformas

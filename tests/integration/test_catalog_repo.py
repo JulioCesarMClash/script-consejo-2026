@@ -23,7 +23,7 @@ class TestCatalogRepo:
 
     def test_returns_20_metrics(self, catalog_repo: YamlMetricRepo) -> None:
         metrics = list(catalog_repo.list_metrics())
-        assert len(metrics) == 22
+        assert len(metrics) == 23
 
     def test_metrics_have_unique_keys(
         self, catalog_repo: YamlMetricRepo
@@ -123,14 +123,14 @@ class TestCatalogRepo:
             for m in metrics
             if m.source == MetricSource.FACT_INSCRIPTION
         ]
-        assert len(fact) == 16  # 15 previas + slide4_aprende_seguridad_vial
+        assert len(fact) == 17  # 16 previas + slide12_rutas_aprendizaje
 
     def test_platform_scope_cpe(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
         metrics = list(catalog_repo.list_metrics())
         cpe = [m for m in metrics if "cpe" in m.platform_scope]
-        assert len(cpe) == 17  # 17 de 22 incluyen cpe; las 2 MySQL, 2 slide4 y registered_aprende no
+        assert len(cpe) == 18  # 18 de 23 incluyen cpe; las 2 MySQL, 2 slide4 y registered_aprende no
 
     def test_metric_has_db_mapping(
         self, catalog_repo: YamlMetricRepo

@@ -40,14 +40,14 @@ class FakeSourceConn(SourceConn):
     """SourceConn falso con datos predefinidos resueltos por orden de llamada.
 
     La extracción itera el catálogo en orden y ejecuta `fetch` SOLO para las
-    métricas con db_mapping SQL (12 queries). Como el SQL no contiene la key
+    métricas con db_mapping SQL (13 queries). Como el SQL no contiene la key
     de la métrica, este fake usa call-order matching: devuelve la i-ésima
     entrada de `rows_sequence` en la i-ésima llamada.
     """
 
     def __init__(self, rows_sequence: Sequence[Sequence[Mapping]] | None = None):
         # Secuencia ordenada en el mismo orden de extracción del catálogo
-        # (solo las 11 métricas SQL-ejecutables).
+        # (solo las métricas SQL-ejecutables).
         self._sequence: list[list[dict]] = [
             [dict(r) for r in rows] for rows in (rows_sequence or [])
         ]
@@ -113,6 +113,24 @@ def _build_row_sequence() -> Sequence[Sequence[Mapping]]:
             {"metric_id": "slide1_desastres", "source": "fact_inscription", "value": 11, "compartidos": 0, "cursos_totales": 11, "certificados": 0, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31"},
             {"metric_id": "slide1_empleo", "source": "fact_inscription", "value": 26, "compartidos": 0, "cursos_totales": 26, "certificados": 0, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31"},
         ],
+        [  # slide12_rutas_aprendizaje (16 rutas)
+            {"seccion": "Construcción", "ruta": "Proyectos constructivos y mantenimiento", "value": 16, "inscripciones": 200, "certificados": 150, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
+            {"seccion": "Habilidades digitales", "ruta": "¿Cómo utilizar un celular?", "value": 2, "inscripciones": 100, "certificados": 80, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
+            {"seccion": "Habilidades digitales", "ruta": "¿Cómo utilizar la computadora?", "value": 4, "inscripciones": 90, "certificados": 70, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
+            {"seccion": "Habilidades digitales", "ruta": "Preparación para usar internet", "value": 5, "inscripciones": 80, "certificados": 60, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
+            {"seccion": "Habilidades digitales", "ruta": "Interacción con el mundo digital", "value": 8, "inscripciones": 70, "certificados": 50, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
+            {"seccion": "Capacitación básica", "ruta": "Seguridad, higiene y cuidado de la salud", "value": 6, "inscripciones": 60, "certificados": 40, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
+            {"seccion": "Capacitación básica", "ruta": "Uso eficiente de recursos", "value": 5, "inscripciones": 50, "certificados": 30, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
+            {"seccion": "Capacitación básica", "ruta": "Entendiendo mi situación económica", "value": 4, "inscripciones": 40, "certificados": 20, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
+            {"seccion": "Capacitación básica", "ruta": "¿Cómo mejorar mi entorno?", "value": 4, "inscripciones": 30, "certificados": 10, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
+            {"seccion": "Capacitación básica", "ruta": "Alimentos desde casa", "value": 4, "inscripciones": 20, "certificados": 10, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
+            {"seccion": "Capacitación básica", "ruta": "Actuar en caso de desastres naturales", "value": 11, "inscripciones": 10, "certificados": 5, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
+            {"seccion": "Emprendimiento", "ruta": "Planea tu negocio", "value": 7, "inscripciones": 90, "certificados": 70, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
+            {"seccion": "Emprendimiento", "ruta": "Planea los gastos y ganancias de tu negocio", "value": 4, "inscripciones": 80, "certificados": 60, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
+            {"seccion": "Emprendimiento", "ruta": "¿Cómo preparar mis productos para venderlos?", "value": 5, "inscripciones": 70, "certificados": 50, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
+            {"seccion": "Emprendimiento", "ruta": "Servicio y ventas de tu negocio", "value": 6, "inscripciones": 60, "certificados": 40, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
+            {"seccion": "Emprendimiento", "ruta": "Mi negocio en internet", "value": 5, "inscripciones": 50, "certificados": 30, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31", "source": "fact_inscription"},
+        ],
         [{"count": 42}],  # slide2_empleo_incluyente_por_sector
         [  # slide4_aprende_seguridad_vial
             {"2024": 25254, "sep2025": 18578, "dic2025": 27129, "acumulado": 184288},
@@ -141,10 +159,10 @@ class TestPipelineDry:
     def fake_sheets(self) -> FakeSheetRepo:
         return FakeSheetRepo()
 
-    def test_extract_produces_22_manifests(
+    def test_extract_produces_23_manifests(
         self, catalog_path: Path, fake_conn: FakeSourceConn
     ) -> None:
-        """La extracción debe producir 22 manifiestos."""
+        """La extracción debe producir 23 manifiestos."""
         repo = YamlMetricRepo(str(catalog_path))
         run_id = RunId.generate()
         attempt_id = AttemptId.generate()
@@ -158,7 +176,7 @@ class TestPipelineDry:
             cut=cut,
         )
 
-        assert len(manifests) == 22
+        assert len(manifests) == 23
 
     def test_extract_beneficiaries_is_derived_not_manual(
         self, catalog_path: Path, fake_conn: FakeSourceConn
@@ -271,7 +289,7 @@ class TestPipelineDry:
         assert bundle.run_id == run_id
         assert bundle.attempt_id == attempt_id
         assert bundle.catalog_hash == catalog_hash
-        assert len(bundle.manifests) == 22
+        assert len(bundle.manifests) == 23
         assert str(bundle.hash) != "0" * 64
 
     def test_validate_blocks_with_empty_manifests(
@@ -423,7 +441,7 @@ class TestPipelineDry:
             cut=cut,
             fetched_at=fetched_at,
         )
-        assert len(manifests) == 22
+        assert len(manifests) == 23
 
         # Validate
         bundle = validate_bundle(
@@ -489,7 +507,7 @@ class TestPipelineDry:
             mode=PipelineMode.PRODUCTION,
         )
 
-        assert len(bundle.manifests) == len(catalog) == 22
+        assert len(bundle.manifests) == len(catalog) == 23
         assert bundle.dqs == ()
         assert create_snapshot(bundle, fake_sheets, "fake-spreadsheet-id", catalogo=catalog) == "fake-spreadsheet-id"
         assert len(fake_sheets._snapshots) == 1

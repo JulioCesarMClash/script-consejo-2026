@@ -427,6 +427,71 @@ metrics:
       - "Organización de cursos estática, validada contra Consultas consejo panel.sql (Sep-2025) + cursos IA (100212, 366)."
       - "Excluye IDs 100433/100436 (sector 81) con 0 certificados/inscripciones en fact_inscription."
 
+  # Rutas de aprendizaje ── Slide 12 ──
+
+  - key: slide12_rutas_aprendizaje
+    name: Rutas de aprendizaje (Slide 12)
+    description: >
+      Tabla slide 12: 16 rutas de aprendizaje en 4 secciones (Construcción,
+      Habilidades digitales, Capacitación básica, Emprendimiento) con las
+      columnas Cursos | Inscripciones | Certificados. value = cursos por ruta
+      (count de IDs, derivado del array); inscripciones = COUNT (sin DISTINCT)
+      de fact_inscription con inscripcionDate < '2026-08-01' y plataforma 1
+      (CPE) o 2 (Aprende); certificados = COUNT (sin DISTINCT) con advance =
+      100 AND certificationDate < '2026-08-01' y plataforma 1 o 2. Métrica
+      ACUMULADA (sin límite inferior) replicando el patrón del panel
+      Consultas_consejo_panel.sql (corte de negocio: hasta 2026-08-01). El
+      total por sección y el total global se componen en la hoja (Slide 12)
+      con fórmula =SUM.
+    formula: >
+      Por ruta: value = array_length(IDs cursos),
+      inscripciones = COUNT(*) de fact_inscription WHERE inscripcionDate <
+      '2026-08-01' AND plataforma IN (1,2) (acumulado, sin límite inferior),
+      certificados = COUNT(*) WHERE advance = 100 AND certificationDate <
+      '2026-08-01' AND plataforma IN (1,2) (acumulado, sin límite inferior).
+    type: count
+    source: fact_inscription
+    platform_scope: [cpe, aprende]
+    db_mapping: >
+      WITH rutas AS (
+        SELECT * FROM (VALUES
+        (1, 'Construcción', 'Proyectos constructivos y mantenimiento', ARRAY[9,187,4,389,390,367,11,30,140,23,29,24,12,100157,244,240]::bigint[]),
+        (2, 'Habilidades digitales', '¿Cómo utilizar un celular?', ARRAY[254,399]::bigint[]),
+        (3, 'Habilidades digitales', '¿Cómo utilizar la computadora?', ARRAY[213,379,285,258]::bigint[]),
+        (4, 'Habilidades digitales', 'Preparación para usar internet', ARRAY[43,100002,375,321,374]::bigint[]),
+        (5, 'Habilidades digitales', 'Interacción con el mundo digital', ARRAY[100006,394,380,373,100003,345,368,372]::bigint[]),
+        (6, 'Capacitación básica', 'Seguridad, higiene y cuidado de la salud', ARRAY[362,342,382,242,145,103]::bigint[]),
+        (7, 'Capacitación básica', 'Uso eficiente de recursos', ARRAY[129,141,347,128,130]::bigint[]),
+        (8, 'Capacitación básica', 'Entendiendo mi situación económica', ARRAY[100147,291,100322,89]::bigint[]),
+        (9, 'Capacitación básica', '¿Cómo mejorar mi entorno?', ARRAY[142,299,364,348]::bigint[]),
+        (10, 'Capacitación básica', 'Alimentos desde casa', ARRAY[410,282,241,33]::bigint[]),
+        (11, 'Capacitación básica', 'Actuar en caso de desastres naturales', ARRAY[387,95,342,100098,120,314,354,281,57,393,276]::bigint[]),
+        (12, 'Emprendimiento', 'Planea tu negocio', ARRAY[93,100092,100149,157,156,158,100327]::bigint[]),
+        (13, 'Emprendimiento', 'Planea los gastos y ganancias de tu negocio', ARRAY[169,159,167,100105]::bigint[]),
+        (14, 'Emprendimiento', '¿Cómo preparar mis productos para venderlos?', ARRAY[100074,106,107,117,153]::bigint[]),
+        (15, 'Emprendimiento', 'Servicio y ventas de tu negocio', ARRAY[100320,118,301,234,100310,100101]::bigint[]),
+        (16, 'Emprendimiento', 'Mi negocio en internet', ARRAY[170,320,143,358,343]::bigint[])
+      ) AS RECORDS(orden, seccion, ruta, curso_ids)
+      )
+      SELECT r.seccion, r.ruta, array_length(r.curso_ids, 1) AS value,
+             COUNT(fi."userId") FILTER (WHERE fi."inscripcionDate" < '2026-08-01') AS inscripciones,
+             COUNT(fi."userId") FILTER (WHERE fi.advance = 100 AND fi."certificationDate" < '2026-08-01') AS certificados,
+             'Acumulado' AS periodo_inicio,
+             '2026-08-01' AS periodo_fin,
+             'fact_inscription' AS source
+      FROM rutas r
+      JOIN fact_inscription fi ON fi."courseId" = ANY(r.curso_ids)
+        AND EXISTS (SELECT 1 FROM dim_user u WHERE u."userId" = fi."userId" AND u."plataformaId" IN (1,2))
+      GROUP BY r.orden, r.seccion, r.ruta, r.curso_ids
+      ORDER BY r.orden
+    caveats:
+      - "Métrica ACUMULADA: sin límite inferior, corte < '2026-08-01' (decisión de negocio 2026-08-11). El resto del script usa ventana 2025-09-01..2026-07-31 vía .env."
+      - "Inscripciones se cuentan por inscripcionDate (no certificationDate), igual que el panel: incluye inscripciones sin certificar."
+      - "El total por sección y el total global se compone en la hoja Slide 12 con fórmula =SUM (Cursos, Inscripciones, Certificados), no en SQL."
+      - "Certificación: advance = 100 AND certificationDate < '2026-08-01', plataforma 1 o 2 (misma regla que Slide 1), sin filtro México."
+      - "El curso 342 es el ÚNICO compartido entre rutas: pertenece a 'Seguridad, higiene y cuidado de la salud' Y a 'Actuar en caso de desastres naturales'."
+      - "'Planea tu negocio' incluye el curso 100327 'Plan de negocios' (confirmado en tabla course) que no aparece en el spreadsheet."
+
   # Certificados por sector empleo incluyente ── Slide 2 (Pobreza moderada) ──
 
   - key: slide2_empleo_incluyente_por_sector

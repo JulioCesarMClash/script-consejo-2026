@@ -345,8 +345,11 @@ def _build_datos_requests(
 
     Cada manifest cuyo metric_id empieza con 'slide' (y no es slide_naming,
     una nota conceptual sin SQL) y tiene filas produce una tabla con su
-    layout propio: slide1 (8 columnas, =SUM en B/C/D/E), slide2
-    (7 columnas Categoría/Sector/Curso/Certificados/Período inicio/
+    layout propio: slide1 (8 columnas, =SUM en B/C/D/E), slide12 (8 columnas
+    Sección/Ruta/Cursos/Inscripciones/Certificados/Período inicio/
+    Período fin/Fuente, con SUBTOTALES POR SECCIÓN y un TOTAL global que
+    suma solo los subtotales, ver _build_slide12_block), slide2 (7 columnas Categoría/Sector/
+    Curso/Certificados/Período inicio/
     Período fin/Fuente, =SUM en D) o slide3 (9 columnas Categoría/Programa/
     2025/sep2026/dic2026/Acumulado sep2026/Período inicio/Período fin/
     Fuente, UNA tabla comparativa que agrupa todos los manifests slide3) y
@@ -448,6 +451,22 @@ SLIDE_TABLE_HEADERS = [
 
 # Columnas numéricas (1-indexadas: B, C, D, E) que llevan fórmula =SUM en el total.
 SLIDE_SUM_COLUMNS = (2, 3, 4, 5)
+
+# Layout de Slide 12: rutas de aprendizaje (Cursos | Inscripciones |
+# Certificados) en 4 secciones (Construcción, Habilidades digitales,
+# Capacitación básica, Emprendimiento).
+SLIDE12_TABLE_HEADERS = [
+    "Sección",
+    "Ruta",
+    "Cursos",
+    "Inscripciones",
+    "Certificados",
+    "Período inicio",
+    "Período fin",
+    "Fuente",
+]
+# Columnas numéricas (1-indexadas: C, D, E) que llevan fórmula =SUM en el total.
+SLIDE12_SUM_COLUMNS = (3, 4, 5)
 
 # Layout de Slide 2: certificados por sector empleo incluyente.
 SLIDE2_TABLE_HEADERS = [
@@ -609,13 +628,18 @@ def _build_slide_block(
 ) -> tuple[list[dict], int]:
     """Construye el bloque (header + filas + TOTAL) para una slide.
 
-    El layout se elige por prefijo de la key: 'slide1' usa 8 columnas
+    El layout se elige por prefijo de la key: 'slide12' usa 8 columnas
+    (ver _build_slide12_block), 'slide1' usa 8 columnas
     (ver _build_slide1_block), 'slide2' usa 3 columnas Sector/Curso/
     Certificados (ver _build_slide2_block) y 'slide3' usa la tabla
     comparativa de programas (ver _build_slide3_block). Devuelve
     (rows_data_list, next_row_0based).
     """
     key = str(manifest.metric_id)
+    # 'slide12_*' empieza con 'slide1', así que debe ruteo ANTES del check
+    # de slide1 (si no, slide12 caería en _build_slide1_block).
+    if key.startswith("slide12"):
+        return _build_slide12_block(manifest, row_0based)
     if key.startswith("slide1"):
         return _build_slide1_block(manifest, row_0based)
     if key.startswith("slide2"):
@@ -643,6 +667,176 @@ def _build_slide1_block(
     rows.append(_slide_total_row(header_0, row_0based))
     row_0based += 1
     return rows, row_0based
+
+
+def _build_slide12_block(
+    manifest: SourceManifest, row_0based: int
+) -> tuple[list[dict], int]:
+    """Bloque slide12: 8 columnas (Sección, Ruta, Cursos, Inscripciones,
+    Certificados, Período inicio, Período fin, Fuente) con SUBTOTALES POR
+    SECCIÓN y un TOTAL global.
+
+    Las filas del manifest llegan YA ordenadas por la columna `orden` de la
+    SQL, así que cada sección (Construcción, Habilidades digitales,
+    Capacitación básica, Emprendimiento) aparece en filas consecutivas. Al
+    detectar un cambio de sección se emite UNA fila "Subtotal <seccion>" con
+    =SUM en C/D/E sobre las filas de ESA sección (ver _slide12_subtotal_row),
+    ANTES de la primera fila de la sección siguiente. Al final, la fila
+    "TOTAL" global suma SOLO las celdas de los subtotales (ver
+    _slide12_global_total_row).
+
+    Decisión de diseño del TOTAL global: usa un rango discontinuo
+    =SUM(C<sub1>,C<sub2>,...) apuntando a las celdas de los subtotales de
+    cada sección, nunca un rango continuo sobre todas las filas de datos: un
+    rango continuo que incluyera subtotales DUPLICARÍA los conteos (cada ruta
+    se contaría en su fila y otra vez vía su subtotal). Como cada subtotal ya
+    agrega su sección, la suma de subtotales es exacta y no depende del largo
+    de las secciones."""
+    rows: list[dict] = []
+    rows.append(_text_row(SLIDE12_TABLE_HEADERS))
+    row_0based += 1
+
+    seccion_actual: str | None = None
+    primera_fila_1 = 0
+    subtotal_filas_1: list[int] = []
+
+    def _emitir_subtotal() -> None:
+        nonlocal row_0based
+        subtotal_1 = row_0based + 1
+        rows.append(_slide12_subtotal_row(
+            seccion_actual, primera_fila_1, row_0based
+        ))
+        row_0based += 1
+        subtotal_filas_1.append(subtotal_1)
+
+    for r in manifest.rows:
+        seccion = str(r.get("seccion", ""))
+        if seccion != seccion_actual:
+            if seccion_actual is not None:
+                _emitir_subtotal()
+            seccion_actual = seccion
+            primera_fila_1 = row_0based + 1
+        rows.append(_slide12_data_row(r))
+        row_0based += 1
+
+    if seccion_actual is not None:
+        _emitir_subtotal()
+
+    rows.append(_slide12_global_total_row(subtotal_filas_1))
+    row_0based += 1
+    return rows, row_0based
+
+
+def _slide12_data_row(row: Mapping[str, object]) -> dict:
+    """Fila de datos slide12: 8 celdas.
+
+    Sección y Ruta se mapean desde el row (seccion, ruta); Cursos usa
+    value; Inscripciones y Certificados usan sus keys; y el resto del
+    contrato (período y fuente) es idéntico a slides 1/2.
+    """
+    values = [
+        row.get("seccion", ""),
+        row.get("ruta", ""),
+        row.get("value", ""),
+        row.get("inscripciones", ""),
+        row.get("certificados", ""),
+        row.get("periodo_inicio", ""),
+        row.get("periodo_fin", ""),
+        row.get("source", ""),
+    ]
+    cells = [_value_cell(v) for v in values]
+    return {"values": cells}
+
+
+def _slide12_total_row(header_0: int, total_0: int) -> dict:
+    """Fila TOTAL slide12: 8 celdas con =SUM en columnas Cursos (C),
+    Inscripciones (D) y Certificados (E).
+
+    A diferencia de _slide_total_row (slide1), las columnas con =SUM no
+    arrancan en la columna B: la columna B (Ruta) queda vacía y los =SUM
+    caen en los índices 2, 3 y 4 (C, D, E).
+    """
+    first_data_1 = header_0 + 2
+    last_data_1 = total_0
+    cells: list[dict] = [
+        {"userEnteredValue": {"stringValue": "TOTAL"}},
+        {"userEnteredValue": {}},
+    ]
+    for col in SLIDE12_SUM_COLUMNS:
+        letter = chr(ord("A") + col - 1)
+        cells.append({
+            "userEnteredValue": {
+                "formulaValue": f"=SUM({letter}{first_data_1}:{letter}{last_data_1})"
+            }
+        })
+    cells.extend(
+        {"userEnteredValue": {}}
+        for _ in range(len(SLIDE12_TABLE_HEADERS) - len(cells))
+    )
+    return {"values": list(cells)}
+
+
+def _slide12_subtotal_row(seccion: str, first_1: int, last_1: int) -> dict:
+    """Fila de subtotal de UNA sección slide12: 8 celdas.
+
+    Col A "Subtotal <seccion>", col B (Ruta) vacía y =SUM en las columnas
+    Cursos (C), Inscripciones (D) y Certificados (E) sobre las filas de datos
+    [first_1..last_1] de esa sección (1-indexed, mismo contrato de rango que
+    _slide12_total_row).
+    """
+    cells: list[dict] = [
+        {"userEnteredValue": {"stringValue": f"Subtotal {seccion}"}},
+        {"userEnteredValue": {}},
+    ]
+    for col in SLIDE12_SUM_COLUMNS:
+        letter = chr(ord("A") + col - 1)
+        cells.append({
+            "userEnteredValue": {
+                "formulaValue": f"=SUM({letter}{first_1}:{letter}{last_1})"
+            }
+        })
+    cells.extend(
+        {"userEnteredValue": {}}
+        for _ in range(len(SLIDE12_TABLE_HEADERS) - len(cells))
+    )
+    return {"values": list(cells)}
+
+
+def _slide12_global_total_row(subtotal_filas_1: Sequence[int]) -> dict:
+    """Fila TOTAL global slide12: 8 celdas con suma aditiva en C/D/E que
+    suma SOLO los subtotales de cada sección.
+
+    Implementación: suma aditiva ``=C<sub1>+C<sub2>+...`` apuntando a las
+    celdas de los subtotales, nunca un rango continuo sobre las filas de
+    datos ni un rango discontinuo ``=SUM(C<sub1>,C<sub2>,...)``: ambas
+    alternativas sumarían subtotales DUPLICARÍA los conteos (cada ruta se
+    contaría en su fila y otra vez vía su subtotal). Como cada subtotal ya
+    agrega su sección, la suma de subtotales es exacta e independiente del
+    largo de las secciones.
+
+    Nota: se eligió suma aditiva explícita (``=A+B+C``) en lugar de
+    ``=SUM(refs)`` con comas porque Google Sheets devolvió ``#ERROR!`` al
+    evaluar el rango discontinuo con comas en este contexto (los
+    subtotales por sección ``=SUM(C12:C15)`` y el TOTAL slide1
+    ``=SUM(B<first>:B<last>)``, todos con rangos continuos, sí evalúan
+    correctamente). La suma aditiva con ``+`` es la sintaxis que evalúa
+    consistentemente.
+    """
+    cells: list[dict] = [
+        {"userEnteredValue": {"stringValue": "TOTAL"}},
+        {"userEnteredValue": {}},
+    ]
+    for col in SLIDE12_SUM_COLUMNS:
+        letter = chr(ord("A") + col - 1)
+        refs = "+".join(f"{letter}{fila}" for fila in subtotal_filas_1)
+        cells.append({
+            "userEnteredValue": {"formulaValue": f"={refs}"}
+        })
+    cells.extend(
+        {"userEnteredValue": {}}
+        for _ in range(len(SLIDE12_TABLE_HEADERS) - len(cells))
+    )
+    return {"values": list(cells)}
 
 
 def _build_slide2_block(
