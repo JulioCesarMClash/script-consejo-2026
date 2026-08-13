@@ -379,11 +379,17 @@ def _build_datos_requests(
     slide13_manifests = [
         m for m in slides if str(m.metric_id).startswith("slide13")
     ]
+    # slide15_* (Mario Molina) se agrupa en un solo bloque con 2 KPIs;
+    # se excluye de single_slides por la misma razón que slide13.
+    slide15_manifests = [
+        m for m in slides if str(m.metric_id).startswith("slide15")
+    ]
     single_slides = [
         m for m in slides
         if not str(m.metric_id).startswith("slide3")
         and not str(m.metric_id).startswith("slide4")
         and not str(m.metric_id).startswith("slide13")
+        and not str(m.metric_id).startswith("slide15")
     ]
 
     rows_data: list[dict] = []
@@ -436,6 +442,18 @@ def _build_datos_requests(
             row_0based += 1
         block, row_0based = _build_slide13_block(
             slide13_manifests, row_0based
+        )
+        rows_data.extend(block)
+
+    # Slide 15: bloque dinámico con 2 KPIs desde el pipeline (Mario
+    # Molina: inscripciones a cursos, consultas a la sección). Solo se
+    # escribe si hay manifests de slide15 en el bundle.
+    if slide15_manifests:
+        if rows_data:
+            rows_data.append(_blank_row())
+            row_0based += 1
+        block, row_0based = _build_slide15_block(
+            slide15_manifests, row_0based
         )
         rows_data.extend(block)
 
@@ -620,6 +638,34 @@ SLIDE13_TABLE_HEADERS = [
     "Fuente",
 ]
 
+# Layout de Slide 15: tarjeta de KPIs de "Mario Molina Premio Nobel"
+# (objectId g3735641ff7a_1_93 en la presentación del Consejo 2026).
+# 2 KPIs vienen de las métricas `slide15_*` del catálogo:
+#   - slide15_mario_molina_inscripciones: COUNT(u.id) sobre inscription
+#     JOIN course JOIN user con c.id IN (217, 236, 310) (los 3 cursos
+#     del programa Mario Molina) y i.inscripcionDate < '2026-08-01'.
+#   - slide15_mario_molina_vistas: SUM(ur.count) sobre userresource
+#     JOIN resource con r.id IN (33 IDs de recursos de la sección
+#     Mario Molina) y ur.lastUpdate < '2026-08-01'.
+# Queries del archivo Consultas_consejo_panel.sql (sección Mario
+# Molina). El texto narrativo "Mario Molina Premio Nobel" + descripción
+# de la sección queda en la presentación de Slides — el Sheet "Datos"
+# solo escribe las tablas de datos. Mismo formato de 6 columnas que
+# las otras slides (Período inicio / Período fin / Fuente al final).
+SLIDE15_METRIC_ID = "slide15_mario_molina"
+SLIDE15_PERIODO_INICIO = "Acumulado"
+SLIDE15_PERIODO_FIN = "2026-08-01"
+SLIDE15_FUENTE_INSCRIPCION = "inscription"
+SLIDE15_FUENTE_USERRESOURCE = "userresource"
+SLIDE15_TABLE_HEADERS = [
+    "Categoría",
+    "Métrica",
+    "Valor",
+    "Período inicio",
+    "Período fin",
+    "Fuente",
+]
+
 # Ventanas fijas de los valores visibles de slide 4: 2024 =
 # [2024-01-01, 2025-01-01), sep2025 = [2025-01-01, 2025-10-01),
 # dic2025 = [2025-01-01, 2026-01-01) y acumulado histórico < 2025-10-01
@@ -707,6 +753,15 @@ def _build_slide_block(
     if key.startswith("slide13"):
         raise ValueError(
             f"slide13_* debe rutearse via _build_slide13_block con todos "
+            f"los manifests juntos, no via _build_slide_block (key={key})"
+        )
+    # 'slide15_*' (Mario Molina): se rutean desde el caller
+    # _build_datos_requests que junta los 2 manifests de slide15 en un
+    # solo bloque. Si llega acá con un solo manifest, levantamos
+    # ValueError para no escribir un bloque parcial.
+    if key.startswith("slide15"):
+        raise ValueError(
+            f"slide15_* debe rutearse via _build_slide15_block con todos "
             f"los manifests juntos, no via _build_slide_block (key={key})"
         )
     if key.startswith("slide1"):
@@ -1358,6 +1413,76 @@ def _build_slide13_block(
     for metrica, valor, periodo_inicio, periodo_fin, fuente in plan:
         cells = [
             _value_cell(SLIDE13_METRIC_ID),
+            _value_cell(metrica),
+            _value_cell(valor),
+            _value_cell(periodo_inicio),
+            _value_cell(periodo_fin),
+            _value_cell(fuente),
+        ]
+        rows.append({"values": cells})
+        row_0based += 1
+    return rows, row_0based
+
+
+def _build_slide15_block(
+    manifests: Sequence[SourceManifest], row_0based: int
+) -> tuple[list[dict], int]:
+    """Bloque slide 15: tarjeta de KPIs de "Mario Molina Premio Nobel".
+
+    6 columnas (Categoría, Métrica, Valor, Período inicio, Período fin,
+    Fuente). 2 KPIs (Inscripciones a cursos, Consultas a la sección) se
+    extraen de los manifests del catálogo con prefijo `slide15_`
+    (2 métricas en `data/catalogo-metricas.yaml`).
+
+    Cada manifest de slide15_* devuelve 1 fila con `value` numérico.
+    Resolvemos el valor buscando por metric_id en un dict; si falta
+    alguno, levantamos KeyError para no escribir un bloque parcial
+    silenciosamente.
+
+    Sin fila TOTAL: cada métrica es independiente. La columna Categoría
+    lleva SLIDE15_METRIC_ID en todas las filas, misma nomenclatura que
+    slide12_rutas_aprendizaje, slide1_alimentos y slide13_penitenciarios.
+    """
+    # Indexar los manifests de slide15 por key → value de su primera fila
+    by_key: dict[str, object] = {}
+    for m in manifests:
+        key = str(m.metric_id)
+        if not key.startswith("slide15"):
+            continue
+        if not m.rows:
+            raise ValueError(
+                f"Manifest {key} sin filas — slide 15 requiere 1 fila "
+                f"con 'value' numérico"
+            )
+        by_key[key] = m.rows[0].get("value")
+
+    rows: list[dict] = []
+    rows.append(_text_row(SLIDE15_TABLE_HEADERS))
+    row_0based += 1
+
+    # Plan: (etiqueta legible, valor, periodo_inicio, periodo_fin, fuente).
+    # Inscripciones: la query ataca capacitate_analisis.inscription.
+    # Vistas: la query ataca capacitate_analisis.userresource (suma
+    # de count agregado por recurso).
+    plan: list[tuple[str, object, str, str, str]] = [
+        (
+            "Inscripciones a cursos",
+            by_key["slide15_mario_molina_inscripciones"],
+            SLIDE15_PERIODO_INICIO,
+            SLIDE15_PERIODO_FIN,
+            SLIDE15_FUENTE_INSCRIPCION,
+        ),
+        (
+            "Consultas a la sección",
+            by_key["slide15_mario_molina_vistas"],
+            SLIDE15_PERIODO_INICIO,
+            SLIDE15_PERIODO_FIN,
+            SLIDE15_FUENTE_USERRESOURCE,
+        ),
+    ]
+    for metrica, valor, periodo_inicio, periodo_fin, fuente in plan:
+        cells = [
+            _value_cell(SLIDE15_METRIC_ID),
             _value_cell(metrica),
             _value_cell(valor),
             _value_cell(periodo_inicio),

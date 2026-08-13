@@ -151,7 +151,16 @@ class Bundle:
         """Calcula el hash SHA-256 del bundle excluyendo el campo hash."""
         payload = self._canonical_dict(exclude_hash=True)
         canonical_json = json.dumps(
-            payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            # Convierte tipos no nativos de JSON (Decimal, datetime, UUID,
+            # date, etc.) a una representación serializable. Decimal de
+            # pymysql (p.ej. SUM(ur.count)) se vuelve float; datetime y
+            # date se vuelven ISO string. Esto solo afecta al hash
+            # canónico — los datos originales en `rows` no se mutan.
+            default=_json_default,
         )
         return HashSha256.from_str(canonical_json)
 
@@ -196,5 +205,32 @@ class Bundle:
             self._canonical_dict(exclude_hash=False),
             ensure_ascii=False,
             sort_keys=True,
-            separators=(",", ":")
+            separators=(",", ":"),
+            default=_json_default,
         )
+
+
+def _json_default(obj: object) -> object:
+    """Serializador por defecto para tipos no nativos de JSON en
+    `Bundle.compute_hash` / `Bundle.canonical_json`.
+
+    pymysql devuelve `Decimal` para SUM(), y los manifests pueden
+    contener `datetime` / `date` de los campos `fetched_at` /
+    `cut`. Los convertimos a representaciones serializables sin
+    mutar los datos originales del manifest (el hash canónico es
+    lo único que consume este conversor).
+    """
+    # Importación local para evitar ciclos en carga de módulos.
+    from datetime import date, datetime
+    from decimal import Decimal
+
+    if isinstance(obj, Decimal):
+        # SUM() de MySQL devuelve Decimal; serializamos como float
+        # para mantener precisión suficiente para el hash.
+        return float(obj)
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    # Cualquier otro tipo no esperado: fallback a str (último
+    # recurso; loguearía ruido en hash canónico si se vuelve
+    # frecuente).
+    return str(obj)

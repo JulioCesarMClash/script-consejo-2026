@@ -754,6 +754,77 @@ metrics:
       - "Misma lista de course IDs y filtros de brand que slide13_penitenciarios_inscripciones."
       - "Este conteo (100 cursos únicos en MySQL vs 98 en PostgreSQL) coincide con el valor aprobado de la presentación Slides original ('Cursos ofertados: 98' o cercano), lo que valida la lista de course IDs del panel como la fuente correcta."
 
+  # Mario Molina Premio Nobel — Slide 15 ──
+
+  - key: slide15_mario_molina_inscripciones
+    name: Slide 15 — Inscripciones a cursos de Mario Molina
+    description: >
+      Métrica de Slide 15 "Mario Molina Premio Nobel": total acumulado de
+      inscripciones a los 3 cursos del programa Mario Molina (IDs 217
+      'Cálculo de huella de carbono', 236 'Gobernanza del aire' y 310
+      'Concentración de agentes contaminantes en el aire'), con corte
+      estricto < '2026-08-01' (alineado con la decisión de negocio del
+      resto del script). Query del archivo Consultas_consejo_panel.sql
+      (sección "Script de SQL para consultar inscripciones a los cursos
+      de Mario Molina"); corte del panel era <= '2026-04-01' — aquí se
+      extiende a '2026-08-01' para coincidir con el resto del script.
+    formula: >
+      COUNT(user.id) de capacitate_analisis.inscription JOIN course
+      JOIN user WHERE course.id IN (217, 236, 310) AND inscripcionDate
+      < '2026-08-01'.
+    type: count
+    source: fact_inscription
+    platform_scope: []
+    db_source: mysql
+    db_mapping: >
+      SELECT COUNT(u.id) AS value,
+             'Acumulado' AS periodo_inicio,
+             '2026-08-01' AS periodo_fin,
+             'inscription' AS source
+      FROM capacitate_analisis.inscription i
+      JOIN capacitate_analisis.course c ON i.courseId = c.id
+      JOIN capacitate_analisis.user u ON i.userId = u.id
+      WHERE c.id IN (217, 236, 310)
+        AND i.inscripcionDate < '2026-08-01'
+    caveats:
+      - "Los 3 cursos (217/236/310) son los cursos del programa Mario Molina en la BD; vienen del archivo Consultas_consejo_panel.sql."
+      - "El slide 15 original mostraba '159.896' (al corte del snapshot histórico); al corte < '2026-08-01' mi query da ~174k inscr porque la BD actual tiene inscr con fecha anterior que se agregaron al sistema después de generar el slide (backfill de datos)."
+
+  - key: slide15_mario_molina_vistas
+    name: Slide 15 — Vistas/consultas a la sección Mario Molina
+    description: >
+      Métrica de Slide 15 "Mario Molina Premio Nobel": total acumulado
+      de vistas/consultas a los 33 recursos de la sección Mario Molina
+      (vía `capacitate_analisis.userresource.count` agregado por
+      recurso y sumado), con corte < '2026-08-01'. Query del archivo
+      Consultas_consejo_panel.sql (sección "Script para consultar el
+      total de vistas de los recursos seccion Mario Molina").
+    formula: >
+      SUM(userresource.count) de capacitate_analisis.user JOIN
+      userresource JOIN resource WHERE resource.id IN (33 IDs de la
+      lista del panel) AND userresource.lastUpdate < '2026-08-01'.
+    type: count
+    source: dim_user
+    platform_scope: []
+    db_source: mysql
+    db_mapping: >
+      SELECT SUM(ur.count) AS value,
+             'Acumulado' AS periodo_inicio,
+             '2026-08-01' AS periodo_fin,
+             'userresource' AS source
+      FROM capacitate_analisis.user u
+      JOIN capacitate_analisis.userresource ur ON ur.userId = u.id
+      JOIN capacitate_analisis.resource r ON ur.resourceId = r.id
+      WHERE r.id IN (
+          13069, 13070, 13071, 13072, 13073, 13074, 13075, 13076, 13077, 13078, 13079, 13080,
+          13081, 13083, 13084, 13085, 13086, 13087, 13088, 13089, 13094, 13095, 13096, 13097,
+          13098, 13099, 13100, 13101, 13102, 13103, 13104, 13105, 13106
+        )
+        AND ur.lastUpdate < '2026-08-01'
+    caveats:
+      - "Los 33 IDs de recursos vienen del archivo Consultas_consejo_panel.sql (listas 13069-13089 + 13094-13106, sin 13082)."
+      - "El slide 15 original mostraba '7.056' vistas (al corte del snapshot histórico); al corte < '2026-08-01' mi query da ~8.4k porque la BD actual tiene vistas con fecha anterior que se agregaron al sistema después de generar el slide."
+
   # Certificados por sector empleo incluyente ── Slide 2 (Pobreza moderada) ──
 
   - key: slide2_empleo_incluyente_por_sector
