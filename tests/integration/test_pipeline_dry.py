@@ -137,6 +137,10 @@ def _build_row_sequence() -> Sequence[Sequence[Mapping]]:
         [{"value": 98, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide13_penitenciarios_cursos_ofertados
         [{"value": 174161, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide15_mario_molina_inscripciones
         [{"value": 8454, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "userresource"}],  # slide15_mario_molina_vistas
+        [{"value": 1498335, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide19_seguridad_vial_inscripciones
+        [{"value": 1065664, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide19_seguridad_vial_personas_unicas_inscritas
+        [{"value": 238557, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide19_seguridad_vial_certificados
+        [{"value": 206030, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide19_seguridad_vial_personas_certificadas_unicas
         [{"count": 42}],  # slide2_empleo_incluyente_por_sector
         [  # slide4_aprende_seguridad_vial
             {"2024": 25254, "sep2025": 18578, "dic2025": 27129, "acumulado": 184288},
@@ -182,7 +186,7 @@ class TestPipelineDry:
             cut=cut,
         )
 
-        assert len(manifests) == 29
+        assert len(manifests) == 33
 
     def test_extract_beneficiaries_is_derived_not_manual(
         self, catalog_path: Path, fake_conn: FakeSourceConn
@@ -295,7 +299,7 @@ class TestPipelineDry:
         assert bundle.run_id == run_id
         assert bundle.attempt_id == attempt_id
         assert bundle.catalog_hash == catalog_hash
-        assert len(bundle.manifests) == 29
+        assert len(bundle.manifests) == 33
         assert str(bundle.hash) != "0" * 64
 
     def test_validate_blocks_with_empty_manifests(
@@ -447,7 +451,7 @@ class TestPipelineDry:
             cut=cut,
             fetched_at=fetched_at,
         )
-        assert len(manifests) == 29
+        assert len(manifests) == 33
 
         # Validate
         bundle = validate_bundle(
@@ -483,6 +487,10 @@ class TestPipelineDry:
             [{"count": 50}],  # slide3_academica_labs
             [{"value": 2753, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_inscripciones
             [{"value": 806, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_certificados
+            [{"value": 1498335, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide19_seguridad_vial_inscripciones
+            [{"value": 1065664, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide19_seguridad_vial_personas_unicas_inscritas
+            [{"value": 238557, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide19_seguridad_vial_certificados
+            [{"value": 206030, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide19_seguridad_vial_personas_certificadas_unicas
             [{"value": 276, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_usuarios_registrados
             [{"value": 98, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_cursos_ofertados
             [{"value": 174161, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide15_mario_molina_inscripciones
@@ -519,7 +527,7 @@ class TestPipelineDry:
             mode=PipelineMode.PRODUCTION,
         )
 
-        assert len(bundle.manifests) == len(catalog) == 29
+        assert len(bundle.manifests) == len(catalog) == 33
         assert bundle.dqs == ()
         assert create_snapshot(bundle, fake_sheets, "fake-spreadsheet-id", catalogo=catalog) == "fake-spreadsheet-id"
         assert len(fake_sheets._snapshots) == 1

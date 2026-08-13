@@ -794,6 +794,126 @@ metrics:
       - "El slide 15 original mostraba '159.896' (al corte del snapshot histórico); al corte < '2026-08-01' mi query da ~174k inscr porque la BD actual tiene inscr con fecha anterior que se agregaron al sistema después de generar el slide (backfill de datos)."
       - "Migrada de MySQL `capacitate_analisis` a PostgreSQL `analisis_cpe_db` (schema `public`). Resultado al corte < '2026-08-01': PG=174,164 vs MySQL=174,161 (diff +3 inscr por timestamp updates)."
 
+  # Pilotos por la seguridad vial / Aprende de seguridad vial — Slide 19 ──
+
+  - key: slide19_seguridad_vial_inscripciones
+    name: Slide 19 — Inscripciones a cursos de seguridad vial
+    description: >
+      Métrica de Slide 19 "Pilotos por la seguridad vial / Aprende de
+      seguridad vial": total acumulado de inscripciones en los 16 cursos
+      del programa de seguridad vial (IDs 80, 79, 352, 351, 305, 100156,
+      100326, 175, 54, 41, 202, 98, 203, 204, 36, 114), con corte estricto
+      < '2026-08-01'. Query del archivo Consultas_consejo_panel.sql
+      (sección "Script para consultar el total de Inscripciones a los
+      cursos de seguridad vial"); corte del panel era <= '2026-04-01' —
+      aquí se extiende a '2026-08-01' para coincidir con el resto del
+      script.
+    formula: >
+      COUNT(fact_inscription.userId) de fact_inscription JOIN course
+      WHERE course.id IN (16 IDs de seguridad vial) AND
+      inscripcionDate < '2026-08-01'.
+    type: count
+    source: fact_inscription
+    platform_scope: [cpe, aprende]
+    db_mapping: >
+      SELECT COUNT(fi."userId") AS value,
+             'Acumulado' AS periodo_inicio,
+             '2026-08-01' AS periodo_fin,
+             'fact_inscription' AS source
+      FROM fact_inscription fi
+      JOIN course c ON c."id" = fi."courseId"
+      WHERE c."id" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
+                      41, 202, 98, 203, 204, 36, 114)
+        AND fi."inscripcionDate" < '2026-08-01'
+    caveats:
+      - "Los 16 cursos vienen del archivo Consultas_consejo_panel.sql (listas slide4_aprende_seguridad_vial)."
+
+  - key: slide19_seguridad_vial_personas_unicas_inscritas
+    name: Slide 19 — Personas únicas inscritas en seguridad vial
+    description: >
+      Métrica de Slide 19: cantidad de usuarios únicos (DISTINCT) inscritos
+      en los 16 cursos de seguridad vial, con corte < '2026-08-01'.
+      Query del archivo Consultas_consejo_panel.sql (sección "Script
+      para consultar el total de personas unicas inscritas a los cursos
+      de seguridad vial").
+    formula: >
+      COUNT(DISTINCT fact_inscription.userId) de fact_inscription
+      JOIN course WHERE course.id IN (16 IDs) AND inscripcionDate
+      < '2026-08-01'.
+    type: count_distinct
+    source: fact_inscription
+    platform_scope: [cpe, aprende]
+    db_mapping: >
+      SELECT COUNT(DISTINCT fi."userId") AS value,
+             'Acumulado' AS periodo_inicio,
+             '2026-08-01' AS periodo_fin,
+             'fact_inscription' AS source
+      FROM fact_inscription fi
+      JOIN course c ON c."id" = fi."courseId"
+      WHERE c."id" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
+                      41, 202, 98, 203, 204, 36, 114)
+        AND fi."inscripcionDate" < '2026-08-01'
+    caveats:
+      - "Misma lista de 16 cursos que slide19_seguridad_vial_inscripciones."
+
+  - key: slide19_seguridad_vial_certificados
+    name: Slide 19 — Certificados en cursos de seguridad vial
+    description: >
+      Métrica de Slide 19: total acumulado de certificados (advance = 100)
+      en los 16 cursos de seguridad vial, con corte < '2026-08-01'. Query
+      del archivo Consultas_consejo_panel.sql (sección "Script para
+      consultar el total de Certificados a los cursos de seguridad vial").
+    formula: >
+      COUNT(fact_inscription.userId) de fact_inscription JOIN course
+      WHERE course.id IN (16 IDs) AND advance = 100 AND
+      certificationDate < '2026-08-01'.
+    type: count
+    source: fact_inscription
+    platform_scope: [cpe, aprende]
+    db_mapping: >
+      SELECT COUNT(fi."userId") AS value,
+             'Acumulado' AS periodo_inicio,
+             '2026-08-01' AS periodo_fin,
+             'fact_inscription' AS source
+      FROM fact_inscription fi
+      JOIN course c ON c."id" = fi."courseId"
+      WHERE c."id" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
+                      41, 202, 98, 203, 204, 36, 114)
+        AND fi."advance" = 100
+        AND fi."certificationDate" < '2026-08-01'
+    caveats:
+      - "Misma lista de 16 cursos que slide19_seguridad_vial_inscripciones."
+
+  - key: slide19_seguridad_vial_personas_certificadas_unicas
+    name: Slide 19 — Personas únicas certificadas en seguridad vial
+    description: >
+      Métrica de Slide 19: cantidad de usuarios únicos (DISTINCT)
+      certificados (advance = 100) en los 16 cursos de seguridad vial,
+      con corte < '2026-08-01'. Query del archivo
+      Consultas_consejo_panel.sql (sección "Script para consultar el
+      total de personas cetificadas unicas a los cursos de seguridad
+      vial").
+    formula: >
+      COUNT(DISTINCT fact_inscription.userId) de fact_inscription
+      JOIN course WHERE course.id IN (16 IDs) AND advance = 100 AND
+      certificationDate < '2026-08-01'.
+    type: count_distinct
+    source: fact_inscription
+    platform_scope: [cpe, aprende]
+    db_mapping: >
+      SELECT COUNT(DISTINCT fi."userId") AS value,
+             'Acumulado' AS periodo_inicio,
+             '2026-08-01' AS periodo_fin,
+             'fact_inscription' AS source
+      FROM fact_inscription fi
+      JOIN course c ON c."id" = fi."courseId"
+      WHERE c."id" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
+                      41, 202, 98, 203, 204, 36, 114)
+        AND fi."advance" = 100
+        AND fi."certificationDate" < '2026-08-01'
+    caveats:
+      - "Misma lista de 16 cursos que slide19_seguridad_vial_inscripciones."
+
   - key: slide15_mario_molina_vistas
     name: Slide 15 — Vistas/consultas a la sección Mario Molina
     description: >

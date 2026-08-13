@@ -384,12 +384,19 @@ def _build_datos_requests(
     slide15_manifests = [
         m for m in slides if str(m.metric_id).startswith("slide15")
     ]
+    # slide19_* (Pilotos por la seguridad vial / Aprende de seguridad
+    # vial) se agrupa en un solo bloque con 4 KPIs desde queries + 1
+    # hardcoded; se excluye de single_slides por la misma razón.
+    slide19_manifests = [
+        m for m in slides if str(m.metric_id).startswith("slide19")
+    ]
     single_slides = [
         m for m in slides
         if not str(m.metric_id).startswith("slide3")
         and not str(m.metric_id).startswith("slide4")
         and not str(m.metric_id).startswith("slide13")
         and not str(m.metric_id).startswith("slide15")
+        and not str(m.metric_id).startswith("slide19")
     ]
 
     rows_data: list[dict] = []
@@ -454,6 +461,19 @@ def _build_datos_requests(
             row_0based += 1
         block, row_0based = _build_slide15_block(
             slide15_manifests, row_0based
+        )
+        rows_data.extend(block)
+
+    # Slide 19: bloque dinámico con 4 KPIs desde el pipeline (Pilotos
+    # por la seguridad vial / Aprende de seguridad vial: 4 queries con
+    # lista de 16 cursos del panel) + 1 KPI hardcoded (Cursos: 16).
+    # Solo se escribe si hay manifests de slide19 en el bundle.
+    if slide19_manifests:
+        if rows_data:
+            rows_data.append(_blank_row())
+            row_0based += 1
+        block, row_0based = _build_slide19_block(
+            slide19_manifests, row_0based
         )
         rows_data.extend(block)
 
@@ -666,6 +686,28 @@ SLIDE15_TABLE_HEADERS = [
     "Fuente",
 ]
 
+# Layout de Slide 19: tarjeta de KPIs de "Pilotos por la seguridad
+# vial / Aprende de seguridad vial" (objectId g3735641ff7a_1_161 en
+# la presentación del Consejo 2026). 4 KPIs vienen de las métricas
+# `slide19_*` del catálogo (4 queries de
+# `Consultas_consejo_panel.sql` con la lista de 16 cursos de seguridad
+# vial); 1 KPI (Cursos: 16) queda hardcoded porque la lista de cursos
+# la define el panel SQL, no un COUNT. Mismo formato de 6 columnas que
+# las otras slides (Período inicio / Período fin / Fuente al final).
+SLIDE19_METRIC_ID = "slide19_seguridad_vial"
+SLIDE19_CURSOS_TOTAL = 16
+SLIDE19_PERIODO_INICIO = "Acumulado"
+SLIDE19_PERIODO_FIN = "2026-08-01"
+SLIDE19_FUENTE_INSCRIPCION = "fact_inscription"
+SLIDE19_TABLE_HEADERS = [
+    "Categoría",
+    "Métrica",
+    "Valor",
+    "Período inicio",
+    "Período fin",
+    "Fuente",
+]
+
 # Ventanas fijas de los valores visibles de slide 4: 2024 =
 # [2024-01-01, 2025-01-01), sep2025 = [2025-01-01, 2025-10-01),
 # dic2025 = [2025-01-01, 2026-01-01) y acumulado histórico < 2025-10-01
@@ -762,6 +804,15 @@ def _build_slide_block(
     if key.startswith("slide15"):
         raise ValueError(
             f"slide15_* debe rutearse via _build_slide15_block con todos "
+            f"los manifests juntos, no via _build_slide_block (key={key})"
+        )
+    # 'slide19_*' (Pilotos por la seguridad vial / Aprende de seguridad
+    # vial): se rutean desde el caller _build_datos_requests que junta
+    # los 4 manifests de slide19 en un solo bloque. Si llega acá con un
+    # solo manifest, levantamos ValueError.
+    if key.startswith("slide19"):
+        raise ValueError(
+            f"slide19_* debe rutearse via _build_slide19_block con todos "
             f"los manifests juntos, no via _build_slide_block (key={key})"
         )
     if key.startswith("slide1"):
@@ -1483,6 +1534,100 @@ def _build_slide15_block(
     for metrica, valor, periodo_inicio, periodo_fin, fuente in plan:
         cells = [
             _value_cell(SLIDE15_METRIC_ID),
+            _value_cell(metrica),
+            _value_cell(valor),
+            _value_cell(periodo_inicio),
+            _value_cell(periodo_fin),
+            _value_cell(fuente),
+        ]
+        rows.append({"values": cells})
+        row_0based += 1
+    return rows, row_0based
+
+
+def _build_slide19_block(
+    manifests: Sequence[SourceManifest], row_0based: int
+) -> tuple[list[dict], int]:
+    """Bloque slide 19: tarjeta de KPIs de "Pilotos por la seguridad
+    vial / Aprende de seguridad vial".
+
+    6 columnas (Categoría, Métrica, Valor, Período inicio, Período
+    fin, Fuente). 4 KPIs (Inscripciones, Personas únicas inscritas,
+    Certificados, Personas certificadas únicas) se extraen de los
+    manifests del catálogo con prefijo `slide19_` (4 métricas en
+    `data/catalogo-metricas.yaml` con la lista de 16 cursos de
+    seguridad vial del archivo Consultas_consejo_panel.sql). 1 KPI
+    (Cursos: 16) queda hardcoded porque la lista de cursos la define
+    el panel SQL, no un COUNT.
+
+    Cada manifest de slide19_* devuelve 1 fila con `value` numérico.
+    Resolvemos el valor buscando por metric_id en un dict; si falta
+    alguno, levantamos KeyError para no escribir un bloque parcial
+    silenciosamente.
+
+    Sin fila TOTAL: cada métrica es independiente. La columna Categoría
+    lleva SLIDE19_METRIC_ID en todas las filas, misma nomenclatura que
+    slide12/13/15.
+    """
+    by_key: dict[str, object] = {}
+    for m in manifests:
+        key = str(m.metric_id)
+        if not key.startswith("slide19"):
+            continue
+        if not m.rows:
+            raise ValueError(
+                f"Manifest {key} sin filas — slide 19 requiere 1 fila "
+                f"con 'value' numérico"
+            )
+        by_key[key] = m.rows[0].get("value")
+
+    rows: list[dict] = []
+    rows.append(_text_row(SLIDE19_TABLE_HEADERS))
+    row_0based += 1
+
+    # Plan: (etiqueta legible, valor, periodo_inicio, periodo_fin,
+    # fuente). 4 KPIs vienen de queries en analisis_cpe_db (PG);
+    # Cursos=16 queda hardcoded (lista de cursos del panel SQL).
+    plan: list[tuple[str, object, str, str, str]] = [
+        (
+            "Cursos",
+            SLIDE19_CURSOS_TOTAL,
+            SLIDE19_PERIODO_FIN,  # hardcoded
+            SLIDE19_PERIODO_FIN,
+            "manual",
+        ),
+        (
+            "Inscripciones a cursos",
+            by_key["slide19_seguridad_vial_inscripciones"],
+            SLIDE19_PERIODO_INICIO,
+            SLIDE19_PERIODO_FIN,
+            SLIDE19_FUENTE_INSCRIPCION,
+        ),
+        (
+            "Personas únicas inscritas",
+            by_key["slide19_seguridad_vial_personas_unicas_inscritas"],
+            SLIDE19_PERIODO_INICIO,
+            SLIDE19_PERIODO_FIN,
+            SLIDE19_FUENTE_INSCRIPCION,
+        ),
+        (
+            "Certificados",
+            by_key["slide19_seguridad_vial_certificados"],
+            SLIDE19_PERIODO_INICIO,
+            SLIDE19_PERIODO_FIN,
+            SLIDE19_FUENTE_INSCRIPCION,
+        ),
+        (
+            "Personas certificadas únicas",
+            by_key["slide19_seguridad_vial_personas_certificadas_unicas"],
+            SLIDE19_PERIODO_INICIO,
+            SLIDE19_PERIODO_FIN,
+            SLIDE19_FUENTE_INSCRIPCION,
+        ),
+    ]
+    for metrica, valor, periodo_inicio, periodo_fin, fuente in plan:
+        cells = [
+            _value_cell(SLIDE19_METRIC_ID),
             _value_cell(metrica),
             _value_cell(valor),
             _value_cell(periodo_inicio),
