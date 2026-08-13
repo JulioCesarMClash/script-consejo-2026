@@ -768,27 +768,31 @@ metrics:
       (sección "Script de SQL para consultar inscripciones a los cursos
       de Mario Molina"); corte del panel era <= '2026-04-01' — aquí se
       extiende a '2026-08-01' para coincidir con el resto del script.
+      Migrada a analisis_cpe_db (PostgreSQL): las tablas `course`,
+      `fact_inscription` y `dim_user` existen en el schema `public` con
+      los mismos nombres de columna que la BD MySQL (sin el prefijo
+      del schema).
     formula: >
-      COUNT(user.id) de capacitate_analisis.inscription JOIN course
-      JOIN user WHERE course.id IN (217, 236, 310) AND inscripcionDate
-      < '2026-08-01'.
+      COUNT(fact_inscription.userId) de fact_inscription JOIN course
+      JOIN dim_user WHERE course.id IN (217, 236, 310) AND
+      inscripcionDate < '2026-08-01'.
     type: count
     source: fact_inscription
-    platform_scope: []
-    db_source: mysql
+    platform_scope: [cpe, aprende]
     db_mapping: >
-      SELECT COUNT(u.id) AS value,
+      SELECT COUNT(fi."userId") AS value,
              'Acumulado' AS periodo_inicio,
              '2026-08-01' AS periodo_fin,
-             'inscription' AS source
-      FROM capacitate_analisis.inscription i
-      JOIN capacitate_analisis.course c ON i.courseId = c.id
-      JOIN capacitate_analisis.user u ON i.userId = u.id
-      WHERE c.id IN (217, 236, 310)
-        AND i.inscripcionDate < '2026-08-01'
+             'fact_inscription' AS source
+      FROM fact_inscription fi
+      JOIN course c ON c."id" = fi."courseId"
+      JOIN dim_user du ON du."userId" = fi."userId"
+      WHERE c."id" IN (217, 236, 310)
+        AND fi."inscripcionDate" < '2026-08-01'
     caveats:
       - "Los 3 cursos (217/236/310) son los cursos del programa Mario Molina en la BD; vienen del archivo Consultas_consejo_panel.sql."
       - "El slide 15 original mostraba '159.896' (al corte del snapshot histórico); al corte < '2026-08-01' mi query da ~174k inscr porque la BD actual tiene inscr con fecha anterior que se agregaron al sistema después de generar el slide (backfill de datos)."
+      - "Migrada de MySQL `capacitate_analisis` a PostgreSQL `analisis_cpe_db` (schema `public`). Resultado al corte < '2026-08-01': PG=174,164 vs MySQL=174,161 (diff +3 inscr por timestamp updates)."
 
   - key: slide15_mario_molina_vistas
     name: Slide 15 — Vistas/consultas a la sección Mario Molina
