@@ -23,7 +23,7 @@ class TestCatalogRepo:
 
     def test_returns_20_metrics(self, catalog_repo: YamlMetricRepo) -> None:
         metrics = list(catalog_repo.list_metrics())
-        assert len(metrics) == 33
+        assert len(metrics) == 34
 
     def test_metrics_have_unique_keys(
         self, catalog_repo: YamlMetricRepo
@@ -98,22 +98,22 @@ class TestCatalogRepo:
     ) -> None:
         metrics = list(catalog_repo.list_metrics())
         postgres = [m for m in metrics if m.key in {
-            "slide4_aprende_seguridad_vial",
             "slide4_cultura_salud_aprende",
         }]
-        assert len(postgres) == 2
+        assert len(postgres) == 1
         for m in postgres:
             assert m.db_source == "postgres"
             assert m.db_mapping.strip().startswith("SELECT")
             # Slide 4 usa ventanas FIJAS de cuatro columnas, sin period_start/end.
             assert "%(period_start)s" not in m.db_mapping
             assert "%(period_end)s" not in m.db_mapping
-            assert '"2024"' in m.db_mapping
-            assert '"sep2025"' in m.db_mapping
-            assert '"dic2025"' in m.db_mapping
+            assert '"2025"' in m.db_mapping
+            assert '"sep2026"' in m.db_mapping
+            assert '"dic2026"' in m.db_mapping
             assert '"acumulado"' in m.db_mapping
-            assert "'2024-01-01'" in m.db_mapping
-            assert "'2025-10-01'" in m.db_mapping
+            assert "'2025-01-01'" in m.db_mapping
+            assert "'2026-10-01'" in m.db_mapping
+            assert "'2027-01-01'" in m.db_mapping
 
     def test_finds_fact_inscription_metrics(
         self, catalog_repo: YamlMetricRepo
@@ -124,7 +124,7 @@ class TestCatalogRepo:
             for m in metrics
             if m.source == MetricSource.FACT_INSCRIPTION
         ]
-        assert len(fact) == 26  # 17 + slide12 + 4 slide13 + 1 slide15 + 4 slide19
+        assert len(fact) == 27  # 17 + slide12 + 4 slide13 + 1 slide15 + 4 slide19 + 1 slide4_aprende(PG)
 
     def test_platform_scope_cpe(
         self, catalog_repo: YamlMetricRepo

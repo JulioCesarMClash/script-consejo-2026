@@ -90,10 +90,10 @@ def _build_row_sequence() -> Sequence[Sequence[Mapping]]:
     El orden coincide con el orden de extracción del catálogo para las
     métricas con db_mapping SQL ejecutable (source dim_user/fact_inscription,
     type SELECT/WITH) que se ejecutan contra `source_conn` (PostgreSQL). Las
-    métricas slide3 (MySQL) solo se fetchean cuando se provee mysql_conn (ver
-    test_production_happy_path_allows_snapshot); sin él caen al final de la
-    secuencia y quedan EMPTY (warning, no bloqueo en modo DEV). Las métricas
-    sum derivadas (textsum) no disparan fetch.
+    métricas slide3 y slide4_aprende (MySQL) solo se fetchean cuando se provee
+    mysql_conn (ver test_production_happy_path_allows_snapshot); sin él caen al
+    final de la secuencia y quedan EMPTY (warning, no bloqueo en modo DEV). Las
+    métricas sum derivadas (textsum) no disparan fetch.
     """
     return [
         [{"count": 1200}],  # registered_cpe
@@ -137,16 +137,13 @@ def _build_row_sequence() -> Sequence[Sequence[Mapping]]:
         [{"value": 98, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide13_penitenciarios_cursos_ofertados
         [{"value": 174161, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide15_mario_molina_inscripciones
         [{"value": 8454, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "userresource"}],  # slide15_mario_molina_vistas
-        [{"value": 1498335, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide19_seguridad_vial_inscripciones
-        [{"value": 1065664, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide19_seguridad_vial_personas_unicas_inscritas
-        [{"value": 238557, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide19_seguridad_vial_certificados
-        [{"value": 206030, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide19_seguridad_vial_personas_certificadas_unicas
+        [{"value": 1498009, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_inscripciones
+        [{"value": 1065475, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_unicas_inscritas
+        [{"value": 240508, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_certificados
+        [{"value": 207562, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_certificadas_unicas
         [{"count": 42}],  # slide2_empleo_incluyente_por_sector
-        [  # slide4_aprende_seguridad_vial
-            {"2024": 25254, "sep2025": 18578, "dic2025": 27129, "acumulado": 184288},
-        ],
         [  # slide4_cultura_salud_aprende
-            {"2024": 104736, "sep2025": 102916, "dic2025": 134327, "acumulado": 1413528},
+            {"2025": 104736, "sep2026": 102916, "dic2026": 134327, "acumulado": 1413528},
         ],
     ]
 
@@ -186,7 +183,7 @@ class TestPipelineDry:
             cut=cut,
         )
 
-        assert len(manifests) == 33
+        assert len(manifests) == 34
 
     def test_extract_beneficiaries_is_derived_not_manual(
         self, catalog_path: Path, fake_conn: FakeSourceConn
@@ -299,7 +296,7 @@ class TestPipelineDry:
         assert bundle.run_id == run_id
         assert bundle.attempt_id == attempt_id
         assert bundle.catalog_hash == catalog_hash
-        assert len(bundle.manifests) == 33
+        assert len(bundle.manifests) == 34
         assert str(bundle.hash) != "0" * 64
 
     def test_validate_blocks_with_empty_manifests(
@@ -451,7 +448,7 @@ class TestPipelineDry:
             cut=cut,
             fetched_at=fetched_at,
         )
-        assert len(manifests) == 33
+        assert len(manifests) == 34
 
         # Validate
         bundle = validate_bundle(
@@ -483,18 +480,18 @@ class TestPipelineDry:
         cut = date(2026, 7, 1)
 
         mysql_fake = FakeSourceConn([
-            [{"count": 100}],  # slide3_capacitate_carso
-            [{"count": 50}],  # slide3_academica_labs
             [{"value": 2753, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_inscripciones
             [{"value": 806, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_certificados
-            [{"value": 1498335, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide19_seguridad_vial_inscripciones
-            [{"value": 1065664, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide19_seguridad_vial_personas_unicas_inscritas
-            [{"value": 238557, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide19_seguridad_vial_certificados
-            [{"value": 206030, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide19_seguridad_vial_personas_certificadas_unicas
             [{"value": 276, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_usuarios_registrados
             [{"value": 98, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_cursos_ofertados
-            [{"value": 174161, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide15_mario_molina_inscripciones
+            [{"value": 1498009, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_inscripciones
+            [{"value": 1065475, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_unicas_inscritas
+            [{"value": 240508, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_certificados
+            [{"value": 207562, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_certificadas_unicas
             [{"value": 8454, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "userresource"}],  # slide15_mario_molina_vistas
+            [{"count": 100}],  # slide3_capacitate_carso
+            [{"count": 50}],  # slide3_academica_labs
+            [{"value": 184288, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide4_aprende_seguridad_vial_acumulado (hermana MySQL, valor único)
         ])
         manifests = extract_data(
             metric_repo=repo,
@@ -527,7 +524,7 @@ class TestPipelineDry:
             mode=PipelineMode.PRODUCTION,
         )
 
-        assert len(bundle.manifests) == len(catalog) == 33
+        assert len(bundle.manifests) == len(catalog) == 34
         assert bundle.dqs == ()
         assert create_snapshot(bundle, fake_sheets, "fake-spreadsheet-id", catalogo=catalog) == "fake-spreadsheet-id"
         assert len(fake_sheets._snapshots) == 1

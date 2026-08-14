@@ -10,6 +10,7 @@ import json
 import subprocess
 import sys
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -33,6 +34,7 @@ from src.consejo.adapters.sheets.google_mcp_sheet_repo import (
     _build_slide12_block,
     _build_slide13_block,
     _build_slide_block,
+    _build_reporte_requests,
     _project_dic2026,
 )
 from src.consejo.domain.entities import Bundle, DqsIssue, Metric, SourceManifest
@@ -204,15 +206,15 @@ _SLIDE3_PROGRAMS: dict[str, dict[str, int]] = {
 
 _SLIDE4_PROGRAMS: dict[str, dict[str, int]] = {
     "slide4_aprende_seguridad_vial": {
-        "2024": 25254,
-        "sep2025": 18578,
-        "dic2025": 27129,
+        "2025": 25254,
+        "sep2026": 18578,
+        "dic2026": 27129,
         "acumulado": 184288,
     },
     "slide4_cultura_salud_aprende": {
-        "2024": 104736,
-        "sep2025": 102916,
-        "dic2025": 134327,
+        "2025": 104736,
+        "sep2026": 102916,
+        "dic2026": 134327,
         "acumulado": 1413528,
     },
 }
@@ -286,27 +288,58 @@ def bundle_with_slide1_slide2_slide3(
 def bundle_with_slide1_slide2_slide3_slide4(
     bundle_with_slide1_slide2_slide3: Bundle,
 ) -> Bundle:
-    """Bundle con slide1 + slide2 + slide3 + los DOS programas de slide4."""
-    slide4_manifests = []
-    for key, data in _SLIDE4_PROGRAMS.items():
-        slide4_manifests.append(
-            SourceManifest(
-                metric_id=MetricId(key),
-                source=MetricSource.DIM_USER,
-                cut=Cut(date(2026, 7, 1)),
-                fetched_at=datetime(2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
-                freshness_hours=0.5,
-                rows=(
-                    {
-                        "2024": data["2024"],
-                        "sep2025": data["sep2025"],
-                        "dic2025": data["dic2025"],
-                        "acumulado": data["acumulado"],
-                    },
-                ),
-                status=FetchStatus.EXTRACTED,
-            )
-        )
+    """Bundle con slide1 + slide2 + slide3 + los DOS programas de slide4
+    (aprende: base postgres con 3 ventanas + hermana MySQL que aporta el
+    acumulado; cultura: postgres con las 4 columnas)."""
+    slide4_manifests = [
+        SourceManifest(
+            metric_id=MetricId("slide4_aprende_seguridad_vial"),
+            source=MetricSource.FACT_INSCRIPTION,
+            cut=Cut(date(2026, 7, 1)),
+            fetched_at=datetime(2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
+            freshness_hours=0.5,
+            rows=(
+                {
+                    "2025": _SLIDE4_PROGRAMS["slide4_aprende_seguridad_vial"]["2025"],
+                    "sep2026": _SLIDE4_PROGRAMS["slide4_aprende_seguridad_vial"]["sep2026"],
+                    "dic2026": _SLIDE4_PROGRAMS["slide4_aprende_seguridad_vial"]["dic2026"],
+                },
+            ),
+            status=FetchStatus.EXTRACTED,
+            db_source="postgres",
+        ),
+        SourceManifest(
+            metric_id=MetricId(
+                "slide4_aprende_seguridad_vial_acumulado"
+            ),
+            source=MetricSource.FACT_INSCRIPTION,
+            cut=Cut(date(2026, 7, 1)),
+            fetched_at=datetime(2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
+            freshness_hours=0.5,
+            rows=(
+                {"value": _SLIDE4_PROGRAMS["slide4_aprende_seguridad_vial"]["acumulado"]},
+            ),
+            status=FetchStatus.EXTRACTED,
+            db_source="mysql",
+        ),
+        SourceManifest(
+            metric_id=MetricId("slide4_cultura_salud_aprende"),
+            source=MetricSource.DIM_USER,
+            cut=Cut(date(2026, 7, 1)),
+            fetched_at=datetime(2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
+            freshness_hours=0.5,
+            rows=(
+                {
+                    "2025": _SLIDE4_PROGRAMS["slide4_cultura_salud_aprende"]["2025"],
+                    "sep2026": _SLIDE4_PROGRAMS["slide4_cultura_salud_aprende"]["sep2026"],
+                    "dic2026": _SLIDE4_PROGRAMS["slide4_cultura_salud_aprende"]["dic2026"],
+                    "acumulado": _SLIDE4_PROGRAMS["slide4_cultura_salud_aprende"]["acumulado"],
+                },
+            ),
+            status=FetchStatus.EXTRACTED,
+            db_source="postgres",
+        ),
+    ]
     return Bundle(
         run_id=bundle_with_slide1_slide2_slide3.run_id,
         attempt_id=bundle_with_slide1_slide2_slide3.attempt_id,
@@ -1215,8 +1248,11 @@ class TestGoogleMcpSheetRepo:
         dos programas: header de 9 cols, fila fija 'Pilotos por la
         Seguridad Vial' (categoría slide4_* y fuente manual), y una fila
         por programa (seguridad vial y cultura/salud) con su Categoría
-        slide4_*, valores de 2024/sep2025/dic2025/acumulado, períodos
-        fijos 2024-01-01..2025-09-30 y fuente postgres. NO hay fila TOTAL.
+        slide4_*, valores de 2025/sep2026/dic2026/acumulado, períodos
+        fijos 2025-01-01..2026-09-30, fuente 'postgres + mysql' para
+        seguridad vial (ventanas PG + acumulado de la hermana MySQL) y
+        postgres para cultura/salud. NO hay fila TOTAL ni fila propia
+        para la métrica hermana *_acumulado.
         """
         with patch.object(
             GoogleMcpSheetRepo, "_start_proxy"
@@ -1298,12 +1334,15 @@ class TestGoogleMcpSheetRepo:
         assert seguridad[4]["userEnteredValue"]["numberValue"] == 27129
         assert seguridad[5]["userEnteredValue"]["numberValue"] == 184288
         assert (
-            seguridad[6]["userEnteredValue"]["stringValue"] == "2024-01-01"
+            seguridad[6]["userEnteredValue"]["stringValue"] == "2025-01-01"
         )
         assert (
-            seguridad[7]["userEnteredValue"]["stringValue"] == "2025-09-30"
+            seguridad[7]["userEnteredValue"]["stringValue"] == "2026-09-30"
         )
-        assert seguridad[8]["userEnteredValue"]["stringValue"] == "postgres"
+        assert (
+            seguridad[8]["userEnteredValue"]["stringValue"]
+            == "postgres + mysql"
+        )
 
         cultura = datos_rows[22]["values"]
         assert len(cultura) == 9
@@ -1320,10 +1359,10 @@ class TestGoogleMcpSheetRepo:
         assert cultura[4]["userEnteredValue"]["numberValue"] == 134327
         assert cultura[5]["userEnteredValue"]["numberValue"] == 1413528
         assert (
-            cultura[6]["userEnteredValue"]["stringValue"] == "2024-01-01"
+            cultura[6]["userEnteredValue"]["stringValue"] == "2025-01-01"
         )
         assert (
-            cultura[7]["userEnteredValue"]["stringValue"] == "2025-09-30"
+            cultura[7]["userEnteredValue"]["stringValue"] == "2026-09-30"
         )
         assert cultura[8]["userEnteredValue"]["stringValue"] == "postgres"
 
@@ -1338,7 +1377,7 @@ class TestGoogleMcpSheetRepo:
             cut=Cut(date(2026, 7, 1)),
             fetched_at=datetime(2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
             freshness_hours=0.5,
-            rows=({"2024": 100, "sep2025": 50, "dic2025": 70, "acumulado": 999},),
+            rows=({"2025": 100, "sep2026": 50, "dic2026": 70, "acumulado": 999},),
             status=FetchStatus.EXTRACTED,
         )
 
@@ -1376,11 +1415,11 @@ class TestGoogleMcpSheetRepo:
         assert rows[2]["values"][5]["userEnteredValue"]["numberValue"] == 999
         assert (
             rows[2]["values"][6]["userEnteredValue"]["stringValue"]
-            == "2024-01-01"
+            == "2025-01-01"
         )
         assert (
             rows[2]["values"][7]["userEnteredValue"]["stringValue"]
-            == "2025-09-30"
+            == "2026-09-30"
         )
         assert (
             rows[2]["values"][8]["userEnteredValue"]["stringValue"]
@@ -1395,7 +1434,7 @@ class TestGoogleMcpSheetRepo:
             cut=Cut(date(2026, 7, 1)),
             fetched_at=datetime(2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
             freshness_hours=0.5,
-            rows=({"2024": 25254, "sep2025": 18578, "dic2025": 27129, "acumulado": 184288},),
+            rows=({"2025": 25254, "sep2026": 18578, "dic2026": 27129, "acumulado": 184288},),
             status=FetchStatus.EXTRACTED,
         )
 
@@ -1412,6 +1451,59 @@ class TestGoogleMcpSheetRepo:
         assert rows[2]["values"][3]["userEnteredValue"]["numberValue"] == 18578
         assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 27129
         assert rows[2]["values"][5]["userEnteredValue"]["numberValue"] == 184288
+
+    def test_build_slide4_block_mysql_single_value_writes_acumulado(
+        self,
+    ) -> None:
+        """Con shape MySQL (un único valor acumulado, sin ventanas fijas), el
+        bloque slide4 escribe el valor SOLO en la columna Acumulado
+        sep2026, deja 2025/sep2026/dic2026 vacías, usa los períodos de la
+        fila y marca fuente mysql."""
+        seguridad = SourceManifest(
+            metric_id=MetricId("slide4_aprende_seguridad_vial"),
+            source=MetricSource.FACT_INSCRIPTION,
+            cut=Cut(date(2026, 8, 1)),
+            fetched_at=datetime(2026, 8, 1, 10, 0, 0, tzinfo=timezone.utc),
+            freshness_hours=0.5,
+            rows=(
+                {
+                    "value": 207562,
+                    "periodo_inicio": "Acumulado",
+                    "periodo_fin": "2026-08-01",
+                    "source": "inscription",
+                },
+            ),
+            status=FetchStatus.EXTRACTED,
+            db_source="mysql",
+        )
+
+        rows, next_row = _build_slide4_block([seguridad], 0)
+
+        assert next_row == 3
+        assert len(rows) == 3
+        # Pilotos: fila manual sin valores.
+        for col in range(2, 8):
+            assert rows[1]["values"][col] == {"userEnteredValue": {}}
+        assert rows[1]["values"][8]["userEnteredValue"]["stringValue"] == "manual"
+        # Seguridad vial: ventanas fijas vacías.
+        for col in (2, 3, 4):
+            assert rows[2]["values"][col] == {"userEnteredValue": {}}
+        # Acumulado sep2026 = valor único de la query MySQL.
+        assert (
+            rows[2]["values"][5]["userEnteredValue"]["numberValue"] == 207562
+        )
+        # Períodos de la fila, fuente mysql.
+        assert (
+            rows[2]["values"][6]["userEnteredValue"]["stringValue"]
+            == "Acumulado"
+        )
+        assert (
+            rows[2]["values"][7]["userEnteredValue"]["stringValue"]
+            == "2026-08-01"
+        )
+        assert (
+            rows[2]["values"][8]["userEnteredValue"]["stringValue"] == "mysql"
+        )
 
     def test_build_slide12_block(self) -> None:
         """El bloque slide 12 tiene header de 9 cols (Categoría | Sección |
@@ -2393,6 +2485,111 @@ class TestGoogleMcpSheetRepo:
                 "get_spreadsheet",
                 "update_sheet",
             ), f"No se debe llamar a {tool_name}"
+
+    def test_reporte_uses_recent_window_and_accepts_decimal(
+        self,
+    ) -> None:
+        """El Reporte prioriza la ventana reciente (sep2026) y acepta Decimal.
+
+        Regresión de tres bugs observados en producción:
+        1. slide15_mario_molina_vistas: SUM() de MySQL devuelve Decimal y
+           el Reporte mostraba '— (manual, sin valor)' en vez de 8,454.
+        2. slide3_academica_labs: tomaba el primer numérico (2025 = 0) en
+           vez de la ventana reciente sep2026 = 4,347.
+        3. slide3_capacitate_carso: tomaba 2025 = 45,807 en vez de
+           sep2026 = 23,849.
+        Cultura (sin sep2026, con value) debe quedar intacta en 104,723.
+        """
+        manifests = (
+            SourceManifest(
+                metric_id=MetricId("slide15_mario_molina_vistas"),
+                source=MetricSource.DIM_USER,
+                cut=Cut(date(2026, 8, 1)),
+                fetched_at=datetime(2026, 8, 1, 10, 0, 0, tzinfo=timezone.utc),
+                freshness_hours=1.0,
+                rows=(
+                    {
+                        "metric_id": "slide15_mario_molina_vistas",
+                        "source": "userresource",
+                        "value": Decimal("8454"),
+                    },
+                ),
+                status=FetchStatus.EXTRACTED,
+            ),
+            SourceManifest(
+                metric_id=MetricId("slide3_academica_labs"),
+                source=MetricSource.DIM_USER,
+                cut=Cut(date(2026, 8, 1)),
+                fetched_at=datetime(2026, 8, 1, 10, 0, 0, tzinfo=timezone.utc),
+                freshness_hours=1.0,
+                rows=(
+                    {
+                        "2025": 0,
+                        "sep2026": 4347,
+                        "base_dic2026": 7452,
+                        "value": 0,
+                    },
+                ),
+                status=FetchStatus.EXTRACTED,
+            ),
+            SourceManifest(
+                metric_id=MetricId("slide3_capacitate_carso"),
+                source=MetricSource.DIM_USER,
+                cut=Cut(date(2026, 8, 1)),
+                fetched_at=datetime(2026, 8, 1, 10, 0, 0, tzinfo=timezone.utc),
+                freshness_hours=1.0,
+                rows=(
+                    {
+                        "2025": 45807,
+                        "sep2026": 23849,
+                        "base_dic2026": 40884,
+                        "value": 45807,
+                    },
+                ),
+                status=FetchStatus.EXTRACTED,
+            ),
+            SourceManifest(
+                metric_id=MetricId("slide4_cultura_salud_aprende"),
+                source=MetricSource.DIM_USER,
+                cut=Cut(date(2026, 8, 1)),
+                fetched_at=datetime(2026, 8, 1, 10, 0, 0, tzinfo=timezone.utc),
+                freshness_hours=1.0,
+                rows=(
+                    {
+                        "2025": 104723,
+                        "dic2026": 134279,
+                        "acumulado": 1413434,
+                        "value": 104723,
+                    },
+                ),
+                status=FetchStatus.EXTRACTED,
+            ),
+        )
+        bundle = Bundle(
+            run_id=RunId.generate(),
+            attempt_id=AttemptId.generate(),
+            cut=Cut(date(2026, 8, 1)),
+            catalog_hash="a" * 64,
+            manifests=manifests,
+            rows=(),
+            dqs=(),
+            hash=HashSha256("b" * 64),
+        )
+
+        reqs = _build_reporte_requests(
+            bundle, existing=set(), sheet_ids={"Reporte": 42}, catalogo=[]
+        )
+        cells = reqs[0]["updateCells"]["rows"]
+        by_key = {
+            r["values"][0]["userEnteredValue"]["stringValue"]:
+                r["values"][1]["userEnteredValue"]["stringValue"]
+            for r in cells[1:]
+        }
+
+        assert by_key["slide15_mario_molina_vistas"] == "8,454"
+        assert by_key["slide3_academica_labs"] == "4,347"
+        assert by_key["slide3_capacitate_carso"] == "23,849"
+        assert by_key["slide4_cultura_salud_aprende"] == "104,723"
 
     def test_snapshot_handles_proxy_error(
         self, sample_bundle: Bundle, sample_catalog: list[Metric]

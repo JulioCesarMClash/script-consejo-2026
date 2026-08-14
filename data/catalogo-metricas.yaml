@@ -807,26 +807,31 @@ metrics:
       (sección "Script para consultar el total de Inscripciones a los
       cursos de seguridad vial"); corte del panel era <= '2026-04-01' —
       aquí se extiende a '2026-08-01' para coincidir con el resto del
-      script.
+      script. Fuente MySQL `capacitate_analisis` (como la validación CT
+      del usuario): el warehouse PG no cargó el histórico completo de
+       certificaciones (LOOKBACK_DAYS=3 en el ETL), por lo que inscripciones/
+      certificados de slide19 se leen de la fuente de verdad MySQL.
     formula: >
-      COUNT(fact_inscription.userId) de fact_inscription JOIN course
-      WHERE course.id IN (16 IDs de seguridad vial) AND
+      COUNT(inscription.userId) de capacitate_analisis.inscription JOIN
+      course WHERE course.id IN (16 IDs de seguridad vial) AND
       inscripcionDate < '2026-08-01'.
     type: count
     source: fact_inscription
     platform_scope: [cpe, aprende]
+    db_source: mysql
     db_mapping: >
-      SELECT COUNT(fi."userId") AS value,
+      SELECT COUNT(i.userId) AS value,
              'Acumulado' AS periodo_inicio,
              '2026-08-01' AS periodo_fin,
-             'fact_inscription' AS source
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      WHERE c."id" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
-                      41, 202, 98, 203, 204, 36, 114)
-        AND fi."inscripcionDate" < '2026-08-01'
+             'inscription' AS source
+      FROM capacitate_analisis.inscription i
+      JOIN capacitate_analisis.course c ON i.courseId = c.id
+      WHERE c.id IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
+                     41, 202, 98, 203, 204, 36, 114)
+        AND i.inscripcionDate < '2026-08-01'
     caveats:
       - "Los 16 cursos vienen del archivo Consultas_consejo_panel.sql (listas slide4_aprende_seguridad_vial)."
+      - "Migrada de PG a MySQL (2026-08-13): el warehouse PG tiene 326 inscripciones de más por usuarios sin JOIN a dim_user; MySQL es la fuente validada por el usuario (207,562 personas certificadas vs 206,030 en PG)."
 
   - key: slide19_seguridad_vial_personas_unicas_inscritas
     name: Slide 19 — Personas únicas inscritas en seguridad vial
@@ -835,26 +840,28 @@ metrics:
       en los 16 cursos de seguridad vial, con corte < '2026-08-01'.
       Query del archivo Consultas_consejo_panel.sql (sección "Script
       para consultar el total de personas unicas inscritas a los cursos
-      de seguridad vial").
+      de seguridad vial"). Fuente MySQL `capacitate_analisis`.
     formula: >
-      COUNT(DISTINCT fact_inscription.userId) de fact_inscription
+      COUNT(DISTINCT inscription.userId) de capacitate_analisis.inscription
       JOIN course WHERE course.id IN (16 IDs) AND inscripcionDate
       < '2026-08-01'.
     type: count_distinct
     source: fact_inscription
     platform_scope: [cpe, aprende]
+    db_source: mysql
     db_mapping: >
-      SELECT COUNT(DISTINCT fi."userId") AS value,
+      SELECT COUNT(DISTINCT i.userId) AS value,
              'Acumulado' AS periodo_inicio,
              '2026-08-01' AS periodo_fin,
-             'fact_inscription' AS source
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      WHERE c."id" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
-                      41, 202, 98, 203, 204, 36, 114)
-        AND fi."inscripcionDate" < '2026-08-01'
+             'inscription' AS source
+      FROM capacitate_analisis.inscription i
+      JOIN capacitate_analisis.course c ON i.courseId = c.id
+      WHERE c.id IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
+                     41, 202, 98, 203, 204, 36, 114)
+        AND i.inscripcionDate < '2026-08-01'
     caveats:
       - "Misma lista de 16 cursos que slide19_seguridad_vial_inscripciones."
+      - "Migrada a MySQL (2026-08-13) junto con el resto del bloque slide19."
 
   - key: slide19_seguridad_vial_certificados
     name: Slide 19 — Certificados en cursos de seguridad vial
@@ -863,26 +870,30 @@ metrics:
       en los 16 cursos de seguridad vial, con corte < '2026-08-01'. Query
       del archivo Consultas_consejo_panel.sql (sección "Script para
       consultar el total de Certificados a los cursos de seguridad vial").
+      Fuente MySQL `capacitate_analisis`: PG reporta 238,557 certificados
+      (warehouse incompleto) vs 240,508 en MySQL.
     formula: >
-      COUNT(fact_inscription.userId) de fact_inscription JOIN course
-      WHERE course.id IN (16 IDs) AND advance = 100 AND
+      COUNT(inscription.userId) de capacitate_analisis.inscription JOIN
+      course WHERE course.id IN (16 IDs) AND advance = 100 AND
       certificationDate < '2026-08-01'.
     type: count
     source: fact_inscription
     platform_scope: [cpe, aprende]
+    db_source: mysql
     db_mapping: >
-      SELECT COUNT(fi."userId") AS value,
+      SELECT COUNT(i.userId) AS value,
              'Acumulado' AS periodo_inicio,
              '2026-08-01' AS periodo_fin,
-             'fact_inscription' AS source
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      WHERE c."id" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
-                      41, 202, 98, 203, 204, 36, 114)
-        AND fi."advance" = 100
-        AND fi."certificationDate" < '2026-08-01'
+             'inscription' AS source
+      FROM capacitate_analisis.inscription i
+      JOIN capacitate_analisis.course c ON i.courseId = c.id
+      WHERE c.id IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
+                     41, 202, 98, 203, 204, 36, 114)
+        AND i.advance = 100
+        AND i.certificationDate < '2026-08-01'
     caveats:
       - "Misma lista de 16 cursos que slide19_seguridad_vial_inscripciones."
+      - "Migrada a MySQL (2026-08-13): PG quedaba 1,951 certificados por debajo de la fuente de verdad."
 
   - key: slide19_seguridad_vial_personas_certificadas_unicas
     name: Slide 19 — Personas únicas certificadas en seguridad vial
@@ -892,27 +903,31 @@ metrics:
       con corte < '2026-08-01'. Query del archivo
       Consultas_consejo_panel.sql (sección "Script para consultar el
       total de personas cetificadas unicas a los cursos de seguridad
-      vial").
+      vial"). Fuente MySQL `capacitate_analisis`: es la query CT que el
+      usuario validó (207,562) — PG reportaba 206,030 porque el ETL
+      cargó incompleto (LOOKBACK_DAYS=3).
     formula: >
-      COUNT(DISTINCT fact_inscription.userId) de fact_inscription
+      COUNT(DISTINCT inscription.userId) de capacitate_analisis.inscription
       JOIN course WHERE course.id IN (16 IDs) AND advance = 100 AND
       certificationDate < '2026-08-01'.
     type: count_distinct
     source: fact_inscription
     platform_scope: [cpe, aprende]
+    db_source: mysql
     db_mapping: >
-      SELECT COUNT(DISTINCT fi."userId") AS value,
+      SELECT COUNT(DISTINCT i.userId) AS value,
              'Acumulado' AS periodo_inicio,
              '2026-08-01' AS periodo_fin,
-             'fact_inscription' AS source
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      WHERE c."id" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
-                      41, 202, 98, 203, 204, 36, 114)
-        AND fi."advance" = 100
-        AND fi."certificationDate" < '2026-08-01'
+             'inscription' AS source
+      FROM capacitate_analisis.inscription i
+      JOIN capacitate_analisis.course c ON i.courseId = c.id
+      WHERE c.id IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
+                     41, 202, 98, 203, 204, 36, 114)
+        AND i.advance = 100
+        AND i.certificationDate < '2026-08-01'
     caveats:
       - "Misma lista de 16 cursos que slide19_seguridad_vial_inscripciones."
+      - "Migrada a MySQL (2026-08-13): coincide con la query CT del usuario (207,562)."
 
   - key: slide15_mario_molina_vistas
     name: Slide 15 — Vistas/consultas a la sección Mario Molina
@@ -1075,22 +1090,32 @@ metrics:
       - "source dim_user documenta el modelo conceptual; el dispatch real lo hace db_source."
 
   # ── Slide 4 (Educación y divulgación) ──
-  # Fuente: PostgreSQL (analisis_cpe_db). Ventanas FIJAS de la tabla
-  # comparativa: 2024, sep2025, dic2025 y acumulado histórico a sep2025.
+  # Fuente MIXTA: slide4_aprende_seguridad_vial ejecuta las ventanas fijas
+  # 2025/sep2026/dic2026 contra PostgreSQL (public.fact_inscription) y el
+  # acumulado histórico contra MySQL via la métrica hermana
+  # slide4_aprende_seguridad_vial_acumulado (sin fila propia; se fusiona en
+  # la misma fila con fuente "postgres + mysql"). slide4_cultura queda en
+  # PostgreSQL. Ventanas FIJAS de la tabla comparativa: 2025, sep2026,
+  # dic2026 y acumulado histórico a sep2026.
   # Definición operativa dada por el usuario (reemplaza la lámina vieja).
 
   - key: slide4_aprende_seguridad_vial
-    name: Aprende de seguridad vial — certificados únicos por ventana fija (Slide 4)
+    name: Aprende de seguridad vial — personas únicas certificadas por ventana fija (Slide 4)
     description: >
-      Personas únicas certificadas con advance = 100 en los 16 cursos de
-      seguridad vial, con certificationDate dentro de cada ventana fija.
-      Devuelve UNA fila con cuatro columnas: "2024" ([2024-01-01,
-      2025-01-01)), "sep2025" ([2025-01-01, 2025-10-01)), "dic2025"
-      ([2025-01-01, 2026-01-01)) y "acumulado" (histórico < 2025-10-01,
-      es decir, todo lo certificado hasta septiembre 2025).
+      Personas únicas certificadas (advance = 100) en los 16 cursos de
+      seguridad vial, por ventana fija: "2025" ([2025-01-01, 2026-01-01)),
+      "sep2026" ([2026-01-01, 2026-10-01)) y "dic2026" ([2026-01-01,
+      2027-01-01)). Ejecuta contra PostgreSQL `public.fact_inscription`
+      (query original de Consultas_consejo_panel.sql con las ventanas del
+      período actual). El acumulado histórico (< '2026-08-01') vive en la
+      métrica hermana slide4_aprende_seguridad_vial_acumulado (MySQL);
+      esta métrica NO devuelve acumulado. Restaura la tabla comparativa de
+      la hoja Datos con las ventanas del período actual
+      (2025/sep2026/dic2026), antes degradadas a un solo valor acumulado.
     formula: >
       COUNT(DISTINCT fact_inscription.userId) con advance = 100 y
-      certificationDate en la ventana, para los 16 cursos de seguridad vial.
+      certificationDate en la ventana fija, para los 16 cursos de
+      seguridad vial.
     type: count_distinct
     source: fact_inscription
     platform_scope: []
@@ -1100,35 +1125,65 @@ metrics:
         (SELECT COUNT(DISTINCT i."userId") FROM public.fact_inscription i
          WHERE i."courseId" IN (80,79,352,351,305,100156,100326,175,54,41,202,98,203,204,36,114)
            AND i.advance = 100
-           AND i."certificationDate" >= '2024-01-01' AND i."certificationDate" < '2025-01-01') AS "2024",
+           AND i."certificationDate" >= '2025-01-01' AND i."certificationDate" < '2026-01-01') AS "2025",
         (SELECT COUNT(DISTINCT i."userId") FROM public.fact_inscription i
          WHERE i."courseId" IN (80,79,352,351,305,100156,100326,175,54,41,202,98,203,204,36,114)
            AND i.advance = 100
-           AND i."certificationDate" >= '2025-01-01' AND i."certificationDate" < '2025-10-01') AS "sep2025",
+           AND i."certificationDate" >= '2026-01-01' AND i."certificationDate" < '2026-10-01') AS "sep2026",
         (SELECT COUNT(DISTINCT i."userId") FROM public.fact_inscription i
          WHERE i."courseId" IN (80,79,352,351,305,100156,100326,175,54,41,202,98,203,204,36,114)
            AND i.advance = 100
-           AND i."certificationDate" >= '2025-01-01' AND i."certificationDate" < '2026-01-01') AS "dic2025",
-        (SELECT COUNT(DISTINCT i."userId") FROM public.fact_inscription i
-         WHERE i."courseId" IN (80,79,352,351,305,100156,100326,175,54,41,202,98,203,204,36,114)
-           AND i.advance = 100
-           AND i."certificationDate" < '2025-10-01') AS "acumulado"
+           AND i."certificationDate" >= '2026-01-01' AND i."certificationDate" < '2027-01-01') AS "dic2026"
     caveats:
-      - "Definición operativa del usuario: certificados únicos (advance = 100) por ventana fija, NO iguala la lámina vieja (183,846/25,260/18,157/20,209)."
-      - "Ventanas FIJAS (ignoran period_start/period_end): tabla comparativa del slide 4 (columnas 2024, sep2025, dic2025 y acumulado)."
-      - "acumulado es TODO el histórico con certificationDate < 2025-10-01 (desde 2015)."
+      - "Ventanas FIJAS (ignoran period_start/period_end): tabla comparativa del slide 4, ahora con el período 2025/sep2026/dic2026."
+      - "El acumulado histórico (< '2026-08-01') NO está acá: lo provee la métrica hermana slide4_aprende_seguridad_vial_acumulado (MySQL), que se fusiona en la misma fila de la hoja con fuente 'postgres + mysql'."
+      - "Vuelve a PostgreSQL (2026-08-14) con la query original de HEAD: las 3 ventanas fijas del período actual, sin acumulado."
       - "db_source postgres: ejecuta contra analisis_cpe_db. Columnas camelCase requieren comillas dobles."
       - "source fact_inscription documenta el modelo conceptual; el dispatch real lo hace db_source."
+
+  - key: slide4_aprende_seguridad_vial_acumulado
+    name: Aprende de seguridad vial — acumulado histórico (Slide 4)
+    description: >
+      Acumulado histórico de personas únicas certificadas (advance = 100)
+      en los 16 cursos de seguridad vial, con corte < '2026-08-01'.
+      Métrica HERMANA de slide4_aprende_seguridad_vial: no genera fila
+      propia en la hoja, su valor se fusiona en la columna "Acumulado
+      sep2026" de la fila de seguridad vial (fuente "postgres + mysql").
+      Ejecuta contra MySQL `capacitate_analisis` (query CT que el usuario
+      validó, 207,562).
+    formula: >
+      COUNT(DISTINCT inscription.userId) de capacitate_analisis.inscription
+      JOIN course WHERE course.id IN (16 IDs) AND advance = 100 AND
+      certificationDate < '2026-08-01'.
+    type: count_distinct
+    source: fact_inscription
+    platform_scope: []
+    db_source: mysql
+    db_mapping: >
+      SELECT COUNT(DISTINCT i.userId) AS value,
+             'Acumulado' AS periodo_inicio,
+             '2026-08-01' AS periodo_fin,
+             'inscription' AS source
+      FROM capacitate_analisis.inscription i
+      JOIN capacitate_analisis.course c ON i.courseId = c.id
+      WHERE c.id IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
+                     41, 202, 98, 203, 204, 36, 114)
+        AND i.advance = 100
+        AND i.certificationDate < '2026-08-01'
+    caveats:
+      - "Misma lista de 16 cursos que slide19_seguridad_vial_personas_certificadas_unicas."
+      - "Se fusiona con la métrica base slide4_aprende_seguridad_vial en la fila de la hoja; sin ella NO tiene fila propia."
+      - "MySQL: coincide con la query CT del usuario (207,562)."
 
   - key: slide4_cultura_salud_aprende
     name: Cultura y Salud Aprende (registros) — usuarios sin inscripción por ventana fija (Slide 4)
     description: >
       Usuarios de la plataforma Aprende (plataformaId = 2) registrados dentro
       de cada ventana fija y SIN ninguna inscripción (NOT EXISTS
-      fact_inscription). Devuelve UNA fila con cuatro columnas: "2024"
-      ([2024-01-01, 2025-01-01)), "sep2025" ([2025-01-01, 2025-10-01)),
-      "dic2025" ([2025-01-01, 2026-01-01)) y "acumulado" (histórico <
-      2025-10-01).
+      fact_inscription). Devuelve UNA fila con cuatro columnas: "2025"
+      ([2025-01-01, 2026-01-01)), "sep2026" ([2026-01-01, 2026-10-01)),
+      "dic2026" ([2026-01-01, 2027-01-01)) y "acumulado" (histórico <
+      2026-10-01).
     formula: >
       COUNT(DISTINCT dim_user.userId) con plataformaId = 2, registrationDate
       en la ventana y NOT EXISTS fact_inscription del mismo usuario.
@@ -1140,19 +1195,19 @@ metrics:
       SELECT
         (SELECT COUNT(DISTINCT u."userId") FROM public.dim_user u
          WHERE u."plataformaId" = 2
-           AND u."registrationDate" >= '2024-01-01' AND u."registrationDate" < '2025-01-01'
-           AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "2024",
-        (SELECT COUNT(DISTINCT u."userId") FROM public.dim_user u
-         WHERE u."plataformaId" = 2
-           AND u."registrationDate" >= '2025-01-01' AND u."registrationDate" < '2025-10-01'
-           AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "sep2025",
-        (SELECT COUNT(DISTINCT u."userId") FROM public.dim_user u
-         WHERE u."plataformaId" = 2
            AND u."registrationDate" >= '2025-01-01' AND u."registrationDate" < '2026-01-01'
-           AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "dic2025",
+           AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "2025",
         (SELECT COUNT(DISTINCT u."userId") FROM public.dim_user u
          WHERE u."plataformaId" = 2
-           AND u."registrationDate" < '2025-10-01'
+           AND u."registrationDate" >= '2026-01-01' AND u."registrationDate" < '2026-10-01'
+           AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "sep2026",
+        (SELECT COUNT(DISTINCT u."userId") FROM public.dim_user u
+         WHERE u."plataformaId" = 2
+           AND u."registrationDate" >= '2026-01-01' AND u."registrationDate" < '2027-01-01'
+           AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "dic2026",
+        (SELECT COUNT(DISTINCT u."userId") FROM public.dim_user u
+         WHERE u."plataformaId" = 2
+           AND u."registrationDate" < '2026-10-01'
            AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "acumulado"
     caveats:
       - "Definición operativa del usuario: registrados Aprende SIN inscripción, NO iguala la lámina vieja (1,318,962/95,801/452,949/480,611)."

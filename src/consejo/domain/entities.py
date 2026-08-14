@@ -66,6 +66,7 @@ class SourceManifest:
     freshness_hours: float
     rows: Sequence[dict[str, Any]] = field(default_factory=tuple)
     status: FetchStatus = FetchStatus.EMPTY
+    db_source: str = "postgres"
 
     def __post_init__(self) -> None:
         if self.fetched_at.tzinfo is None:
@@ -183,6 +184,7 @@ class Bundle:
             "manifests": [
                 {
                     "cut": m.cut.isoformat(),
+                    "db_source": m.db_source,
                     "fetched_at": m.fetched_at.isoformat(),
                     "freshness_hours": m.freshness_hours,
                     "metric_id": str(m.metric_id),

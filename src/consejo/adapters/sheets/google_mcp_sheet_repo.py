@@ -10,8 +10,9 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from decimal import Decimal
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 from src.consejo.application.ports import SheetRepo
 from src.consejo.domain.entities import Bundle, DqsIssue, Metric, SourceManifest
@@ -353,8 +354,8 @@ def _build_datos_requests(
     Período fin/Fuente, =SUM en D) o slide3 (9 columnas Categoría/Programa/
     2025/sep2026/dic2026/Acumulado sep2026/Período inicio/Período fin/
     Fuente, UNA tabla comparativa que agrupa todos los manifests slide3) y
-    slide4 (9 columnas Categoría/Programa/2024/sep2025/dic2025/Acumulado
-    sep2025/Período inicio/Período fin/Fuente, UNA tabla comparativa que
+    slide4 (9 columnas Categoría/Programa/2025/sep2026/dic2026/Acumulado
+    sep2026/Período inicio/Período fin/Fuente, UNA tabla comparativa que
     agrupa todos los manifests slide4). Las tablas se escriben consecutivas
     separadas por una fila en blanco. Al final se escriben SIEMPRE los bloques
     fijos de slide 7 y slide 8 (grillas de plataformas, ver
@@ -582,10 +583,10 @@ SLIDE3_LABELS = {
 SLIDE4_TABLE_HEADERS = [
     "Categoría",
     "Programa",
-    "2024",
-    "sep2025",
-    "dic2025",
-    "Acumulado sep2025",
+    "2025",
+    "sep2026",
+    "dic2026",
+    "Acumulado sep2026",
     "Período inicio",
     "Período fin",
     "Fuente",
@@ -708,14 +709,22 @@ SLIDE19_TABLE_HEADERS = [
     "Fuente",
 ]
 
-# Ventanas fijas de los valores visibles de slide 4: 2024 =
-# [2024-01-01, 2025-01-01), sep2025 = [2025-01-01, 2025-10-01),
-# dic2025 = [2025-01-01, 2026-01-01) y acumulado histórico < 2025-10-01
-# (la fecha 2025-09-30 documenta el cierre de la ventana visible). Las
+# Ventanas fijas de los valores visibles de slide 4: 2025 =
+# [2025-01-01, 2026-01-01), sep2026 = [2026-01-01, 2026-10-01),
+# dic2026 = [2026-01-01, 2027-01-01) y acumulado histórico < 2026-10-01
+# (la fecha 2026-09-30 documenta el cierre de la ventana visible). Las
 # filas slide4 de PostgreSQL no traen estos campos.
-SLIDE4_PERIODO_INICIO = "2024-01-01"
-SLIDE4_PERIODO_FIN = "2025-09-30"
+SLIDE4_PERIODO_INICIO = "2025-01-01"
+SLIDE4_PERIODO_FIN = "2026-09-30"
 SLIDE4_FUENTE_POSTGRES = "postgres"
+SLIDE4_FUENTE_MYSQL = "mysql"
+# Fuente mixta: la fila combina ventanas desde PostgreSQL con el acumulado
+# histórico proveniente de la métrica hermana *_acumulado (MySQL), p.ej.
+# slide4_aprende_seguridad_vial + slide4_aprende_seguridad_vial_acumulado.
+SLIDE4_FUENTE_MIXTA = "postgres + mysql"
+# Sufijo de la métrica hermana que provee el acumulado histórico a su
+# métrica base de slide 4 (p.ej. slide4_aprende_seguridad_vial_acumulado).
+SLIDE4_ACUMULADO_SUFFIX = "_acumulado"
 
 # Label legible por key de métrica slide4 (se deriva de la key porque
 # _build_datos_requests no recibe el catálogo).
@@ -1263,22 +1272,40 @@ def _build_slide4_block(
 ) -> tuple[list[dict], int]:
     """Bloque slide 4: tabla comparativa de programas de educación y divulgación.
 
-    9 columnas (Categoría, Programa, 2024, sep2025, dic2025, Acumulado
-    sep2025, Período inicio, Período fin, Fuente) con la misma nomenclatura
+    9 columnas (Categoría, Programa, 2025, sep2026, dic2026, Acumulado
+    sep2026, Período inicio, Período fin, Fuente) con la misma nomenclatura
     de slides 1/2/3 (metric_id 'slide4_*' en Categoría, ventanas de valor,
     período y fuente).
 
     Fila fija "Pilotos por la Seguridad Vial" (manual, fuente 'manual',
     resto vacío) que SIEMPRE está presente, seguida de UNA fila por cada
-    manifest slide4 con filas: Categoría = metric_id tal cual
+    programa slide4 con filas: Categoría = metric_id tal cual
     (slide4_aprende_seguridad_vial -> "slide4_aprende_seguridad_vial"),
     Programa = label legible derivado de la key
     (slide4_aprende_seguridad_vial -> "Aprende de seguridad vial") y los
-    valores de las columnas de ventana fija "2024", "sep2025", "dic2025" y
-    "acumulado". Los períodos son las ventanas fijas 2024-01-01..2025-09-30
-    y la fuente es 'postgres' (db_source de las métricas slide4 de
-    PostgreSQL). Sin fila TOTAL: el =SUM no tiene sentido entre programas
-    distintos.
+    valores de las columnas de ventana fija "2025", "sep2026", "dic2026" y
+    "acumulado". Los períodos son las ventanas fijas 2025-01-01..2026-09-30
+    y la fuente es el db_source del manifest ('postgres' o 'mysql'). Sin
+    fila TOTAL: el =SUM no tiene sentido entre programas distintos.
+
+    FUENTE MIXTA: si un programa tiene su métrica hermana *_acumulado en
+    el mismo bundle (p.ej. slide4_aprende_seguridad_vial con su hermana
+    slide4_aprende_seguridad_vial_acumulado, que vive en MySQL y devuelve
+    UN solo valor en la clave "value"), la hermana NO genera fila propia:
+    su valor se fusiona en la columna "Acumulado sep2026" de la fila de su
+    base y la fuente de esa fila pasa a "postgres + mysql". Sin la base en
+    el bundle, la hermana tampoco genera fila (solo aporta su valor).
+
+    Soporta dos shapes de fila:
+    - Ventanas fijas (2025/sep2026/dic2026/acumulado): la fila trae las
+      claves "2025", "sep2026", "dic2026", "acumulado" -> se escriben las
+      4 columnas, períodos fijos y fuente = db_source del manifest (o
+      "postgres + mysql" si la base tiene hermana *_acumulado fusionada).
+    - Fallback single-value: la fila trae UN solo valor acumulado (clave
+      "value" sin "2025") -> se escribe solo la columna "Acumulado
+      sep2026", 2025/sep2026/dic2026 vacías, períodos de la fila y fuente
+      = db_source del manifest (compatibilidad con queries que devolvían
+      el acumulado único, p.ej. la query de slide 19).
     """
     rows: list[dict] = []
     rows.append(_text_row(SLIDE4_TABLE_HEADERS))
@@ -1298,21 +1325,75 @@ def _build_slide4_block(
     rows.append({"values": [_value_cell(v) for v in pilotos]})
     row_0based += 1
 
+    # Métricas hermanas *_acumulado: NO generan fila propia. Su único valor
+    # (clave "value") se fusiona en la fila de la métrica base, que pasa a
+    # fuente mixta "postgres + mysql". Sin la base, la hermana solo aporta
+    # su valor (nadie lo consume) y no se escribe fila alguna.
+    sibling_values: dict[str, object] = {}
+    for m in manifests:
+        key = str(m.metric_id)
+        if key.endswith(SLIDE4_ACUMULADO_SUFFIX) and m.rows:
+            sibling_values[key[: -len(SLIDE4_ACUMULADO_SUFFIX)]] = dict(
+                m.rows[0]
+            ).get("value", "")
+
     for m in manifests:
         if not m.rows:
             continue
+        key = str(m.metric_id)
+        # Las hermanas *_acumulado ya se absorbieron en su base; si no hay
+        # base en el bundle no se escribe fila para la hermana.
+        if key.endswith(SLIDE4_ACUMULADO_SUFFIX):
+            continue
         data = dict(m.rows[0])
-        cells = [
-            _value_cell(str(m.metric_id)),
-            _value_cell(_slide4_label(str(m.metric_id))),
-            _value_cell(data.get("2024", "")),
-            _value_cell(data.get("sep2025", "")),
-            _value_cell(data.get("dic2025", "")),
-            _value_cell(data.get("acumulado", "")),
-            _value_cell(SLIDE4_PERIODO_INICIO),
-            _value_cell(SLIDE4_PERIODO_FIN),
-            _value_cell(SLIDE4_FUENTE_POSTGRES),
-        ]
+        has_sibling = key in sibling_values
+        source_label = (
+            SLIDE4_FUENTE_MIXTA
+            if has_sibling
+            else (
+                SLIDE4_FUENTE_MYSQL
+                if m.db_source == "mysql"
+                else SLIDE4_FUENTE_POSTGRES
+            )
+        )
+        # Shape de ventanas fijas: la query devuelve las 4 columnas de
+        # ventana (2025/sep2026/dic2026/acumulado). Escribirlas todas con
+        # los períodos fijos y la fuente del manifest. El acumulado, si la
+        # base tiene hermana *_acumulado, llega de la hermana (MySQL), no
+        # de la propia query.
+        if "2025" in data:
+            cells = [
+                _value_cell(key),
+                _value_cell(_slide4_label(key)),
+                _value_cell(data.get("2025", "")),
+                _value_cell(data.get("sep2026", "")),
+                _value_cell(data.get("dic2026", "")),
+                _value_cell(
+                    sibling_values[key]
+                    if has_sibling
+                    else data.get("acumulado", "")
+                ),
+                _value_cell(SLIDE4_PERIODO_INICIO),
+                _value_cell(SLIDE4_PERIODO_FIN),
+                _value_cell(source_label),
+            ]
+        else:
+            # Fallback single-value: la query devuelve UN solo valor
+            # acumulado sin ventanas fijas. Escribir ese valor solo en la
+            # columna "Acumulado sep2026", dejar 2025/sep2026/dic2026
+            # vacías, usar los períodos de la fila y la fuente del
+            # manifest.
+            cells = [
+                _value_cell(key),
+                _value_cell(_slide4_label(key)),
+                _value_cell(""),
+                _value_cell(""),
+                _value_cell(""),
+                _value_cell(data.get("value", "")),
+                _value_cell(data.get("periodo_inicio", "")),
+                _value_cell(data.get("periodo_fin", "")),
+                _value_cell(source_label),
+            ]
         rows.append({"values": cells})
         row_0based += 1
 
@@ -1650,6 +1731,26 @@ def _is_slide_metric(manifest: SourceManifest) -> bool:
     return key.startswith("slide") and key != "slide_naming"
 
 
+# ── Selección de valor para el Reporte ───────────────────────────────────────
+
+
+def _select_reporte_value(row: Mapping[str, Any]) -> int | float | Decimal | None:
+    """Selecciona el valor representativo de una fila para el Reporte.
+
+    Prioriza la ventana observada más reciente (sep2026) sobre 'value'
+    y sobre el primer valor numérico. Acepta Decimal porque las
+    agregaciones de MySQL (SUM) devuelven Decimal.
+    """
+    for key in ("sep2026", "value"):
+        v = row.get(key)
+        if isinstance(v, (int, float, Decimal)) and not isinstance(v, bool):
+            return v
+    for v in row.values():
+        if isinstance(v, (int, float, Decimal)) and not isinstance(v, bool):
+            return v
+    return None
+
+
 def _build_reporte_requests(
     bundle: Bundle,
     existing: set[str],
@@ -1681,11 +1782,9 @@ def _build_reporte_requests(
         tipo = "Manual" if is_manual else "Real"
         val_str = "— (manual, sin valor)"
         if m.status.value == "extracted" and m.rows:
-            row = m.rows[0]
-            for v in row.values():
-                if isinstance(v, (int, float)):
-                    val_str = f"{int(v):,}"
-                    break
+            val = _select_reporte_value(m.rows[0])
+            if val is not None:
+                val_str = f"{int(val):,}"
         elif m.status.value == "empty" and not is_manual:
             val_str = f"Vacío ({m.status.value})"
 

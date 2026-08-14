@@ -150,6 +150,7 @@ def extract_data(
             freshness_hours=freshness,
             rows=tuple(normalized),
             status=status,
+            db_source=metric.db_source,
         )
 
     # Pass 2: derived sums, built from their already-extracted parts.
@@ -182,6 +183,7 @@ def _build_manifest(
     freshness_hours: float,
     rows: Sequence[Mapping[str, object]],
     status: FetchStatus,
+    db_source: str = "postgres",
 ) -> SourceManifest:
     """Construye un SourceManifest con los valores dados."""
     return SourceManifest(
@@ -192,6 +194,7 @@ def _build_manifest(
         freshness_hours=freshness_hours,
         rows=rows,
         status=status,
+        db_source=db_source,
     )
 
 
