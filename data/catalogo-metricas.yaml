@@ -1140,10 +1140,12 @@ metrics:
     name: Capacítate Carso — usuarios registrados por ventana fija (Slide 3)
     description: >
       Usuarios únicos registrados en carso_analisis.user con
-      registrationDate dentro de TRES ventanas de tiempo fijas. Devuelve
-      UNA fila con tres columnas: "2025" ([2025-01-01, 2026-01-01)),
-      "sep2026" ([2026-01-01, 2026-08-02)) y "base_dic2026"
-      ([2026-08-01, 2027-01-01), solo base para proyección futura).
+      registrationDate dentro de CUATRO ventanas de tiempo fijas. Devuelve
+      UNA fila con cuatro columnas: "2025" ([2025-01-01, 2026-01-01)),
+      "sep2026" ([2026-01-01, 2026-08-01)), "acumulado"
+      ([2000-01-01, 2026-08-01), histórico completo desde 2000) y
+      "base_dic2026" ([2026-08-01, 2027-01-01), solo base para
+      proyección futura).
       Las ventanas son fijas (NO usan period_start/period_end) porque
       alimentan la tabla comparativa del slide 3, no una métrica del corte.
     formula: >
@@ -1158,7 +1160,9 @@ metrics:
         (SELECT COUNT(DISTINCT u.id) FROM carso_analisis.user u
          WHERE u.registrationDate >= '2025-01-01' AND u.registrationDate < '2026-01-01') AS "2025",
         (SELECT COUNT(DISTINCT u.id) FROM carso_analisis.user u
-         WHERE u.registrationDate >= '2026-01-01' AND u.registrationDate < '2026-08-02') AS "sep2026",
+         WHERE u.registrationDate >= '2026-01-01' AND u.registrationDate < '2026-08-01') AS "sep2026",
+        (SELECT COUNT(DISTINCT u.id) FROM carso_analisis.user u
+         WHERE u.registrationDate >= '2000-01-01' AND u.registrationDate < '2026-08-01') AS "acumulado",
         (SELECT COUNT(DISTINCT u.id) FROM carso_analisis.user u
          WHERE u.registrationDate >= '2026-08-01' AND u.registrationDate < '2027-01-01') AS "base_dic2026"
     caveats:
@@ -1172,11 +1176,13 @@ metrics:
     name: Académica Labs — usuarios inscritos por ventana fija (Slide 3)
     description: >
       Usuarios únicos que se inscribieron a al menos un curso en
-      academica_analisis.userinscription con createdAt dentro de TRES
-      ventanas de tiempo fijas. Devuelve UNA fila con tres columnas:
+      academica_analisis.userinscription con createdAt dentro de CUATRO
+      ventanas de tiempo fijas. Devuelve UNA fila con cuatro columnas:
       "2025" ([2025-01-01, 2026-01-01)), "sep2026"
-      ([2026-01-01, 2026-08-02)) y "base_dic2026"
-      ([2026-08-01, 2027-01-01), solo base para proyección futura).
+      ([2026-01-01, 2026-08-01)), "acumulado"
+      ([2000-01-01, 2026-08-01), histórico completo desde 2000) y
+      "base_dic2026" ([2026-08-01, 2027-01-01), solo base para
+      proyección futura).
       Reemplaza la fila Académica.org. 2025 suele ser 0 porque la tabla
       arrancó el 2026-01-15 (no es un error de extracción).
     formula: >
@@ -1191,7 +1197,9 @@ metrics:
         (SELECT COUNT(DISTINCT ui.userId) FROM academica_analisis.userinscription ui
          WHERE ui.createdAt >= '2025-01-01' AND ui.createdAt < '2026-01-01') AS "2025",
         (SELECT COUNT(DISTINCT ui.userId) FROM academica_analisis.userinscription ui
-         WHERE ui.createdAt >= '2026-01-01' AND ui.createdAt < '2026-08-02') AS "sep2026",
+         WHERE ui.createdAt >= '2026-01-01' AND ui.createdAt < '2026-08-01') AS "sep2026",
+        (SELECT COUNT(DISTINCT ui.userId) FROM academica_analisis.userinscription ui
+         WHERE ui.createdAt >= '2000-01-01' AND ui.createdAt < '2026-08-01') AS "acumulado",
         (SELECT COUNT(DISTINCT ui.userId) FROM academica_analisis.userinscription ui
          WHERE ui.createdAt >= '2026-08-01' AND ui.createdAt < '2027-01-01') AS "base_dic2026"
     caveats:

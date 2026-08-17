@@ -1349,17 +1349,19 @@ def _build_slide3_block(
     de slides 1/2 (metric_id 'slide3_*' en Categoría, ventanas de valor,
     período y fuente).
 
-    Fila fija "Capacitate Empleo" (manual, fuente 'manual', resto vacío)
+    Fila fija "Capacitate Empleo" (manual, fuente 'manual', resto vacío
+    incluido el acumulado — no hay query de acumulado para esa fila)
     que SIEMPRE está presente, seguida de UNA fila por cada manifest slide3
-    con filas: Categoría = metric_id tal cual (slide3_capacitate_carso ->
-    "slide3_capacitate_carso"), Programa = label legible derivado de la key
-    (slide3_capacitate_carso -> "Capacitate Carso") y los valores de las
-    columnas de ventana fija "2025" y "sep2026". dic2026 es la proyección
-    lineal del total anual (ver _project_dic2026) sobre sep2026 real.
-    base_dic2026 NO se escribe. La columna Acumulado sep2026 (manual)
-    queda vacía. Los períodos son las ventanas fijas 2025-01-01..2026-08-02
-    y la fuente es 'mysql' (db_source de las métricas slide3 de MySQL).
-    Sin fila TOTAL: el =SUM no tiene sentido entre programas distintos.
+    con: Categoría = metric_id tal cual (slide3_capacitate_carso ->
+    "slide3_capacitate_carso"), Programa = label legible derivado de la
+    key (slide3_capacitate_carso -> "Capacitate Carso") y los valores de
+    las columnas de ventana fija "2025", "sep2026" y "acumulado"
+    (rango histórico [2000-01-01, 2026-08-01) calculado en el SQL).
+    dic2026 es la proyección lineal del total anual sobre sep2026 real
+    (ver _project_dic2026). base_dic2026 NO se escribe. Los períodos son
+    las ventanas fijas 2025-01-01..2026-08-02 y la fuente es 'mysql'
+    (db_source de las métricas slide3 de MySQL). Sin fila TOTAL: el =SUM
+    no tiene sentido entre programas distintos.
     """
     rows: list[dict] = []
     rows.append(_text_row(SLIDE3_TABLE_HEADERS))
@@ -1395,7 +1397,7 @@ def _build_slide3_block(
             _value_cell(data.get("2025", "")),
             _value_cell(sep2026_raw),
             _value_cell(dic2026),
-            _value_cell(""),
+            _value_cell(data.get("acumulado", "")),
             _value_cell(SLIDE3_PERIODO_INICIO),
             _value_cell(SLIDE3_PERIODO_FIN),
             _value_cell(SLIDE3_FUENTE_MYSQL),
