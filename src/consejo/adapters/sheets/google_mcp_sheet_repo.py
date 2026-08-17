@@ -625,9 +625,9 @@ SLIDE7_TABLE_HEADERS = [
     "Fuente",
 ]
 SLIDE7_ROWS = [
-    ("slide7_capacitate_empleo", "Capacítate para el Empleo", 13364056),
-    ("slide7_academica", "Académica.org", 1477363),
-    ("slide7_capacitate_carso", "Capacítate Carso", 558774),
+    ("slide7_capacitate_empleo", "Capacítate para el Empleo", ""),
+    ("slide7_academica_labs", "Académica Labs", 4317),
+    ("slide7_capacitate_carso", "Capacítate Carso", 593490),
 ]
 
 # Layout de Slide 8: grilla de plataformas de educación y divulgación.
@@ -1571,7 +1571,7 @@ def _build_slide7_block(row_0based: int) -> tuple[list[dict], int]:
             _value_cell(usuarios),
             _value_cell(""),
             _value_cell(""),
-            _value_cell("manual"),
+            _value_cell("slide3"),
         ]
         rows.append({"values": cells})
         row_0based += 1
