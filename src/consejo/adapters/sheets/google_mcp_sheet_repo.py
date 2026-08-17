@@ -643,9 +643,10 @@ SLIDE8_TABLE_HEADERS = [
     "Fuente",
 ]
 SLIDE8_ROWS = [
-    ("slide8_pilotos_seguridad_vial", "Pilotos por la Seguridad Vial", 146132),
-    ("slide8_formacion_penitenciarios", "Formación en Centros Penitenciarios", 1878),
-    ("slide8_aprende_seguridad_vial", "Aprende de Seguridad Vial", 183846),
+    ("slide8_pilotos_seguridad_vial", "Pilotos por la Seguridad Vial", 146132, "slide4"),
+    ("slide8_formacion_penitenciarios", "Formación en Centros Penitenciarios", 2757, "slide13"),
+    ("slide8_aprende_seguridad_vial", "Aprende de Seguridad Vial", 207559, "slide4"),
+    ("slide8_cultura_salud_aprende", "Cultura y Salud Aprende", 1523219, "slide4"),
 ]
 
 # Layout de Slide 13: tarjeta de KPIs del programa "Formación en Centros
@@ -1591,14 +1592,14 @@ def _build_slide8_block(row_0based: int) -> tuple[list[dict], int]:
     rows: list[dict] = []
     rows.append(_text_row(SLIDE8_TABLE_HEADERS))
     row_0based += 1
-    for metric_id, programa, usuarios in SLIDE8_ROWS:
+    for metric_id, programa, usuarios, fuente in SLIDE8_ROWS:
         cells = [
             _value_cell(metric_id),
             _value_cell(programa),
             _value_cell(usuarios),
             _value_cell(""),
             _value_cell(""),
-            _value_cell("manual"),
+            _value_cell(fuente),
         ]
         rows.append({"values": cells})
         row_0based += 1
