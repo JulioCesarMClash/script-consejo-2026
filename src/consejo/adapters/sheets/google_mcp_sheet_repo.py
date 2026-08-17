@@ -391,6 +391,12 @@ def _build_datos_requests(
     slide19_manifests = [
         m for m in slides if str(m.metric_id).startswith("slide19")
     ]
+    # slide20_* (Crecimiento integral) se agrupa en un solo bloque con 2
+    # KPIs desde queries + 1 hardcoded; se excluye de single_slides por
+    # la misma razón.
+    slide20_manifests = [
+        m for m in slides if str(m.metric_id).startswith("slide20")
+    ]
     single_slides = [
         m for m in slides
         if not str(m.metric_id).startswith("slide3")
@@ -398,6 +404,7 @@ def _build_datos_requests(
         and not str(m.metric_id).startswith("slide13")
         and not str(m.metric_id).startswith("slide15")
         and not str(m.metric_id).startswith("slide19")
+        and not str(m.metric_id).startswith("slide20")
     ]
 
     rows_data: list[dict] = []
@@ -475,6 +482,19 @@ def _build_datos_requests(
             row_0based += 1
         block, row_0based = _build_slide19_block(
             slide19_manifests, row_0based
+        )
+        rows_data.extend(block)
+
+    # Slide 20: bloque dinámico con 2 KPIs desde el pipeline
+    # (Crecimiento integral: 2 queries con lista de 78 cursos del panel)
+    # + 1 KPI hardcoded (Contenido: 78). Solo se escribe si hay
+    # manifests de slide20 en el bundle.
+    if slide20_manifests:
+        if rows_data:
+            rows_data.append(_blank_row())
+            row_0based += 1
+        block, row_0based = _build_slide20_block(
+            slide20_manifests, row_0based
         )
         rows_data.extend(block)
 
@@ -709,6 +729,27 @@ SLIDE19_TABLE_HEADERS = [
     "Fuente",
 ]
 
+# Layout de Slide 20: tarjeta de KPIs de "Crecimiento integral" (última
+# slide de la presentación del Consejo 2026). 2 KPIs vienen de las
+# métricas `slide20_*` del catálogo (2 queries en `analisis_cpe_db`
+# PostgreSQL con la lista de 78 cursos de crecimiento integral del
+# archivo Consultas_consejo_panel.sql, con filtro cross-pollination
+# `c.platformId = 1 AND du.plataformaId = 2`). Mismo formato de 6
+# columnas que las otras slides (Período inicio / Período fin / Fuente
+# al final).
+SLIDE20_METRIC_ID = "slide20_crecimiento_integral"
+SLIDE20_PERIODO_INICIO = "Acumulado"
+SLIDE20_PERIODO_FIN = "2026-08-01"
+SLIDE20_FUENTE_INSCRIPCION = "fact_inscription"
+SLIDE20_TABLE_HEADERS = [
+    "Categoría",
+    "Métrica",
+    "Valor",
+    "Período inicio",
+    "Período fin",
+    "Fuente",
+]
+
 # Ventanas fijas de los valores visibles de slide 4: 2025 =
 # [2025-01-01, 2026-01-01), sep2026 = [2026-01-01, 2026-10-01),
 # dic2026 = [2026-01-01, 2027-01-01) y acumulado histórico < 2026-10-01
@@ -822,6 +863,15 @@ def _build_slide_block(
     if key.startswith("slide19"):
         raise ValueError(
             f"slide19_* debe rutearse via _build_slide19_block con todos "
+            f"los manifests juntos, no via _build_slide_block (key={key})"
+        )
+    # 'slide20_*' (Crecimiento integral): se rutean desde el caller
+    # _build_datos_requests que junta los 2 manifests de slide20 en un
+    # solo bloque. Si llega acá con un solo manifest, levantamos
+    # ValueError.
+    if key.startswith("slide20"):
+        raise ValueError(
+            f"slide20_* debe rutearse via _build_slide20_block con todos "
             f"los manifests juntos, no via _build_slide_block (key={key})"
         )
     if key.startswith("slide1"):
@@ -1709,6 +1759,77 @@ def _build_slide19_block(
     for metrica, valor, periodo_inicio, periodo_fin, fuente in plan:
         cells = [
             _value_cell(SLIDE19_METRIC_ID),
+            _value_cell(metrica),
+            _value_cell(valor),
+            _value_cell(periodo_inicio),
+            _value_cell(periodo_fin),
+            _value_cell(fuente),
+        ]
+        rows.append({"values": cells})
+        row_0based += 1
+    return rows, row_0based
+
+
+def _build_slide20_block(
+    manifests: Sequence[SourceManifest], row_0based: int
+) -> tuple[list[dict], int]:
+    """Bloque slide 20: tarjeta de KPIs de "Crecimiento integral".
+
+    6 columnas (Categoría, Métrica, Valor, Período inicio, Período
+    fin, Fuente). 2 KPIs (Inscripciones a cursos, Personas únicas
+    inscritas) se extraen de los manifests del catálogo con prefijo
+    `slide20_` (2 métricas en `data/catalogo-metricas.yaml` con la
+    lista de 78 cursos de crecimiento integral del archivo
+    Consultas_consejo_panel.sql y filtro cross-pollination
+    `c.platformId = 1 AND du.plataformaId = 2`).
+
+    Cada manifest de slide20_* devuelve 1 fila con `value` numérico.
+    Resolvemos el valor buscando por metric_id en un dict; si falta
+    alguno, levantamos KeyError para no escribir un bloque parcial
+    silenciosamente.
+
+    Sin fila TOTAL: cada métrica es independiente. La columna Categoría
+    lleva SLIDE20_METRIC_ID en todas las filas, misma nomenclatura que
+    slide12/13/15/19.
+    """
+    by_key: dict[str, object] = {}
+    for m in manifests:
+        key = str(m.metric_id)
+        if not key.startswith("slide20"):
+            continue
+        if not m.rows:
+            raise ValueError(
+                f"Manifest {key} sin filas — slide 20 requiere 1 fila "
+                f"con 'value' numérico"
+            )
+        by_key[key] = m.rows[0].get("value")
+
+    rows: list[dict] = []
+    rows.append(_text_row(SLIDE20_TABLE_HEADERS))
+    row_0based += 1
+
+    # Plan: (etiqueta legible, valor, periodo_inicio, periodo_fin,
+    # fuente). 2 KPIs desde `analisis_cpe_db` PostgreSQL con filtro
+    # cross-pollination (cursos CPE × usuarios Aprende).
+    plan: list[tuple[str, object, str, str, str]] = [
+        (
+            "Inscripciones a cursos",
+            by_key["slide20_crecimiento_integral_inscripciones"],
+            SLIDE20_PERIODO_INICIO,
+            SLIDE20_PERIODO_FIN,
+            SLIDE20_FUENTE_INSCRIPCION,
+        ),
+        (
+            "Personas únicas inscritas",
+            by_key["slide20_crecimiento_integral_personas_unicas_inscritas"],
+            SLIDE20_PERIODO_INICIO,
+            SLIDE20_PERIODO_FIN,
+            SLIDE20_FUENTE_INSCRIPCION,
+        ),
+    ]
+    for metrica, valor, periodo_inicio, periodo_fin, fuente in plan:
+        cells = [
+            _value_cell(SLIDE20_METRIC_ID),
             _value_cell(metrica),
             _value_cell(valor),
             _value_cell(periodo_inicio),

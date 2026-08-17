@@ -141,6 +141,8 @@ def _build_row_sequence() -> Sequence[Sequence[Mapping]]:
         [{"value": 1065475, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_unicas_inscritas
         [{"value": 240508, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_certificados
         [{"value": 207562, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_certificadas_unicas
+        [{"value": 68271, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide20_crecimiento_integral_inscripciones (PG canónica)
+        [{"value": 41455, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide20_crecimiento_integral_personas_unicas_inscritas (PG canónica)
         [{"count": 42}],  # slide2_empleo_incluyente_por_sector
         [  # slide4_cultura_salud_aprende
             {"2025": 104736, "sep2026": 102916, "dic2026": 134327, "acumulado": 1413528},
@@ -183,7 +185,7 @@ class TestPipelineDry:
             cut=cut,
         )
 
-        assert len(manifests) == 34
+        assert len(manifests) == 36
 
     def test_extract_beneficiaries_is_derived_not_manual(
         self, catalog_path: Path, fake_conn: FakeSourceConn
@@ -296,7 +298,7 @@ class TestPipelineDry:
         assert bundle.run_id == run_id
         assert bundle.attempt_id == attempt_id
         assert bundle.catalog_hash == catalog_hash
-        assert len(bundle.manifests) == 34
+        assert len(bundle.manifests) == 36
         assert str(bundle.hash) != "0" * 64
 
     def test_validate_blocks_with_empty_manifests(
@@ -448,7 +450,7 @@ class TestPipelineDry:
             cut=cut,
             fetched_at=fetched_at,
         )
-        assert len(manifests) == 34
+        assert len(manifests) == 36
 
         # Validate
         bundle = validate_bundle(
@@ -488,6 +490,8 @@ class TestPipelineDry:
             [{"value": 1065475, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_unicas_inscritas
             [{"value": 240508, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_certificados
             [{"value": 207562, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_certificadas_unicas
+            [{"value": 68271, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide20_crecimiento_integral_inscripciones (PG canónica)
+            [{"value": 41455, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide20_crecimiento_integral_personas_unicas_inscritas (PG canónica)
             [{"value": 8454, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "userresource"}],  # slide15_mario_molina_vistas
             [{"count": 100}],  # slide3_capacitate_carso
             [{"count": 50}],  # slide3_academica_labs
@@ -524,7 +528,7 @@ class TestPipelineDry:
             mode=PipelineMode.PRODUCTION,
         )
 
-        assert len(bundle.manifests) == len(catalog) == 34
+        assert len(bundle.manifests) == len(catalog) == 36
         assert bundle.dqs == ()
         assert create_snapshot(bundle, fake_sheets, "fake-spreadsheet-id", catalogo=catalog) == "fake-spreadsheet-id"
         assert len(fake_sheets._snapshots) == 1

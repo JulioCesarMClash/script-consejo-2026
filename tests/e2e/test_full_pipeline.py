@@ -176,9 +176,9 @@ class TestFullPipelineE2E:
         self, catalog_path: Path, fake_conn: E2EFakeSourceConn,
         fake_sheets: E2EFakeSheetRepo,
     ) -> None:
-        """El pipeline completo produce exactamente 34 manifiestos."""
+        """El pipeline completo produce exactamente 36 manifiestos."""
         result = _run_full_pipeline(catalog_path, fake_conn, fake_sheets)
-        assert result["manifests_len"] == 34
+        assert result["manifests_len"] == 36
         # 10 SQL-fetched EXTRACTED + 6 derived sums built on their parts = 16;
         # slide1, slide12_rutas_aprendizaje, slide2_empleo_incluyente_por_sector,
         # las 2 de Slide 3 (MySQL, sin mysql_conn en el fake), las 3 de
@@ -364,7 +364,7 @@ class TestFullPipelineE2E:
             catalog_hash=repo.compute_catalog_hash(),
         )
 
-        assert len(manifests) == 33
+        assert len(manifests) == 35
         assert len(bundle.rows) > 0
 
     # ── 5.1.h: Full pipeline with real Sheets (opt-in) ───────────────────
