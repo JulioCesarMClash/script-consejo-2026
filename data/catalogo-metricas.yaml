@@ -1124,12 +1124,13 @@ metrics:
       ) detalle
       WHERE grupo IS NOT NULL
       GROUP BY grupo, curso
-      ORDER BY grupo, value DESC
+      ORDER BY grupo, curso ASC
     caveats:
       - "Grano por curso: una persona en dos cursos del mismo sector cuenta en ambos."
       - "Regla certificación: advance = 100 AND certificationDate IS NOT NULL."
       - "Límite superior del período: INCLUSIVO (<=) para coincidir con Perfiles_Femeninos.sql original."
       - "Fuente original: Perfiles_Femeninos.sql (IDs exactos por sector)."
+      - "Orden de filas: alfabético por curso dentro de cada sector (no por valor DESC). El sheet repo emite un bloque con subtotales por sector y TOTAL general."
 
   # Usuarios registrados por período ── Slide 3 (Educación y empleo) ──
   # Fuente: MySQL (carso_analisis / academica_analisis). `source` documenta

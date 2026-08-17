@@ -1111,19 +1111,78 @@ def _build_slide2_block(
     manifest: SourceManifest, row_0based: int
 ) -> tuple[list[dict], int]:
     """Bloque slide2: 7 columnas (Categoría, Sector, Curso, Certificados,
-    Período inicio, Período fin, Fuente); TOTAL con =SUM en la columna
-    Certificados (D). Las filas usan las keys grupo, curso, value,
-    periodo_inicio, periodo_fin, source de la SQL."""
+    Período inicio, Período fin, Fuente). Estructura por sector con
+    subtotales:
+
+      - Header (Categoría | Sector | Curso | Certificados | Período...).
+      - Por cada sector del manifest (las filas del manifest vienen YA
+        agrupadas y ordenadas alfabéticamente por `curso` dentro de cada
+        sector; ver db_mapping en el catálogo):
+          - Fila header de sector: Categoría=metric_id, Sector=nombre,
+            resto de columnas vacío.
+          - Filas de cursos del sector: Categoría=metric_id, Sector=vacío,
+            Curso+Certificados del row.
+          - Fila subtotal del sector: Categoría=metric_id,
+            Sector="Subtotal <nombre>", Certificados=`=SUM(D<primera>:D<última>)`
+            sobre las filas de cursos de ese sector.
+      - Fila en blanco.
+      - TOTAL GENERAL: Categoría=metric_id, Sector="TOTAL",
+        Certificados=suma aditiva `=D<sub1>+D<sub2>+...+D<sub6>`
+        (sintaxis con ``+`` — probamos ``=SUM(D<sub1>,D<sub2>,...)``
+        con comas y Sheets devolvió ``#ERROR!``; un rango continuo
+        ``=SUM(D<sub1>:D<sub_n>)`` tampoco sirve porque las filas
+        intermedias tienen cursos de Construcción que duplicarían
+        el conteo).
+
+    Las filas del manifest llegan YA ordenadas por la SQL
+    (`ORDER BY grupo, curso ASC`), así que cada sector aparece en filas
+    consecutivas y dentro de él los cursos van alfabéticos. Al detectar
+    un cambio de sector se emite UNA fila header + UNA fila subtotal
+    ANTES de la primera fila del sector siguiente (header del nuevo
+    sector al inicio, subtotal del anterior al final)."""
     rows: list[dict] = []
     rows.append(_text_row(SLIDE2_TABLE_HEADERS))
-    header_0 = row_0based
     row_0based += 1
 
-    for r in manifest.rows:
-        rows.append(_slide2_data_row(r))
-        row_0based += 1
+    categoria = str(manifest.metric_id)
 
-    rows.append(_slide2_total_row(header_0, row_0based))
+    seccion_actual: str | None = None
+    primera_fila_1 = 0
+    ultima_fila_1 = 0
+    subtotal_filas_1: list[int] = []
+
+    def _emitir_subtotal() -> None:
+        nonlocal row_0based, ultima_fila_1
+        subtotal_1 = row_0based + 1
+        rows.append(_slide2_subtotal_row(
+            categoria, seccion_actual, primera_fila_1, ultima_fila_1
+        ))
+        row_0based += 1
+        subtotal_filas_1.append(subtotal_1)
+
+    for r in manifest.rows:
+        seccion = str(r.get("grupo", ""))
+        if seccion != seccion_actual:
+            # Header del nuevo sector
+            if seccion_actual is not None:
+                _emitir_subtotal()
+            rows.append(_slide2_sector_header_row(categoria, seccion))
+            row_0based += 1
+            seccion_actual = seccion
+            primera_fila_1 = row_0based + 1
+        rows.append(_slide2_data_row(r, categoria))
+        row_0based += 1
+        ultima_fila_1 = row_0based
+
+    if seccion_actual is not None:
+        _emitir_subtotal()
+
+    # Fila en blanco entre los sectores y el TOTAL GENERAL
+    rows.append(_blank_row())
+    row_0based += 1
+
+    # TOTAL GENERAL — suma aditiva sobre los subtotales (columna D)
+    rows.append(_slide2_global_total_row(categoria, subtotal_filas_1))
     row_0based += 1
     return rows, row_0based
 
@@ -1183,42 +1242,18 @@ def _slide_total_row(header_0: int, total_0: int) -> dict:
     return {"values": list(cells)}
 
 
-def _slide2_categoria(row: Mapping[str, object]) -> str:
-    """Categoría con nomenclatura 'slide2_<sector>' donde <sector> es el
-    nombre del sector normalizado (minúsculas, sin acentos, guiones bajos).
+def _slide2_data_row(row: Mapping[str, object], categoria: str) -> dict:
+    """Fila de datos slide2 (un curso): 7 celdas.
 
-    Ejemplos:
-      'Construcción y mantenimiento' -> 'slide2_construccion_y_mantenimiento'
-      'Alimentos y atención'        -> 'slide2_alimentos_y_atencion'
-    """
-    import unicodedata
-    grupo = str(row.get("grupo", "") or "")
-    sin_acentos = "".join(
-        c for c in unicodedata.normalize("NFKD", grupo)
-        if not unicodedata.combining(c)
-    )
-    normalizado = (
-        sin_acentos.lower()
-        .replace(" ", "_")
-        .replace("-", "_")
-    )
-    # colapsar underscores repetidos
-    while "__" in normalizado:
-        normalizado = normalizado.replace("__", "_")
-    return f"slide2_{normalizado}" if normalizado else "slide2"
-
-
-def _slide2_data_row(row: Mapping[str, object]) -> dict:
-    """Fila de datos slide2: 7 celdas.
-
-    Categoría usa nomenclatura 'slide2_<sector>' para identificar a qué
-    espacio de slide 2 pertenece la fila. El resto de las columnas se
-    mapea desde el row (grupo, curso, value, periodo_inicio, periodo_fin,
-    source).
+    Categoría = metric_id de la slide (constante para todas las filas
+    del bloque). Sector queda VACÍO en las filas de cursos — el
+    nombre del sector vive solo en la fila header del sector
+    (ver _slide2_sector_header_row) para no repetir el label. Curso,
+    Certificados, Período y Fuente se mapean desde el row.
     """
     values = [
-        _slide2_categoria(row),
-        row.get("grupo", ""),
+        categoria,
+        "",
         row.get("curso", ""),
         row.get("value", ""),
         row.get("periodo_inicio", ""),
@@ -1229,20 +1264,74 @@ def _slide2_data_row(row: Mapping[str, object]) -> dict:
     return {"values": cells}
 
 
-def _slide2_total_row(header_0: int, total_0: int) -> dict:
-    """Fila TOTAL slide2: 7 celdas con =SUM en columna Certificados (D)."""
-    first_data_1 = header_0 + 2
-    last_data_1 = total_0
+def _slide2_sector_header_row(categoria: str, seccion: str) -> dict:
+    """Fila header de sector slide2: 7 celdas.
+
+    Col A Categoría = metric_id, col B Sector = nombre del sector
+    (ej. 'Construcción y mantenimiento'), resto vacío. Es la fila que
+    antecede a los cursos de ese sector y le da nombre al bloque."""
+    values = [
+        categoria,
+        seccion,
+        "",
+        "",
+        "",
+        "",
+        "",
+    ]
+    cells = [_value_cell(v) for v in values]
+    return {"values": cells}
+
+
+def _slide2_subtotal_row(
+    categoria: str, seccion: str, first_1: int, last_1: int
+) -> dict:
+    """Fila de subtotal de UN sector slide2: 7 celdas.
+
+    Col A Categoría = metric_id, col B Sector = 'Subtotal <seccion>',
+    col C (Curso) vacía, col D Certificados = =SUM(D<first_1>:D<last_1>)
+    sobre las filas de cursos de ese sector (1-indexed, mismo
+    contrato de rango que _slide12_subtotal_row)."""
     letter = chr(ord("A") + SLIDE2_SUM_COLUMN - 1)
     cells: list[dict] = [
-        {"userEnteredValue": {"stringValue": "TOTAL"}},
-        {"userEnteredValue": {}},
+        _value_cell(categoria),
+        _value_cell(f"Subtotal {seccion}"),
         {"userEnteredValue": {}},
         {
             "userEnteredValue": {
-                "formulaValue": f"=SUM({letter}{first_data_1}:{letter}{last_data_1})"
+                "formulaValue": f"=SUM({letter}{first_1}:{letter}{last_1})"
             }
         },
+        {"userEnteredValue": {}},
+        {"userEnteredValue": {}},
+        {"userEnteredValue": {}},
+    ]
+    return {"values": list(cells)}
+
+
+def _slide2_global_total_row(
+    categoria: str, subtotal_filas_1: Sequence[int]
+) -> dict:
+    """Fila TOTAL global slide2: 7 celdas con suma aditiva en D sobre
+    las 6 celdas de subtotal.
+
+    Misma sintaxis aditiva (``=D<sub1>+D<sub2>+...``) que
+    _slide12_global_total_row — probamos ``=SUM(D<sub1>,D<sub2>,...)``
+    con comas y Google Sheets devolvió ``#ERROR!`` (igual que con
+    slide12). Las filas subtotal están en posiciones discontinuas
+    (5, 12, 27, 33, 41, 47 en el preview, separadas por cursos + filas
+    en blanco + headers de sector), por lo que tampoco se puede usar
+    un rango continuo ``=SUM(D<sub1>:D<sub_n>)`` — eso sumaría los
+    subtotales + los cursos de Construcción dos veces. La suma aditiva
+    explícita con ``+`` es la única sintaxis que evalúa consistente.
+    """
+    letter = chr(ord("A") + SLIDE2_SUM_COLUMN - 1)
+    refs = "+".join(f"{letter}{fila}" for fila in subtotal_filas_1)
+    cells: list[dict] = [
+        _value_cell(categoria),
+        _value_cell("TOTAL"),
+        {"userEnteredValue": {}},
+        {"userEnteredValue": {"formulaValue": f"={refs}"}},
         {"userEnteredValue": {}},
         {"userEnteredValue": {}},
         {"userEnteredValue": {}},
