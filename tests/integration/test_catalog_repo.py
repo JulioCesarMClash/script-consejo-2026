@@ -107,6 +107,7 @@ class TestCatalogRepo:
             assert m.db_source == "postgres"
             assert m.db_mapping.strip().startswith("SELECT")
             # Slide 4 usa ventanas FIJAS de cuatro columnas, sin period_start/end.
+            # sep2026, dic2026 y acumulado usan todos el corte 2026-08-01 (alineado con slide3).
             assert "%(period_start)s" not in m.db_mapping
             assert "%(period_end)s" not in m.db_mapping
             assert '"2025"' in m.db_mapping
@@ -114,8 +115,7 @@ class TestCatalogRepo:
             assert '"dic2026"' in m.db_mapping
             assert '"acumulado"' in m.db_mapping
             assert "'2025-01-01'" in m.db_mapping
-            assert "'2026-10-01'" in m.db_mapping
-            assert "'2027-01-01'" in m.db_mapping
+            assert "'2026-08-01'" in m.db_mapping
 
     def test_finds_fact_inscription_metrics(
         self, catalog_repo: YamlMetricRepo

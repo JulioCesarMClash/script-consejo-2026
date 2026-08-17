@@ -752,11 +752,12 @@ SLIDE20_TABLE_HEADERS = [
 
 # Ventanas fijas de los valores visibles de slide 4: 2025 =
 # [2025-01-01, 2026-01-01), sep2026 = [2026-01-01, 2026-10-01),
-# dic2026 = [2026-01-01, 2027-01-01) y acumulado histórico < 2026-10-01
-# (la fecha 2026-09-30 documenta el cierre de la ventana visible). Las
-# filas slide4 de PostgreSQL no traen estos campos.
+# dic2026 = [2026-01-01, 2026-08-01) y acumulado histórico < 2026-08-01
+# (la fecha 2026-08-01 documenta el cierre de la ventana visible y se
+# alinea con el patrón de slide3). Las filas slide4 de PostgreSQL no
+# traen estos campos.
 SLIDE4_PERIODO_INICIO = "2025-01-01"
-SLIDE4_PERIODO_FIN = "2026-09-30"
+SLIDE4_PERIODO_FIN = "2026-08-01"
 SLIDE4_FUENTE_POSTGRES = "postgres"
 SLIDE4_FUENTE_MYSQL = "mysql"
 # Fuente mixta: la fila combina ventanas desde PostgreSQL con el acumulado
@@ -1458,7 +1459,7 @@ def _build_slide4_block(
         "",
         "",
         "",
-        "",
+        146132,
         "",
         "",
         "manual",
@@ -1503,12 +1504,20 @@ def _build_slide4_block(
         # base tiene hermana *_acumulado, llega de la hermana (MySQL), no
         # de la propia query.
         if "2025" in data:
+            sep2026_raw = data.get("sep2026", "")
+            # dic2026 es proyección lineal del total anual sobre el
+            # acumulado real sep2026 (mismo patrón que slide3): la query
+            # devuelve 0 como placeholder; el sheet repo calcula el valor
+            # final con _project_dic2026 sobre sep2026.
+            dic2026 = (
+                _project_dic2026(int(sep2026_raw)) if str(sep2026_raw) else ""
+            )
             cells = [
                 _value_cell(key),
                 _value_cell(_slide4_label(key)),
                 _value_cell(data.get("2025", "")),
-                _value_cell(data.get("sep2026", "")),
-                _value_cell(data.get("dic2026", "")),
+                _value_cell(sep2026_raw),
+                _value_cell(dic2026),
                 _value_cell(
                     sibling_values[key]
                     if has_sibling

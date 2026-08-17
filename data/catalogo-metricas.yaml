@@ -1251,11 +1251,8 @@ metrics:
         (SELECT COUNT(DISTINCT i."userId") FROM public.fact_inscription i
          WHERE i."courseId" IN (80,79,352,351,305,100156,100326,175,54,41,202,98,203,204,36,114)
            AND i.advance = 100
-           AND i."certificationDate" >= '2026-01-01' AND i."certificationDate" < '2026-10-01') AS "sep2026",
-        (SELECT COUNT(DISTINCT i."userId") FROM public.fact_inscription i
-         WHERE i."courseId" IN (80,79,352,351,305,100156,100326,175,54,41,202,98,203,204,36,114)
-           AND i.advance = 100
-           AND i."certificationDate" >= '2026-01-01' AND i."certificationDate" < '2027-01-01') AS "dic2026"
+           AND i."certificationDate" >= '2026-01-01' AND i."certificationDate" < '2026-08-01') AS "sep2026",
+        0 AS "dic2026"
     caveats:
       - "Ventanas FIJAS (ignoran period_start/period_end): tabla comparativa del slide 4, ahora con el período 2025/sep2026/dic2026."
       - "El acumulado histórico (< '2026-08-01') NO está acá: lo provee la métrica hermana slide4_aprende_seguridad_vial_acumulado (MySQL), que se fusiona en la misma fila de la hoja con fuente 'postgres + mysql'."
@@ -1321,15 +1318,12 @@ metrics:
            AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "2025",
         (SELECT COUNT(DISTINCT u."userId") FROM public.dim_user u
          WHERE u."plataformaId" = 2
-           AND u."registrationDate" >= '2026-01-01' AND u."registrationDate" < '2026-10-01'
+           AND u."registrationDate" >= '2026-01-01' AND u."registrationDate" < '2026-08-01'
            AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "sep2026",
+        0 AS "dic2026",
         (SELECT COUNT(DISTINCT u."userId") FROM public.dim_user u
          WHERE u."plataformaId" = 2
-           AND u."registrationDate" >= '2026-01-01' AND u."registrationDate" < '2027-01-01'
-           AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "dic2026",
-        (SELECT COUNT(DISTINCT u."userId") FROM public.dim_user u
-         WHERE u."plataformaId" = 2
-           AND u."registrationDate" < '2026-10-01'
+           AND u."registrationDate" < '2026-08-01'
            AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "acumulado"
     caveats:
       - "Definición operativa del usuario: registrados Aprende SIN inscripción, NO iguala la lámina vieja (1,318,962/95,801/452,949/480,611)."
