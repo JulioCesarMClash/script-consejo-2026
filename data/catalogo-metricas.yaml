@@ -409,23 +409,23 @@ metrics:
              c.compartidos,
              array_length(c.categoria_ids, 1) + c.compartidos AS cursos_totales,
              (SELECT COUNT(DISTINCT fi."userId")
-              FROM fact_inscription fi
-              WHERE fi."courseId" = ANY(c.categoria_ids)
-                AND fi.advance = 100
-                AND fi."certificationDate" >= %(period_start)s
-                AND fi."certificationDate" < %(period_end)s
-                AND EXISTS (
-                  SELECT 1 FROM dim_user u
-                  WHERE u."userId" = fi."userId" AND u."plataformaId" IN (1,2)
-                )
-             ) AS certificados,
+               FROM fact_inscription fi
+               JOIN dim_user u ON u."userId" = fi."userId"
+               JOIN dim_local l ON l."localId" = u."localId"
+               WHERE fi."courseId" = ANY(c.categoria_ids)
+                 AND fi.advance = 100
+                 AND fi."certificationDate" >= %(period_start)s
+                 AND fi."certificationDate" < %(period_end)s
+                 AND u."plataformaId" IN (1,2)
+                 AND l."countryName" = 'México'
+              ) AS certificados,
              %(period_start)s AS periodo_inicio,
              %(period_end)s AS periodo_fin
       FROM categorias c
       ORDER BY c.metric_id
     caveats:
       - "El total (cursos únicos y certificados) se compone en la hoja Slide 1 con fórmula =SUM, no en SQL."
-      - "Certificación: advance = 100 AND certificationDate IS NOT NULL, plataforma 1 o 2, período oficial de certificados. Conteos con COUNT(DISTINCT userId) — la slide del deck habla de 'Personas beneficiadas', no de inscripciones, por lo que se descartan dobles certificaciones de la misma persona en la misma categoría."
+      - "Certificación: advance = 100 AND certificationDate IS NOT NULL, plataforma 1 o 2, período oficial de certificados, filtrado por México (l.countryName = 'México' vía JOIN a dim_local). La slide del deck dice 'Cifras de México'. Conteos con COUNT(DISTINCT userId) — 'Personas beneficiadas' (no de inscripciones), por lo que se descartan dobles certificaciones de la misma persona en la misma categoría."
       - "El curso 342 (Introducción a Primer Respondiente) pertenece SOLO a desastres para no duplicar certificados; alimentos no lo incluye."
       - "Organización de cursos estática, validada contra Consultas consejo panel.sql (Sep-2025) + cursos IA (100212, 366)."
       - "Excluye IDs 100433/100436 (sector 81) con 0 certificados/inscripciones en fact_inscription."

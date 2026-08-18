@@ -107,11 +107,11 @@ def _build_row_sequence() -> Sequence[Sequence[Mapping]]:
         [{"count": 2500}],  # certified_unique_cpe
         [{"count": 900}],  # certified_unique_cpe_from_aprende
         [  # slide1_herramientas_pobreza (5 categorías)
-            {"metric_id": "slide1_vivienda", "source": "fact_inscription", "value": 16, "compartidos": 0, "cursos_totales": 16, "certificados": 20653, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31"},
-            {"metric_id": "slide1_digital", "source": "fact_inscription", "value": 21, "compartidos": 2, "cursos_totales": 23, "certificados": 76371, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31"},
-            {"metric_id": "slide1_alimentos", "source": "fact_inscription", "value": 22, "compartidos": 7, "cursos_totales": 29, "certificados": 99355, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31"},
-            {"metric_id": "slide1_desastres", "source": "fact_inscription", "value": 11, "compartidos": 0, "cursos_totales": 11, "certificados": 74569, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31"},
-            {"metric_id": "slide1_empleo", "source": "fact_inscription", "value": 26, "compartidos": 3, "cursos_totales": 29, "certificados": 81258, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-07-31"},
+            {"metric_id": "slide1_vivienda", "source": "fact_inscription", "value": 16, "compartidos": 0, "cursos_totales": 16, "certificados": 94084, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-08-01"},
+            {"metric_id": "slide1_digital", "source": "fact_inscription", "value": 21, "compartidos": 2, "cursos_totales": 23, "certificados": 324206, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-08-01"},
+            {"metric_id": "slide1_alimentos", "source": "fact_inscription", "value": 22, "compartidos": 7, "cursos_totales": 29, "certificados": 358350, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-08-01"},
+            {"metric_id": "slide1_desastres", "source": "fact_inscription", "value": 11, "compartidos": 0, "cursos_totales": 11, "certificados": 249705, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-08-01"},
+            {"metric_id": "slide1_empleo", "source": "fact_inscription", "value": 26, "compartidos": 3, "cursos_totales": 29, "certificados": 362015, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-08-01"},
         ],
         [  # slide12_rutas_aprendizaje (16 rutas, filtrado México)
             {"seccion": "Construcción", "ruta": "Proyectos constructivos y mantenimiento", "value": 16, "inscripciones": 1255148, "certificados": 145132, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
