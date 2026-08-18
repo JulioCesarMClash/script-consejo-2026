@@ -133,7 +133,7 @@ def _build_row_sequence() -> Sequence[Sequence[Mapping]]:
         ],
         [{"value": 2753, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide13_penitenciarios_inscripciones
         [{"value": 806, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide13_penitenciarios_certificados
-        [{"value": 276, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide13_penitenciarios_usuarios_registrados
+        [{"value": 345, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "dim_user"}],  # slide13_penitenciarios_usuarios_registrados (universo brand 16+18, sin filtro cursos)
         [{"value": 98, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide13_penitenciarios_cursos_ofertados
         [{"value": 174161, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide15_mario_molina_inscripciones
         [{"value": 8454, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "userresource"}],  # slide15_mario_molina_vistas
@@ -484,7 +484,7 @@ class TestPipelineDry:
         mysql_fake = FakeSourceConn([
             [{"value": 2753, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_inscripciones
             [{"value": 806, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_certificados
-            [{"value": 276, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_usuarios_registrados
+            [{"value": 345, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "dim_user"}],  # slide13_penitenciarios_usuarios_registrados (universo brand 16+18, sin filtro cursos)
             [{"value": 98, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_cursos_ofertados
             [{"value": 1498009, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_inscripciones
             [{"value": 1065475, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_unicas_inscritas

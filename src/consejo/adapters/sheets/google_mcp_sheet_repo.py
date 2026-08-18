@@ -693,6 +693,7 @@ SLIDE13_CENTROS = 7
 SLIDE13_PERIODO_INICIO = "Acumulado"
 SLIDE13_PERIODO_FIN = "2026-08-01"
 SLIDE13_FUENTE_INSCRIPCION = "inscription"
+SLIDE13_FUENTE_USUARIOS = "dim_user"
 SLIDE13_TABLE_HEADERS = [
     "Categoría",
     "Métrica",
@@ -1640,7 +1641,9 @@ def _build_slide13_block(
     catálogo con prefijo `slide13_` (4 métricas en
     `data/catalogo-metricas.yaml`); 1 KPI (Centros) queda hardcoded
     porque no tiene query natural (es la cantidad de penitenciarías
-    físicas, no de brands ni de cursos).
+    físicas, no de brands ni de cursos); 1 KPI derivado (Cursos por
+    persona) se calcula como Inscripciones totales / Usuarios registrados
+    (mismo cálculo que el deck slide 7, donde da 5.61 con 1,878/335).
 
     Cada manifest de slide13_* devuelve 1 fila con `value` numérico.
     Resolvemos el valor buscando por metric_id en un dict; si falta
@@ -1652,11 +1655,12 @@ def _build_slide13_block(
     misma nomenclatura que slide12_rutas_aprendizaje y
     slide1_alimentos (categoría = a qué slide pertenece la fila).
 
-    Las 4 KPIs del pipeline llevan "Acumulado" / "2026-08-01" /
-    "inscription" como Período inicio / Período fin / Fuente (la query
-    ataca `capacitate_analisis.inscription` en MySQL). El KPI Centros
-    hardcoded lleva "2026-08-01" / "2026-08-01" / "manual" porque no
-    tiene query — es un dato aprobado de la presentación.
+    Las 4 KPIs del pipeline llevan "Acumulado" / "2026-08-01" como
+    Período inicio / Período fin. La fuente es "inscription" para las
+    que atacan fact_inscription, "dim_user" para la que ataca dim_user
+    (usuarios registrados), y "calculado" para el KPI derivado (Cursos
+    por persona). El KPI Centros hardcoded lleva "2026-08-01" /
+    "2026-08-01" / "manual" porque no tiene query.
     """
     # Indexar los manifests de slide13 por key → value de su primera fila
     by_key: dict[str, object] = {}
@@ -1671,6 +1675,12 @@ def _build_slide13_block(
             )
         by_key[key] = m.rows[0].get("value")
 
+    # Cálculo derivado: Cursos por persona = Inscripciones / Usuarios
+    # (redondeado a 2 decimales para coincidir con la precisión del deck)
+    inscripciones = int(by_key["slide13_penitenciarios_inscripciones"])
+    usuarios = int(by_key["slide13_penitenciarios_usuarios_registrados"])
+    cursos_por_persona = round(inscripciones / usuarios, 2) if usuarios else 0
+
     rows: list[dict] = []
     rows.append(_text_row(SLIDE13_TABLE_HEADERS))
     row_0based += 1
@@ -1678,6 +1688,7 @@ def _build_slide13_block(
     # Plan: (etiqueta legible, valor, periodo_inicio, periodo_fin, fuente).
     # Las 4 KPIs desde pipeline comparten Período/Fuente. Centros usa
     # fecha fija y fuente manual porque es hardcoded (sin query).
+    # Cursos por persona es derivado (calculado en este sheet repo).
     plan: list[tuple[str, object, str, str, str]] = [
         (
             "Inscripciones totales",
@@ -1698,7 +1709,14 @@ def _build_slide13_block(
             by_key["slide13_penitenciarios_usuarios_registrados"],
             SLIDE13_PERIODO_INICIO,
             SLIDE13_PERIODO_FIN,
-            SLIDE13_FUENTE_INSCRIPCION,
+            SLIDE13_FUENTE_USUARIOS,
+        ),
+        (
+            "Cursos por persona",
+            cursos_por_persona,
+            SLIDE13_PERIODO_INICIO,
+            SLIDE13_PERIODO_FIN,
+            "calculado",
         ),
         (
             "Cursos ofertados",
