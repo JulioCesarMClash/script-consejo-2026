@@ -469,7 +469,7 @@ metrics:
         (8, 'Capacitación básica', 'Entendiendo mi situación económica', ARRAY[100147,291,100322,89]::bigint[]),
         (9, 'Capacitación básica', '¿Cómo mejorar mi entorno?', ARRAY[142,299,364,348]::bigint[]),
         (10, 'Capacitación básica', 'Alimentos desde casa', ARRAY[410,282,241,33]::bigint[]),
-        (11, 'Capacitación básica', 'Actuar en caso de desastres naturales', ARRAY[387,95,342,100098,120,314,354,281,57,393,276]::bigint[]),
+        (11, 'Capacitación básica', 'Actuar en caso de desastres naturales', ARRAY[387,95,100098,120,314,354,281,57,393,276]::bigint[]),
         (12, 'Emprendimiento', 'Planea tu negocio', ARRAY[93,100092,100149,157,156,158,100327]::bigint[]),
         (13, 'Emprendimiento', 'Planea los gastos y ganancias de tu negocio', ARRAY[169,159,167,100105]::bigint[]),
         (14, 'Emprendimiento', '¿Cómo preparar mis productos para venderlos?', ARRAY[100074,106,107,117,153]::bigint[]),
@@ -485,15 +485,18 @@ metrics:
              'fact_inscription' AS source
       FROM rutas r
       JOIN fact_inscription fi ON fi."courseId" = ANY(r.curso_ids)
-        AND EXISTS (SELECT 1 FROM dim_user u WHERE u."userId" = fi."userId" AND u."plataformaId" IN (1,2))
+      JOIN dim_user u ON u."userId" = fi."userId"
+      JOIN dim_local l ON l."localId" = u."localId"
+      WHERE u."plataformaId" IN (1,2)
+        AND l."countryName" = 'México'
       GROUP BY r.orden, r.seccion, r.ruta, r.curso_ids
       ORDER BY r.orden
     caveats:
       - "Métrica ACUMULADA: sin límite inferior, corte < '2026-08-01' (decisión de negocio 2026-08-11). El resto del script usa ventana 2025-09-01..2026-07-31 vía .env."
       - "Inscripciones se cuentan por inscripcionDate (no certificationDate), igual que el panel: incluye inscripciones sin certificar."
       - "El total por sección y el total global se compone en la hoja Slide 12 con fórmula =SUM (Cursos, Inscripciones, Certificados), no en SQL."
-      - "Certificación: advance = 100 AND certificationDate < '2026-08-01', plataforma 1 o 2 (misma regla que Slide 1), sin filtro México."
-      - "El curso 342 es el ÚNICO compartido entre rutas: pertenece a 'Seguridad, higiene y cuidado de la salud' Y a 'Actuar en caso de desastres naturales'."
+      - "Certificación: advance = 100 AND certificationDate < '2026-08-01', plataforma 1 o 2 (misma regla que Slide 1), filtrado por México (l.countryName = 'México' vía JOIN a dim_local). La slide del deck dice 'Cifras acotadas a México'."
+      - "El curso 342 (Introducción a Primer Respondiente) pertenece SOLO a 'Seguridad, higiene y cuidado de la salud' (NO a 'Actuar en caso de desastres naturales') para no duplicar certificados. Misma lógica que slide1 (342 pertenece SOLO a desastres; alimentos no lo incluye)."
       - "'Planea tu negocio' incluye el curso 100327 'Plan de negocios' (confirmado en tabla course) que no aparece en el spreadsheet."
 
   # Formación en Centros Penitenciarios — Slide 13 ──

@@ -372,6 +372,14 @@ def _build_datos_requests(
     slide4_manifests = [
         m for m in slides if str(m.metric_id).startswith("slide4")
     ]
+    # slide12_* (Rutas de aprendizaje) se agrupa en un solo bloque con 16
+    # rutas en 4 secciones + subtotales + TOTAL; se excluye de
+    # single_slides para que NO se rutee via _build_slide_block (que
+    # rechazaría slide12 con ValueError por incompatibilidad de
+    # headers). Se emite entre slide8 y slide13.
+    slide12_manifests = [
+        m for m in slides if str(m.metric_id).startswith("slide12")
+    ]
     # slide13_* se agrupa en un solo bloque (la tarjeta de KPIs de
     # Centros Penitenciarios junta las 4 métricas en 5 filas; ver
     # _build_slide13_block). Excluir de single_slides para que NO se
@@ -401,6 +409,7 @@ def _build_datos_requests(
         m for m in slides
         if not str(m.metric_id).startswith("slide3")
         and not str(m.metric_id).startswith("slide4")
+        and not str(m.metric_id).startswith("slide12")
         and not str(m.metric_id).startswith("slide13")
         and not str(m.metric_id).startswith("slide15")
         and not str(m.metric_id).startswith("slide19")
@@ -446,6 +455,19 @@ def _build_datos_requests(
         row_0based += 1
     block, row_0based = _build_slide8_block(row_0based)
     rows_data.extend(block)
+
+    # Slide 12: bloque dinámico con 16 rutas + subtotales por sección +
+    # TOTAL global (ver _build_slide12_block). Se emite entre slide 8 y
+    # slide 13 por decisión de layout de la hoja (orden pedagógico:
+    # plataformas fijas en 7/8, contenido en 12, formación en 13).
+    if slide12_manifests:
+        if rows_data:
+            rows_data.append(_blank_row())
+            row_0based += 1
+        block, row_0based = _build_slide12_block(
+            slide12_manifests[0], row_0based
+        )
+        rows_data.extend(block)
 
     # Slide 13: bloque dinámico con 4 KPIs desde el pipeline (Centros
     # Penitenciarios: inscripciones, certificados, usuarios únicos,
