@@ -24,34 +24,34 @@ slides:
       - id: "g375ce6fdc96_0_263"
         tipo: text_box
         rol: etiqueta_filas
-        descripcion: "Nombres de los programas (filas)"
+        descripcion: "Nombres de los programas (filas): Capacitate Empleo / Capacitate Carso / Academica Labs"
         metrica: null
 
       - id: "g375ce6fdc96_0_264"
         tipo: text_box
-        rol: valor_columna_2024
-        descripcion: "Columna: Enero a diciembre 2024"
-        metrica: edu_inicial_beneficiados_2024
+        rol: valor_columna_2025
+        descripcion: "Columna: Enero a diciembre 2025 (ventana fija)"
+        metrica: null
         formato_texto: "{valor:,.0f}"
 
       - id: "g375ce6fdc96_0_265"
         tipo: text_box
-        rol: valor_columna_sep2025
-        descripcion: "Columna: Enero a septiembre 2025"
-        metrica: null  # pendiente
+        rol: valor_columna_sep2026
+        descripcion: "Columna: Enero a septiembre 2026 (ventana fija)"
+        metrica: null
         formato_texto: "{valor:,.0f}"
 
       - id: "g375ce6fdc96_0_266"
         tipo: text_box
-        rol: valor_columna_dic2025
-        descripcion: "Columna: Enero a diciembre 2025"
+        rol: valor_columna_dic2026
+        descripcion: "Columna: Enero a diciembre 2026 (proyección lineal: sep2026 + promedio mensual x meses restantes)"
         metrica: null
         formato_texto: "{valor:,.0f}"
 
       - id: "g375ce6fdc96_0_267"
         tipo: text_box
         rol: valor_columna_acumulado
-        descripcion: "Columna: Acumulado histórico a septiembre 2025"
+        descripcion: "Columna: Acumulado a septiembre 2026 (manual)"
         metrica: null
         formato_texto: "{valor:,.0f}"
 

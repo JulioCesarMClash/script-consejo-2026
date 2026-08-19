@@ -11,9 +11,6 @@ import os
 import time
 import re
 from pathlib import Path
-from google.oauth2 import service_account
-from google.auth.transport.requests import Request
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = SCRIPT_DIR.parent
 
@@ -28,6 +25,9 @@ _creds_expiry = 0
 
 
 def _get_creds():
+    from google.auth.transport.requests import Request
+    from google.oauth2 import service_account
+
     global _creds, _creds_expiry
     now = time.time()
     if _creds and now < _creds_expiry - 60:
@@ -244,11 +244,6 @@ def _execute_tool(tool: str, args: dict) -> dict:
 
 
 def main():
-    # Send initialize response
-    init_resp = handle_request({"jsonrpc": "2.0", "id": 1, "method": "initialize"})
-    sys.stdout.write(json.dumps(init_resp) + "\n")
-    sys.stdout.flush()
-
     # Read and process requests from stdin
     for line in sys.stdin:
         line = line.strip()

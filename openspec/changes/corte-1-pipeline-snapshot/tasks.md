@@ -12,7 +12,7 @@
 
 Decision needed before apply: Yes
 Chained PRs recommended: Yes
-Chain strategy: pending
+Chain strategy: feature-branch-chain
 400-line budget risk: High
 
 ### Suggested Work Units
@@ -44,30 +44,30 @@ Chain strategy: pending
 
 ## Fase 3: Aplicación (puertos, casos de uso)
 
-- [ ] 3.1 Crear `src/consejo/application/ports.py`: `MetricRepo` (list_metrics), `SourceConn` (fetch con SQL parametrizado), `SheetRepo` (snapshot), `SlidesRepo` (publish, marcado futuro con `raise NotImplementedError`)
-- [ ] 3.2 Crear `src/consejo/application/use_cases/extract_data.py`: `extract_data(run_id, attempt_id, cut) → list[SourceManifest]`; itera catálogo, ejecuta `db_mapping` vía `SourceConn.fetch`, construye 16 manifiestos, respeta `source: manual` sin consulta DB
-- [ ] 3.3 Crear `src/consejo/application/use_cases/validate_bundle.py`: `validate_bundle(manifests, catalog) → Bundle`; ejecuta `domain/dqs.validate()`, si hay fallo lanza `DqsBlockedError` sin construir bundle; bundle canónico con claves ordenadas, ISO 8601 UTC, SHA-256 sin campo `hash`
-- [ ] 3.4 Crear `src/consejo/application/use_cases/create_snapshot.py`: `create_snapshot(bundle, sheet_repo) → str`; delega en `SheetRepo.snapshot(bundle)`, crea/actualiza 5 hojas; si bundle no pasó DQS, aborta sin llamar a Sheets
-- [ ] 3.5 Escribir `tests/unit/application/test_extract_data.py`: con `MetricRepo` y `SourceConn` falsos, verifica 16 manifiestos, `source: manual` sin filas, `empty` como estado
-- [ ] 3.6 Escribir `tests/unit/application/test_validate_bundle.py`: con manifiestos válidos/inválidos, verifica DQS bloqueo, bundle canónico, hash reproducible, idempotencia con mismo `attempt_id`
-- [ ] 3.7 Escribir `tests/unit/application/test_create_snapshot.py`: verifica que `SheetRepo.snapshot` recibe bundle correcto, aborta si `bundle.dqs` tiene fallos, no llama a `SlidesRepo`
+- [x] 3.1 Crear `src/consejo/application/ports.py`: `MetricRepo` (list_metrics), `SourceConn` (fetch con SQL parametrizado), `SheetRepo` (snapshot), `SlidesRepo` (publish, marcado futuro con `raise NotImplementedError`)
+- [x] 3.2 Crear `src/consejo/application/use_cases/extract_data.py`: `extract_data(run_id, attempt_id, cut) → list[SourceManifest]`; itera catálogo, ejecuta `db_mapping` vía `SourceConn.fetch`, construye 16 manifiestos, respeta `source: manual` sin consulta DB
+- [x] 3.3 Crear `src/consejo/application/use_cases/validate_bundle.py`: `validate_bundle(manifests, catalog) → Bundle`; ejecuta `domain/dqs.validate()`, si hay fallo lanza `DqsBlockedError` sin construir bundle; bundle canónico con claves ordenadas, ISO 8601 UTC, SHA-256 sin campo `hash`
+- [x] 3.4 Crear `src/consejo/application/use_cases/create_snapshot.py`: `create_snapshot(bundle, sheet_repo) → str`; delega en `SheetRepo.snapshot(bundle)`, crea/actualiza 5 hojas; si bundle no pasó DQS, aborta sin llamar a Sheets
+- [x] 3.5 Escribir `tests/unit/application/test_extract_data.py`: con `MetricRepo` y `SourceConn` falsos, verifica 16 manifiestos, `source: manual` sin filas, `empty` como estado
+- [x] 3.6 Escribir `tests/unit/application/test_validate_bundle.py`: con manifiestos válidos/inválidos, verifica DQS bloqueo, bundle canónico, hash reproducible, idempotencia con mismo `attempt_id`
+- [x] 3.7 Escribir `tests/unit/application/test_create_snapshot.py`: verifica que `SheetRepo.snapshot` recibe bundle correcto, aborta si `bundle.dqs` tiene fallos, no llama a `SlidesRepo`
 
 ## Fase 4: Adaptadores e integración
 
-- [ ] 4.1 Crear `src/consejo/adapters/catalog/yaml_metric_repo.py`: implementa `MetricRepo` leyendo `data/catalogo-metricas.yaml` con PyYAML, expone `list_metrics() → list[Metric]` y compute `catalog_hash`
-- [ ] 4.2 Crear `src/consejo/adapters/postgres/source_conn.py`: implementa `SourceConn` con `psycopg2`, credenciales desde `DB_HOST/DB_NAME/DB_USER/DB_PASSWORD/DB_PORT`, fetch parametrizado, errores sanitizados sin passwords
-- [ ] 4.3 Crear `src/consejo/adapters/postgres/metric_reader.py`: función helper `read_metric(conn, metric: Metric, cut: date) → SourceManifest` que ejecuta `db_mapping`, mapea resultado a manifiesto con `freshness_hours`
-- [ ] 4.4 Crear `src/consejo/adapters/sheets/google_mcp_sheet_repo.py`: implementa `SheetRepo.snapshot(bundle) → str` via JSON-RPC stdio a `mcp/google_mcp_proxy.py`; usa `get_spreadsheet` + `update_sheet` batch; crea hojas `Control`, `Datos`, `Reporte`, `Errores`, `Configuracion`; `shell=False`, argv fijo; sanitiza errores
-- [ ] 4.5 Crear `src/consejo/adapters/cli/main.py`: CLI con Click; comandos `extract`, `validate`, `snapshot`, `pipeline` (extract→validate→snapshot); opción `--cut` (ISO date), `--spreadsheet-id`; emite bundle JSON por stdout en `--dry-run`
-- [ ] 4.6 Crear `src/consejo/config/settings.py`: `Settings` con pydantic/dataclass validando `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, `GOOGLE_APPLICATION_CREDENTIALS`, `CATALOG_PATH`
-- [ ] 4.7 Crear `src/consejo/config/container.py`: wiring manual sin framework; instancia `Settings` desde entorno, `YamlMetricRepo`, `PostgresSourceConn`, `GoogleMcpSheetRepo`; función `build_pipeline(cut, spreadsheet_id) → callable`
-- [ ] 4.8 Escribir `tests/integration/test_catalog_repo.py`: con `data/catalogo-metricas.yaml` real, verifica 16 métricas, plataformas (id=1,2), y `source: manual` en beneficiarios
-- [ ] 4.9 Escribir `tests/integration/test_sheet_repo.py`: con `GoogleMcpSheetRepo` falso que captura llamadas; verifica 5 hojas creadas, contenido por hoja, cero llamadas a Slides
-- [ ] 4.10 Escribir `tests/integration/test_pipeline_dry.py`: pipeline completo con DB falsa y Sheets falso; verifica flujo extract→validate→snapshot, DQS bloqueo detiene snapshot, hash estable
+- [x] 4.1 Crear `src/consejo/adapters/catalog/yaml_metric_repo.py`: implementa `MetricRepo` leyendo `data/catalogo-metricas.yaml` con PyYAML, expone `list_metrics() → list[Metric]` y compute `catalog_hash`
+- [x] 4.2 Crear `src/consejo/adapters/postgres/source_conn.py`: implementa `SourceConn` con `psycopg2`, credenciales desde `DB_HOST/DB_NAME/DB_USER/DB_PASSWORD/DB_PORT`, fetch parametrizado, errores sanitizados sin passwords
+- [x] 4.3 Crear `src/consejo/adapters/postgres/metric_reader.py`: función helper `read_metric(conn, metric: Metric, cut: date) → SourceManifest` que ejecuta `db_mapping`, mapea resultado a manifiesto con `freshness_hours`
+- [x] 4.4 Crear `src/consejo/adapters/sheets/google_mcp_sheet_repo.py`: implementa `SheetRepo.snapshot(bundle) → str` via JSON-RPC stdio a `mcp/google_mcp_proxy.py`; usa `get_spreadsheet` + `update_sheet` batch; crea hojas `Control`, `Datos`, `Reporte`, `Errores`, `Configuracion`; `shell=False`, argv fijo; sanitiza errores
+- [x] 4.5 Crear `src/consejo/adapters/cli/main.py`: CLI con Click; comandos `extract`, `validate`, `snapshot`, `pipeline` (extract→validate→snapshot); opción `--cut` (ISO date), `--spreadsheet-id`; emite bundle JSON por stdout en `--dry-run`
+- [x] 4.6 Crear `src/consejo/config/settings.py`: `Settings` con pydantic/dataclass validando `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, `GOOGLE_APPLICATION_CREDENTIALS`, `CATALOG_PATH`
+- [x] 4.7 Crear `src/consejo/config/container.py`: wiring manual sin framework; instancia `Settings` desde entorno, `YamlMetricRepo`, `PostgresSourceConn`, `GoogleMcpSheetRepo`; función `build_pipeline(cut, spreadsheet_id) → callable`
+- [x] 4.8 Escribir `tests/integration/test_catalog_repo.py`: con `data/catalogo-metricas.yaml` real, verifica 16 métricas, plataformas (id=1,2), y `source: manual` en beneficiarios
+- [x] 4.9 Escribir `tests/integration/test_sheet_repo.py`: con `GoogleMcpSheetRepo` falso que captura llamadas; verifica 5 hojas creadas, contenido por hoja, cero llamadas a Slides
+- [x] 4.10 Escribir `tests/integration/test_pipeline_dry.py`: pipeline completo con DB falsa y Sheets falso; verifica flujo extract→validate→snapshot, DQS bloqueo detiene snapshot, hash estable
 
 ## Fase 5: Verificación E2E y cierre
 
-- [ ] 5.1 Escribir `tests/e2e/test_full_pipeline.py`: ejecuta comando `pipeline --cut <fecha> --spreadsheet-id <id>` en entorno autorizado; verifica 16 manifiestos, bundle con SHA-256, 5 hojas creadas, cero escrituras Slides
-- [ ] 5.2 Escribir `tests/e2e/test_idempotency.py`: reejecución con mismo `attempt_id` produce hash idéntico y no duplica filas en hoja `Datos`
-- [ ] 5.3 Escribir `tests/e2e/test_credential_sanitization.py`: verifica que errores de conexión DB no exponen passwords ni connection strings en logs ni mensajes
-- [ ] 5.4 Revisar `spec-superseded.md` y confirmar que ningún requisito descartado fue reintroducido; validar cobertura completa de las 3 specs contra tasks 1.1–5.3
+- [x] 5.1 Escribir `tests/e2e/test_full_pipeline.py`: ejecuta el pipeline completo con fakes (call-order SourceConn); en entorno autorizado invocaría `pipeline --cut <fecha> --spreadsheet-id <id>`. Verifica 16 manifiestos, bundle con SHA-256 (64 hex), 5 hojas creadas (fakes), cero escrituras Slides. Tests con credenciales reales skipped (ver debajo).
+- [x] 5.2 Escribir `tests/e2e/test_idempotency.py`: reejecución con mismo `attempt_id` produce hash idéntico y no duplica filas en hoja `Datos` (verify con call-order fakes + datetime mock). Test con DB real skipped.
+- [x] 5.3 Escribir `tests/e2e/test_credential_sanitization.py`: verifica shell=False/argv fijo, cero Slides, errores PG/sheets sanitizados, Settings validate() no expone valores. Test con DB real skipped.
+- [x] 5.4 Revisar `spec-superseded.md` y confirmar que ningún requisito descartado fue reintroducido; validar cobertura completa de las 3 specs contra tasks 1.1–5.3. Cobertura 16 métricas (10 SQL + 4 textsum + 2 manual), 5 hojas, DQS 5 gates, idempotencia, trazabilidad. `spec-superseded.md` es el spec monolítico original particionado sin pérdida; nada reintroducido.

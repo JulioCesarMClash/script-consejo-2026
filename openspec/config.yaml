@@ -1,40 +1,42 @@
 schema: spec-driven
-language: es-neutral
+language: en
 project: "Script Consejo 2026"
 persistence: hybrid
-strict_tdd: false
+strict_tdd: true
 
 context: |
-  Objetivo: automatizar la generación, validación y publicación de la presentación del consejo 2026.
-  Estado: repositorio inicial con PLAN.md y README.md; todavía no existe código ni estructura de aplicación.
-  Stack previsto: Python ETL, PostgreSQL remoto, MySQL local:8889, Google Sheets, Apps Script y Google Slides.
-  Flujo: extracción, validación DQS, snapshot, revisión maker-checker, publicación sobre copia y verificación final.
-  Trazabilidad: run_id, attempt_id, bundle canónico UTF-8 y hash SHA-256.
-  Datos: PostgreSQL es la fuente principal; MySQL y entradas manuales son fuentes temporales o autorizadas.
-  Arquitectura: flujo por fases definido; la arquitectura de código aún no está decidida ni implementada.
-  Calidad: publicación bloqueada ante discrepancias, fuentes vacías no equivalen a cero y la reejecución no debe duplicar datos.
+  Purpose: automate generation, validation, and publication of the 2026 council presentation.
+  Stack: Python 3.11+, PostgreSQL, PyYAML, Click, Google Sheets/Slides APIs, and a local JSON-RPC MCP proxy.
+  Architecture: Clean Architecture with pure domain, application ports/use cases, external adapters, and manual dependency injection.
+  Flow: catalog-driven extraction, blocking DQS validation, canonical UTF-8 bundle, SHA-256 traceability, and idempotent Sheets snapshot.
+  Safety: empty sources are not zero; discrepancies block publication; Google Slides writes remain outside the current change.
+  Traceability: run_id, attempt_id, source manifests, catalog hash, and canonical bundle hash.
 
 testing:
-  detected_on: "2026-07-30"
-  strict_tdd: false
-  strict_tdd_reason: "No se detectó código, configuración de dependencias ni test runner ejecutable."
+  detected_on: "2026-08-04"
+  strict_tdd: true
+  strict_tdd_reason: "pytest is configured and 161 unit, integration, and E2E tests are collectable."
   runner:
-    available: false
-    framework: null
-    command: null
+    available: true
+    framework: pytest
+    command: "python3 -m pytest"
   layers:
     unit:
-      available: false
-      tool: null
+      available: true
+      tool: pytest
+      command: "python3 -m pytest tests/unit -v"
     integration:
-      available: false
-      tool: null
+      available: true
+      tool: pytest
+      command: "python3 -m pytest tests/integration -v"
     e2e:
-      available: false
-      tool: null
+      available: true
+      tool: pytest
+      command: "python3 -m pytest tests/e2e -v"
   coverage:
-    available: false
-    command: null
+    available: true
+    tool: pytest-cov
+    command: "python3 -m pytest --cov=src/consejo --cov-report=term-missing"
   quality_tools:
     linter:
       available: false
@@ -48,34 +50,34 @@ testing:
 
 rules:
   proposal:
-    - "Mantener PLAN.md como contexto de negocio y declarar explícitamente cualquier cambio de alcance."
-    - "Incluir riesgos de datos, rollback y protección de la presentación original."
+    - "Keep PLAN.md as business context and declare scope changes explicitly."
+    - "Include data risks, rollback, and protection of the original presentation."
   specs:
-    - "Redactar requisitos y escenarios en español neutral con términos RFC 2119."
-    - "Cubrir cardinalidad exacta, reconciliación, casos borde, idempotencia y cero filas huérfanas."
-    - "Distinguir datos reales, proyectados y manuales, incluyendo fuente, corte y evidencia."
+    - "Use RFC 2119 keywords and Given/When/Then scenarios."
+    - "Cover exact grain cardinality, reconciliation, real edge cases, destructive idempotency, and zero orphan rows."
+    - "Distinguish observed, projected, and manual data, including source, cutoff, and evidence."
   design:
-    - "Documentar límites entre extracción, validación, snapshot, render, aprobación y publicación."
-    - "Incluir trazabilidad por run_id, attempt_id, manifiestos, hashes y bundle canónico."
-    - "Diseñar la publicación únicamente sobre una copia temporal de Google Slides."
+    - "Document boundaries between extraction, validation, snapshot, rendering, approval, and publication."
+    - "Preserve run_id, attempt_id, manifests, hashes, and the canonical bundle."
+    - "Allow publication only against a temporary copy of Google Slides."
   tasks:
-    - "Agrupar por fase y usar numeración jerárquica."
-    - "Mantener cada tarea verificable y realizable en una sesión."
-    - "Agregar primero la habilitación del entorno de pruebas antes de implementar lógica."
+    - "Group tasks by phase and use hierarchical numbering."
+    - "Keep each task verifiable and completable in one session."
+    - "Add or update tests before implementation changes."
   apply:
     constraints:
-      - "No implementar sin especificación y diseño aprobados."
-      - "Cuando exista un test runner, aplicar RED-GREEN-REFACTOR sin modificar pruebas para forzar pases."
-      - "No usar una fuente vacía como valor cero ni publicar ante discrepancias."
-    tdd: false
-    test_command: ""
+      - "Do not implement without approved specifications and design."
+      - "Apply RED-GREEN-REFACTOR and never alter tests merely to force a pass."
+      - "Never treat an empty source as zero or publish when reconciliation fails."
+    tdd: true
+    test_command: "python3 -m pytest"
   verify:
     constraints:
-      - "Verificar los requisitos, el diseño, las tareas y las cinco obligaciones DQS."
-      - "Verificar que Sheets y Slides compartan el mismo hash antes de aprobar publicación."
-    test_command: ""
+      - "Verify requirements, design, tasks, and all five DQS obligations."
+      - "Verify that Sheets and Slides share the same hash before any publication approval."
+    test_command: "python3 -m pytest"
     build_command: ""
     coverage_threshold: 0
   archive:
-    - "Advertir antes de fusionar deltas destructivos."
-    - "Conservar el archivo como pista de auditoría inmutable."
+    - "Warn before merging destructive deltas."
+    - "Preserve archived changes as an immutable audit trail."
