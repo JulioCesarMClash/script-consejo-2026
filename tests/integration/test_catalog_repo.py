@@ -134,7 +134,7 @@ class TestCatalogRepo:
     ) -> None:
         metrics = list(catalog_repo.list_metrics())
         cpe = [m for m in metrics if "cpe" in m.platform_scope]
-        assert len(cpe) == 25  # 25 de 36 incluyen cpe; las 2 MySQL, 2 slide4, 4 slide13, slide15_vistas y registered_aprende no
+        assert len(cpe) == 23  # 23 de 38 incluyen cpe; las 2 MySQL, 2 slide4, 4 slide13, slide15_vistas, registered_aprende y las 2 slide20 (scope=[aprende] desde 2026-08-19 tras la query buena sin filtro de platformId del curso) no
 
     def test_metric_has_db_mapping(
         self, catalog_repo: YamlMetricRepo
