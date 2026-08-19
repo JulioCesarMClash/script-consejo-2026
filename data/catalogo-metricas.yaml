@@ -783,31 +783,34 @@ metrics:
       (sección "Script para consultar el total de Inscripciones a los
       cursos de seguridad vial"); corte del panel era <= '2026-04-01' —
       aquí se extiende a '2026-08-01' para coincidir con el resto del
-      script. Fuente MySQL `capacitate_analisis` (como la validación CT
-      del usuario): el warehouse PG no cargó el histórico completo de
-       certificaciones (LOOKBACK_DAYS=3 en el ETL), por lo que inscripciones/
-      certificados de slide19 se leen de la fuente de verdad MySQL.
+      script. Fuente PostgreSQL `analisis_cpe_db` (schema `public`):
+      decisión del usuario (2026-08-19) de leer inscripciones/personas
+      únicas/certificados desde el warehouse PG; solo personas
+      certificadas únicas permanece en MySQL (validación CT del
+      usuario) porque PG quedó incompleto en certificaciones
+      (LOOKBACK_DAYS=3 en el ETL).
     formula: >
-      COUNT(inscription.userId) de capacitate_analisis.inscription JOIN
-      course WHERE course.id IN (16 IDs de seguridad vial) AND
-      inscripcionDate < '2026-08-01'.
+      COUNT(fact_inscription."userId") de analisis_cpe_db JOIN course
+      JOIN dim_user WHERE course."id" IN (16 IDs de seguridad vial) AND
+      fact_inscription."inscripcionDate" < '2026-08-01'.
     type: count
     source: fact_inscription
     platform_scope: [cpe, aprende]
-    db_source: mysql
+    db_source: postgres
     db_mapping: >
-      SELECT COUNT(i.userId) AS value,
+      SELECT COUNT(fi."userId") AS value,
              'Acumulado' AS periodo_inicio,
              '2026-08-01' AS periodo_fin,
-             'inscription' AS source
-      FROM capacitate_analisis.inscription i
-      JOIN capacitate_analisis.course c ON i.courseId = c.id
-      WHERE c.id IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
-                     41, 202, 98, 203, 204, 36, 114)
-        AND i.inscripcionDate < '2026-08-01'
+             'fact_inscription' AS source
+      FROM fact_inscription fi
+      JOIN course c ON c."id" = fi."courseId"
+      JOIN dim_user du ON du."userId" = fi."userId"
+      WHERE c."id" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
+                       41, 202, 98, 203, 204, 36, 114)
+        AND fi."inscripcionDate" < '2026-08-01'
     caveats:
       - "Los 16 cursos vienen del archivo Consultas_consejo_panel.sql (listas slide4_aprende_seguridad_vial)."
-      - "Migrada de PG a MySQL (2026-08-13): el warehouse PG tiene 326 inscripciones de más por usuarios sin JOIN a dim_user; MySQL es la fuente validada por el usuario (207,562 personas certificadas vs 206,030 en PG)."
+      - "Decisión del usuario (2026-08-19): esta métrica lee del warehouse PG analisis_cpe_db (PG=1,498,335 vs MySQL=1,498,007, +328). El panel SQL y la validación CT original son MySQL."
 
   - key: slide19_seguridad_vial_personas_unicas_inscritas
     name: Slide 19 — Personas únicas inscritas en seguridad vial
@@ -816,28 +819,31 @@ metrics:
       en los 16 cursos de seguridad vial, con corte < '2026-08-01'.
       Query del archivo Consultas_consejo_panel.sql (sección "Script
       para consultar el total de personas unicas inscritas a los cursos
-      de seguridad vial"). Fuente MySQL `capacitate_analisis`.
+      de seguridad vial"). Fuente PostgreSQL `analisis_cpe_db` (decisión
+      del usuario 2026-08-19: inscripciones/personas únicas leen de PG;
+      solo personas certificadas únicas permanece en MySQL).
     formula: >
-      COUNT(DISTINCT inscription.userId) de capacitate_analisis.inscription
-      JOIN course WHERE course.id IN (16 IDs) AND inscripcionDate
-      < '2026-08-01'.
+      COUNT(DISTINCT fact_inscription."userId") de analisis_cpe_db JOIN
+      course JOIN dim_user WHERE course."id" IN (16 IDs) AND
+      fact_inscription."inscripcionDate" < '2026-08-01'.
     type: count_distinct
     source: fact_inscription
     platform_scope: [cpe, aprende]
-    db_source: mysql
+    db_source: postgres
     db_mapping: >
-      SELECT COUNT(DISTINCT i.userId) AS value,
+      SELECT COUNT(DISTINCT fi."userId") AS value,
              'Acumulado' AS periodo_inicio,
              '2026-08-01' AS periodo_fin,
-             'inscription' AS source
-      FROM capacitate_analisis.inscription i
-      JOIN capacitate_analisis.course c ON i.courseId = c.id
-      WHERE c.id IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
-                     41, 202, 98, 203, 204, 36, 114)
-        AND i.inscripcionDate < '2026-08-01'
+             'fact_inscription' AS source
+      FROM fact_inscription fi
+      JOIN course c ON c."id" = fi."courseId"
+      JOIN dim_user du ON du."userId" = fi."userId"
+      WHERE c."id" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
+                       41, 202, 98, 203, 204, 36, 114)
+        AND fi."inscripcionDate" < '2026-08-01'
     caveats:
       - "Misma lista de 16 cursos que slide19_seguridad_vial_inscripciones."
-      - "Migrada a MySQL (2026-08-13) junto con el resto del bloque slide19."
+      - "Decisión del usuario (2026-08-19): lee del warehouse PG (PG=1,065,664 vs MySQL=1,065,474, +190)."
 
   - key: slide19_seguridad_vial_certificados
     name: Slide 19 — Certificados en cursos de seguridad vial
@@ -846,30 +852,34 @@ metrics:
       en los 16 cursos de seguridad vial, con corte < '2026-08-01'. Query
       del archivo Consultas_consejo_panel.sql (sección "Script para
       consultar el total de Certificados a los cursos de seguridad vial").
-      Fuente MySQL `capacitate_analisis`: PG reporta 238,557 certificados
-      (warehouse incompleto) vs 240,508 en MySQL.
+      Fuente PostgreSQL `analisis_cpe_db` (decisión del usuario
+      2026-08-19): los certificados leen del warehouse PG aunque quedó
+      incompleto en certificaciones (LOOKBACK_DAYS=3); solo personas
+      certificadas únicas permanece en MySQL.
     formula: >
-      COUNT(inscription.userId) de capacitate_analisis.inscription JOIN
-      course WHERE course.id IN (16 IDs) AND advance = 100 AND
-      certificationDate < '2026-08-01'.
+      COUNT(fact_inscription."userId") de analisis_cpe_db JOIN course
+      JOIN dim_user WHERE course."id" IN (16 IDs) AND
+      fact_inscription."advance" = 100 AND fact_inscription."certificationDate"
+      < '2026-08-01'.
     type: count
     source: fact_inscription
     platform_scope: [cpe, aprende]
-    db_source: mysql
+    db_source: postgres
     db_mapping: >
-      SELECT COUNT(i.userId) AS value,
+      SELECT COUNT(fi."userId") AS value,
              'Acumulado' AS periodo_inicio,
              '2026-08-01' AS periodo_fin,
-             'inscription' AS source
-      FROM capacitate_analisis.inscription i
-      JOIN capacitate_analisis.course c ON i.courseId = c.id
-      WHERE c.id IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
-                     41, 202, 98, 203, 204, 36, 114)
-        AND i.advance = 100
-        AND i.certificationDate < '2026-08-01'
+             'fact_inscription' AS source
+      FROM fact_inscription fi
+      JOIN course c ON c."id" = fi."courseId"
+      JOIN dim_user du ON du."userId" = fi."userId"
+      WHERE c."id" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
+                       41, 202, 98, 203, 204, 36, 114)
+        AND fi."advance" = 100
+        AND fi."certificationDate" < '2026-08-01'
     caveats:
       - "Misma lista de 16 cursos que slide19_seguridad_vial_inscripciones."
-      - "Migrada a MySQL (2026-08-13): PG quedaba 1,951 certificados por debajo de la fuente de verdad."
+      - "Decisión del usuario (2026-08-19): lee del warehouse PG (PG=238,557 vs MySQL=240,497, −1,940; incompleto por LOOKBACK_DAYS=3)."
 
   - key: slide19_seguridad_vial_personas_certificadas_unicas
     name: Slide 19 — Personas únicas certificadas en seguridad vial

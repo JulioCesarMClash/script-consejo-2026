@@ -706,22 +706,26 @@ SLIDE13_TABLE_HEADERS = [
 # Layout de Slide 15: tarjeta de KPIs de "Mario Molina Premio Nobel"
 # (objectId g3735641ff7a_1_93 en la presentación del Consejo 2026).
 # 2 KPIs vienen de las métricas `slide15_*` del catálogo:
-#   - slide15_mario_molina_inscripciones: COUNT(u.id) sobre inscription
-#     JOIN course JOIN user con c.id IN (217, 236, 310) (los 3 cursos
-#     del programa Mario Molina) y i.inscripcionDate < '2026-08-01'.
+#   - slide15_mario_molina_inscripciones: COUNT(u.id) sobre
+#     fact_inscription (PostgreSQL analisis_cpe_db) JOIN course JOIN
+#     dim_user con c.id IN (217, 236, 310) (los 3 cursos del programa
+#     Mario Molina) y fi.inscripcionDate < '2026-08-01'.
 #   - slide15_mario_molina_vistas: SUM(ur.count) sobre userresource
-#     JOIN resource con r.id IN (33 IDs de recursos de la sección
-#     Mario Molina) y ur.lastUpdate < '2026-08-01'.
+#     (MySQL capacitate_analisis) JOIN resource con r.id IN (33 IDs de
+#     recursos de la sección Mario Molina) y ur.lastUpdate <
+#     '2026-08-01'.
 # Queries del archivo Consultas_consejo_panel.sql (sección Mario
 # Molina). El texto narrativo "Mario Molina Premio Nobel" + descripción
 # de la sección queda en la presentación de Slides — el Sheet "Datos"
 # solo escribe las tablas de datos. Mismo formato de 6 columnas que
 # las otras slides (Período inicio / Período fin / Fuente al final).
+# La columna Fuente indica la procedencia de cada valor: inscripciones
+# desde fact_inscription (PostgreSQL) y consultas desde MySQL.
 SLIDE15_METRIC_ID = "slide15_mario_molina"
 SLIDE15_PERIODO_INICIO = "Acumulado"
 SLIDE15_PERIODO_FIN = "2026-08-01"
-SLIDE15_FUENTE_INSCRIPCION = "inscription"
-SLIDE15_FUENTE_USERRESOURCE = "userresource"
+SLIDE15_FUENTE_INSCRIPCION = "fact_inscription"
+SLIDE15_FUENTE_USERRESOURCE = "MySQL"
 SLIDE15_TABLE_HEADERS = [
     "Categoría",
     "Métrica",
@@ -737,13 +741,17 @@ SLIDE15_TABLE_HEADERS = [
 # `slide19_*` del catálogo (4 queries de
 # `Consultas_consejo_panel.sql` con la lista de 16 cursos de seguridad
 # vial); 1 KPI (Cursos: 16) queda hardcoded porque la lista de cursos
-# la define el panel SQL, no un COUNT. Mismo formato de 6 columnas que
-# las otras slides (Período inicio / Período fin / Fuente al final).
+# la define el panel SQL, no un COUNT. Fuentes (decisión del usuario
+# 2026-08-19): inscripciones/personas únicas/certificados leen de
+# fact_inscription (PostgreSQL analisis_cpe_db) y personas certificadas
+# únicas de MySQL (capacitate_analisis). Mismo formato de 6 columnas
+# que las otras slides (Período inicio / Período fin / Fuente al final).
 SLIDE19_METRIC_ID = "slide19_seguridad_vial"
 SLIDE19_CURSOS_TOTAL = 16
 SLIDE19_PERIODO_INICIO = "Acumulado"
 SLIDE19_PERIODO_FIN = "2026-08-01"
 SLIDE19_FUENTE_INSCRIPCION = "fact_inscription"
+SLIDE19_FUENTE_CERTIFICADAS_UNICAS = "MySQL"
 SLIDE19_TABLE_HEADERS = [
     "Categoría",
     "Métrica",
@@ -1784,9 +1792,9 @@ def _build_slide15_block(
     row_0based += 1
 
     # Plan: (etiqueta legible, valor, periodo_inicio, periodo_fin, fuente).
-    # Inscripciones: la query ataca capacitate_analisis.inscription.
-    # Vistas: la query ataca capacitate_analisis.userresource (suma
-    # de count agregado por recurso).
+    # Inscripciones: la query ataca fact_inscription (PostgreSQL).
+    # Vistas: la query ataca userresource (MySQL, suma de count agregado
+    # por recurso). La columna Fuente indica la procedencia de cada valor.
     plan: list[tuple[str, object, str, str, str]] = [
         (
             "Inscripciones a cursos",
@@ -1858,8 +1866,10 @@ def _build_slide19_block(
     row_0based += 1
 
     # Plan: (etiqueta legible, valor, periodo_inicio, periodo_fin,
-    # fuente). 4 KPIs vienen de queries en analisis_cpe_db (PG);
-    # Cursos=16 queda hardcoded (lista de cursos del panel SQL).
+    # fuente). 3 KPIs (inscripciones/personas únicas/certificados) vienen
+    # de queries en analisis_cpe_db (PG); personas certificadas únicas
+    # desde MySQL capacitate_analisis; Cursos=16 queda hardcoded (lista
+    # de cursos del panel SQL).
     plan: list[tuple[str, object, str, str, str]] = [
         (
             "Cursos",
@@ -1894,7 +1904,7 @@ def _build_slide19_block(
             by_key["slide19_seguridad_vial_personas_certificadas_unicas"],
             SLIDE19_PERIODO_INICIO,
             SLIDE19_PERIODO_FIN,
-            SLIDE19_FUENTE_INSCRIPCION,
+            SLIDE19_FUENTE_CERTIFICADAS_UNICAS,
         ),
     ]
     for metrica, valor, periodo_inicio, periodo_fin, fuente in plan:
