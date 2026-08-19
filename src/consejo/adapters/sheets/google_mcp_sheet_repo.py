@@ -765,8 +765,9 @@ SLIDE19_TABLE_HEADERS = [
 # slide de la presentación del Consejo 2026). 2 KPIs vienen de las
 # métricas `slide20_*` del catálogo (2 queries en `analisis_cpe_db`
 # PostgreSQL con la lista de 78 cursos de crecimiento integral del
-# archivo Consultas_consejo_panel.sql, con filtro cross-pollination
-# `c.platformId = 1 AND du.plataformaId = 2`). Mismo formato de 6
+# archivo Consultas_consejo_panel.sql — variante declarada por el
+# usuario 2026-08-19 como "la buena": solo filtro `du.plataformaId = 2`,
+# corte >= '2025-04-03' AND < '2026-08-01'). Mismo formato de 6
 # columnas que las otras slides (Período inicio / Período fin / Fuente
 # al final).
 SLIDE20_METRIC_ID = "slide20_crecimiento_integral"
@@ -1961,7 +1962,8 @@ def _build_slide20_block(
 
     # Plan: (etiqueta legible, valor, periodo_inicio, periodo_fin,
     # fuente). 2 KPIs desde `analisis_cpe_db` PostgreSQL con filtro
-    # cross-pollination (cursos CPE × usuarios Aprende).
+    # solo `du.plataformaId = 2` y corte >= '2025-04-03' AND
+    # < '2026-08-01' (query declarada por el usuario 2026-08-19).
     plan: list[tuple[str, object, str, str, str]] = [
         (
             "Inscripciones a cursos",

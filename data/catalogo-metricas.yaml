@@ -917,35 +917,34 @@ metrics:
 
   # Crecimiento integral — Slide 20 ─────────────────────────────────────
   # Migrada a PostgreSQL `analisis_cpe_db` (schema `public`) como fuente
-  # del bloque visible (igual que slide15/slide4). Filtro cross-pollination
-  # `c.platformId = 1 AND du.plataformaId = 2` (cursos CPE tomados por
-  # usuarios Aprende). Los IDs 408 y 100366 NO existen en PG `course`
-  # (solo en MySQL); el JOIN los excluye naturalmente del conteo PG.
+  # del bloque visible (igual que slide15/slide4). Query declarada por el
+  # usuario 2026-08-19 como "la buena": filtro solo `du.plataformaId = 2`
+  # (sin filtro de platformId del curso), corte >= '2025-04-03' AND <
+  # '2026-08-01'. De los 78 cursos, 76 son CPE (`platformId=1`) y 2 son
+  # Aprende (`platformId=2`). PG queda ~15% bajo MySQL en esta ventana por
+  # el ETL incompleto (LOOKBACK_DAYS=3) — ver caveat en cada métrica.
 
   - key: slide20_crecimiento_integral_inscripciones
     name: Slide 20 — Inscripciones a cursos de crecimiento integral
     description: >
       Métrica de Slide 20 "Crecimiento integral" (última slide de la
       presentación del Consejo 2026): total acumulado de inscripciones
-      de **usuarios de Aprende** (`u.plataformaId = 2`) en los **cursos
-      CPE** (`c.platformId = 1`) de la sección crecimiento integral, con
-      corte >= '2024-08-31' AND < '2026-08-01'. Query derivada de la
-      sección "Script para ver las inscripciones de cursos de
-      Crecimiento integral" del archivo Consultas_consejo_panel.sql; el
-      corte del panel era BETWEEN '2024-08-31' AND '2026-04-01' — aquí se
-      extiende el corte superior a '2026-08-01' manteniendo el límite
-      inferior (inicio de la iniciativa). El filtro de cross-pollination
-      (cursos CPE tomados por usuarios Aprende) es el que corresponde a
-      la iniciativa "Crecimiento integral para usuarios Aprende". Migrada
-      a PostgreSQL `analisis_cpe_db` (schema `public`).
+      de **usuarios de Aprende** (`u.plataformaId = 2`) en los 78 cursos
+      de la sección crecimiento integral, con corte >= '2025-04-03' AND
+      < '2026-08-01'. Query del archivo Consultas_consejo_panel.sql
+      (sección "Script para consultar el numero de usuarios
+      registrados e inscritos a los cursos de crecimiento integral" —
+      segunda variante con corte inicial '2025-04-03' declarada como
+      "la buena" por el usuario 2026-08-19). Migrada a PostgreSQL
+      `analisis_cpe_db` (schema `public`).
     formula: >
       COUNT(fact_inscription.userId) de fact_inscription JOIN course
       JOIN dim_user WHERE course.id IN (78 cursos de crecimiento
-      integral) AND course.platformId = 1 AND dim_user.plataformaId = 2
-      AND inscripcionDate >= '2024-08-31' AND < '2026-08-01'.
+      integral) AND dim_user.plataformaId = 2 AND inscripcionDate
+      >= '2025-04-03' AND < '2026-08-01'.
     type: count
     source: fact_inscription
-    platform_scope: [cpe, aprende]
+    platform_scope: [aprende]
     db_source: postgres
     db_mapping: >
       SELECT COUNT(fi."userId") AS value,
@@ -968,32 +967,30 @@ metrics:
                      100387, 100388, 100389, 100390, 100712, 100713,
                      100714, 100715, 100716, 100717, 100396, 100718,
                      100397, 100719, 100722, 100723, 100724, 100725)
-        AND c."platformId" = 1
         AND du."plataformaId" = 2
-        AND fi."inscripcionDate" >= '2024-08-31'
+        AND fi."inscripcionDate" >= '2025-04-03'
         AND fi."inscripcionDate" < '2026-08-01'
     caveats:
-      - "La lista de 78 cursos viene de la sección 'Crecimiento integral' de Consultas_consejo_panel.sql."
-      - "Filtro cross-pollination: cursos CPE (`c.platformId = 1`) tomados por usuarios Aprende (`u.plataformaId = 2`). El universo total sin filtro daría 249,595 inscripciones / 155,959 únicos; este filtro deja 68,271 / 41,455 — el cohorte que corresponde a la iniciativa 'Crecimiento integral para usuarios Aprende'."
-      - "Resultado al corte < '2026-08-01': PG=68,271 vs MySQL=68,236 (diff +35 / +0.05%). Las dos fuentes casi coinciden con este filtro — el gap por LOOKBACK_DAYS=3 del ETL que vimos sin filtro (-6%) se diluye cuando acotamos al cohorte cross-pollination."
+      - "La lista de 78 cursos viene de la sección 'Crecimiento integral' de Consultas_consejo_panel.sql (segunda variante de la query 'usuarios registrados e inscritos', declarada como 'la buena' por el usuario)."
+      - "Filtro solo por plataformaId=2 (Aprende), sin filtro de platformId del curso. De los 78 cursos, 76 son CPE (`platformId=1`) y 2 son Aprende (`platformId=2`) — quitar el filtro de curso apenas cambia MySQL (68,065 vs 68,236 con cross-pollination, ~0.25% menos) pero PG queda más corto por el ETL incompleto."
+      - "Resultado al corte >= '2025-04-03' AND < '2026-08-01': PG=58,185 vs MySQL=68,065 (diff -9,880 / -14.5%). PG queda corto por el ETL incompleto (LOOKBACK_DAYS=3): la ventana 2025-04-03 en adelante es la más afectada porque el ETL sólo trae 3 días de historial en cada corrida."
 
   - key: slide20_crecimiento_integral_personas_unicas_inscritas
     name: Slide 20 — Personas únicas inscritas en crecimiento integral
     description: >
       Métrica de Slide 20: cantidad de usuarios únicos (DISTINCT) de
-      Aprende (`u.plataformaId = 2`) inscritos en los cursos CPE
-      (`c.platformId = 1`) de crecimiento integral, con corte
-      >= '2024-08-31' AND < '2026-08-01'. Misma query que
-      slide20_crecimiento_integral_inscripciones pero con COUNT(DISTINCT).
+      Aprende (`u.plataformaId = 2`) inscritos en los 78 cursos de
+      crecimiento integral, con corte >= '2025-04-03' AND < '2026-08-01'.
+      Misma query que slide20_crecimiento_integral_inscripciones pero
+      con COUNT(DISTINCT).
     formula: >
       COUNT(DISTINCT fact_inscription.userId) de fact_inscription
       JOIN course JOIN dim_user WHERE course.id IN (78 cursos de
-      crecimiento integral) AND course.platformId = 1 AND
-      dim_user.plataformaId = 2 AND inscripcionDate >= '2024-08-31'
-      AND < '2026-08-01'.
+      crecimiento integral) AND dim_user.plataformaId = 2 AND
+      inscripcionDate >= '2025-04-03' AND < '2026-08-01'.
     type: count_distinct
     source: fact_inscription
-    platform_scope: [cpe, aprende]
+    platform_scope: [aprende]
     db_source: postgres
     db_mapping: >
       SELECT COUNT(DISTINCT fi."userId") AS value,
@@ -1016,13 +1013,12 @@ metrics:
                      100387, 100388, 100389, 100390, 100712, 100713,
                      100714, 100715, 100716, 100717, 100396, 100718,
                      100397, 100719, 100722, 100723, 100724, 100725)
-        AND c."platformId" = 1
         AND du."plataformaId" = 2
-        AND fi."inscripcionDate" >= '2024-08-31'
+        AND fi."inscripcionDate" >= '2025-04-03'
         AND fi."inscripcionDate" < '2026-08-01'
     caveats:
-      - "Misma lista de 78 cursos y mismo filtro cross-pollination que slide20_crecimiento_integral_inscripciones."
-      - "Resultado al corte < '2026-08-01': PG=41,455 vs MySQL=41,429 (diff +26 / +0.06%)."
+      - "Misma lista de 78 cursos y mismo filtro (solo plataformaId=2) que slide20_crecimiento_integral_inscripciones."
+      - "Resultado al corte >= '2025-04-03' AND < '2026-08-01': PG=34,246 vs MySQL=40,532 (diff -6,286 / -15.5%). Mismo gap del ETL incompleto que la métrica de inscripciones."
 
   - key: slide15_mario_molina_vistas
     name: Slide 15 — Vistas/consultas a la sección Mario Molina
