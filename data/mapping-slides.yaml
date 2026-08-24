@@ -844,96 +844,12 @@ slides:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Slide 16: Biblioteca digital — cards
-# ─────────────────────────────────────────────────────────────────────────────
-- numero: 16
-  titulo: "Biblioteca digital"
-  page_id: "g375e07eb7ab_1_27"
-  tipo: cards
-  objetos:
-    - id: "g375e07eb7ab_0_346"
-      tipo: text_box
-      rol: valor_card
-      descripcion: "Descargas totales (texto: '6,758,717')"
-      metrica: null  # no existe en catálogo — pendiente crear métrica
-      formato_texto: "{valor:,.0f}"
-    - id: "g375e07eb7ab_0_350"
-      tipo: text_box
-      rol: valor_card
-      descripcion: "Libros en inglés (texto: '119')"
-      metrica: null
-      formato_texto: "{valor:,.0f}"
-    - id: "g375e07eb7ab_0_354"
-      tipo: text_box
-      rol: valor_card
-      descripcion: "Libros en español (texto: '539')"
-      metrica: null
-      formato_texto: "{valor:,.0f}"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Slide 17: Pabellón Nacional de la Biodiversidad
-# ─────────────────────────────────────────────────────────────────────────────
-- numero: 17
-  titulo: "Pabellón Nacional de la Biodiversidad"
-  page_id: "g375e07eb7ab_1_31"
-  tipo: cards
-  objetos:
-    - id: "g375e07eb7ab_0_46"
-      tipo: text_box
-      rol: valor_card
-      descripcion: "Visitantes totales (texto: '560,625')"
-      metrica: pabellon_visitantes
-      formato_texto: "{valor:,.0f}"
-    - id: "g375e07eb7ab_0_50"
-      tipo: text_box
-      rol: valor_card
-      descripcion: "Talleres impartidos (texto: '5,645')"
-      metrica: null
-      formato_texto: "{valor:,.0f}"
-    - id: "g375e07eb7ab_0_54"
-      tipo: text_box
-      rol: valor_card
-      descripcion: "Personas en visitas guiadas (texto: '72,692')"
-      metrica: null
-      formato_texto: "{valor:,.0f}"
-    - id: "g375e07eb7ab_0_65"
-      tipo: text_box
-      rol: valor_card
-      descripcion: "Becas de apoyo nutricional (texto: '180,539')"
-      metrica: null
-      formato_texto: "{valor:,.0f}"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Slide 18: Centro de estudios de Historia de México
-# ─────────────────────────────────────────────────────────────────────────────
-- numero: 18
-  titulo: "Centro de estudios de Historia de México Fundación"
-  page_id: "g375e07eb7ab_1_35"
-  tipo: tabla
-  objetos:
-    - id: "g375e07eb7ab_0_368"
-      tipo: text_box
-      rol: valor_acumulado
-      descripcion: "Visualizaciones acumulado (texto: '1,378,747')"
-      metrica: null  # no existe en catálogo
-      formato_texto: "{valor:,.0f}"
-    - id: "g375e07eb7ab_0_369"
-      tipo: text_box
-      rol: valor_septiembre
-      descripcion: "Visualizaciones enero-septiembre (texto: '366,378')"
-      metrica: null
-      formato_texto: "{valor:,.0f}"
-    - id: "g375e07eb7ab_0_370"
-      tipo: text_box
-      rol: valor_diciembre
-      descripcion: "Visualizaciones enero-diciembre (texto: '28,304' parece bajo — verificar si es otra ventana)"
-      metrica: null
-      formato_texto: "{valor:,.0f}"
-    - id: "g375e07eb7ab_0_383"
-      tipo: text_box
-      rol: valor_videoconferencias
-      descripcion: "Videoconferencias participantes (texto: '58,988')"
-      metrica: null
-      formato_texto: "{valor:,.0f}"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Slide 19: Pilotos Seguridad Vial
