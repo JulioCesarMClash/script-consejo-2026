@@ -774,6 +774,10 @@ SLIDE20_METRIC_ID = "slide20_crecimiento_integral"
 SLIDE20_PERIODO_INICIO = "Acumulado"
 SLIDE20_PERIODO_FIN = "2026-08-01"
 SLIDE20_FUENTE_INSCRIPCION = "fact_inscription"
+# KPI hardcoded de la Slide física (corte: 'Contenido' publicado en la
+# iniciativa de crecimiento integral). Sin fuente automatizable en este
+# pipeline — Apps Script usa este valor directamente al actualizar la Slide.
+SLIDE20_CONTENIDO = 89
 SLIDE20_TABLE_HEADERS = [
     "Categoría",
     "Métrica",
@@ -1963,7 +1967,12 @@ def _build_slide20_block(
     # Plan: (etiqueta legible, valor, periodo_inicio, periodo_fin,
     # fuente). 2 KPIs desde `analisis_cpe_db` PostgreSQL con filtro
     # solo `du.plataformaId = 2` y corte >= '2025-04-03' AND
-    # < '2026-08-01' (query declarada por el usuario 2026-08-19).
+    # < '2026-08-01' (query declarada por el usuario 2026-08-19). El 3er
+    # KPI 'Contenido' está hardcoded — sin fuente automatizable. Los
+    # labels del Sheet se alinean 1:1 con los 3 KPIs de la Slide física
+    # (mapeo en data/mapping-slides.yaml: 'Inscripciones a cursos' y
+    # 'Personas únicas inscritas' corresponden a los 2 primeros text_box
+    # de la Slide; 'Contenido' al tercero).
     plan: list[tuple[str, object, str, str, str]] = [
         (
             "Inscripciones a cursos",
@@ -1978,6 +1987,13 @@ def _build_slide20_block(
             SLIDE20_PERIODO_INICIO,
             SLIDE20_PERIODO_FIN,
             SLIDE20_FUENTE_INSCRIPCION,
+        ),
+        (
+            "Contenido",
+            SLIDE20_CONTENIDO,
+            SLIDE20_PERIODO_FIN,  # hardcoded — sin query
+            SLIDE20_PERIODO_FIN,
+            "manual",
         ),
     ]
     for metrica, valor, periodo_inicio, periodo_fin, fuente in plan:

@@ -373,38 +373,29 @@ slides:
       formato_texto: "{valor:,.0f}"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Slide 20: Crecimiento integral — ⚠️ DIVERGENCIA CON SHEET ⚠️
+# Slide 20: Crecimiento integral
 # ─────────────────────────────────────────────────────────────────────────────
 - numero: 20
   titulo: "Crecimiento integral"
   page_id: "g3752707f08b_0_37"
   tipo: cards
-  divergencia_con_sheet: |
-    ⚠️ DIVERGENCIA 2026-08-19: La Slide tiene 3 KPIs ("Usuarios registrados"
-    13,530 / "Inscripciones a cursos" 22,524 / "Contenido" 89). El Sheet
-    (slide20_crecimiento_integral_*) tiene 2 KPIs del cohort cross-pollination
-    desde PG (Inscripciones 58,185 / Personas únicas 34,246 con corte
-    >= 2025-04-03 AND < 2026-08-01).
-    Estas métricas son DIFERENTES: el Sheet apunta al universo de crecimiento
-    integral desde PG; la Slide apunta a KPIs resumidos distintos (registrados,
-    inscripciones locales, contenidos publicados). HAY QUE ALINEAR ANTES
-    DE PUBLICAR.
+  nota: "Decisión 2026-08-19: la Slide física se llena con los valores del Sheet (Inscripciones 58,185, Personas únicas inscritas 34,246, Contenido 89). El primer KPI de la Slide se llama 'Usuarios registrados' pero recibe el valor 'Personas únicas inscritas' del Sheet (semánticamente son lo mismo: usuarios únicos). Apps Script usa el mapeo de este YAML para cruzar Sheet ↔ Slide."
   objetos:
-    - id: "g3752707f08b_0_43"
-      tipo: text_box
-      rol: valor_card
-      descripcion: "Usuarios registrados (texto: '13,530')"
-      metrica: null  # pendiente alinear con Sheet
-      formato_texto: "{valor:,.0f}"
     - id: "g3752707f08b_0_52"
       tipo: text_box
       rol: valor_card
-      descripcion: "Inscripciones a cursos (texto: '22,524')"
-      metrica: null  # pendiente alinear con Sheet
+      descripcion: "Inscripciones a cursos (texto original: '22,524' — se reemplaza por valor del Sheet al ejecutar Apps Script)"
+      metrica: slide20_crecimiento_integral_inscripciones
+      formato_texto: "{valor:,.0f}"
+    - id: "g3752707f08b_0_43"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Usuarios registrados (label en la Slide; recibe valor de 'Personas únicas inscritas' del Sheet)"
+      metrica: slide20_crecimiento_integral_personas_unicas_inscritas
       formato_texto: "{valor:,.0f}"
     - id: "g3752707f08b_0_60"
       tipo: text_box
       rol: valor_card
-      descripcion: "Contenido publicado (texto: '89')"
+      descripcion: "Contenido publicado (KPI hardcoded en SLIDE20_CONTENIDO=89; fuente: manual)"
       metrica: null
       formato_texto: "{valor:,.0f}"
