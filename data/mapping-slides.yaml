@@ -108,6 +108,277 @@ slides:
 # ─────────────────────────────────────────────────────────────────────────────
 # Slide 3: Educación y empleo (tabla comparativa)
 # ─────────────────────────────────────────────────────────────────────────────
+- numero: 2
+  titulo: "Educación y empleo: Pobreza moderada"
+  page_id: "g3948dc9dc6d_0_3"
+  tipo: tabla_sectores
+  nota: |
+    Decisión 2026-08-19: el Sheet slide2 reporta Certificados del pipeline
+    (catálogo slide2_empleo_incluyente_por_sector, query CASE WHEN
+    agrupando por sector). La Slide física actual muestra cifras del
+    periodo 'Sep. 2024 - Sep. 2025' (TOTAL=35,858). Apps Script pintará
+    los Certificados del Sheet sobre estos IDs (Slide se actualizará luego).
+    Sheet actual TOTAL=33,954, con sectores: Agropecuarias 2,685 /
+    Alimentos 5,795 / Construcción 13,964 / Ed Financiera 5,254 /
+    Limpieza 4,428 / Transporte 1,828.
+    Slide física tiene 6 sectores con 12 IDs numéricos y subtotales
+    (orden: Construcción → Alimentos → Ed Financiera → Transporte →
+    Limpieza → Agropecuarias). Apps Script debe buscar por nombre de
+    sector en el Sheet (no por orden de fila) para llenar cada celda.
+  objetos:
+    # ────────── Sector 1: Construcción y mantenimiento (12 cursos) ──────────
+    - id: "g3948dc9dc6d_17_253"
+      tipo: text_box
+      rol: label_sector
+      descripcion: "Header sector 'Servicios de construcción y mantenimiento'"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_17_255"
+      tipo: text_box
+      rol: lista_cursos
+      descripcion: "Lista multilínea cursos construcción: Albañil/Autoconstrucción/Carpintero/Electricista/Guía autoconstrucción/Guía reparación/Herrero/Paneles yeso/Pisos loseta/Tejados/Pintor/Plomeros. Apps Script debe sobreescribirla con Sheet slide2_empleo_incluyente_por_sector WHERE Sector='Construcción y mantenimiento' ORDER BY curso."
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_17_256"
+      tipo: text_box
+      rol: valores_cursos
+      descripcion: "Valores numéricos multilínea construcción (texto: '1,065/411/1,087/5,653/199/213/644/800/601/330/1,310/1,123'). Sheet Construcción subtotal=13,964 — los 12 valores individuales no cuadran con Sheet actual. Apps Script debe extraer por (Sector, Curso)."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3948dc9dc6d_17_258"
+      tipo: text_box
+      rol: subtotal
+      descripcion: "Subtotal Construcción (texto: '13,436'). Sheet Construcción subtotal=13,964."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    # ────────── Sector 2: Servicios de alimentos y atención (4 cursos) ──────────
+    - id: "g3948dc9dc6d_17_278"
+      tipo: text_box
+      rol: label_sector
+      descripcion: "Header sector 'Servicios de alimentos y atención'"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_17_279"
+      tipo: text_box
+      rol: lista_cursos
+      descripcion: "Lista cursos alimentos: Asistente de mesero / Empleado de comida rápida / Encargado de envoltura de regalos / Lavaplatos"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_17_280"
+      tipo: text_box
+      rol: valores_cursos
+      descripcion: "Valores numéricos multilínea alimentos (texto: '2,334/963/2,390/767'). Sheet Alimentos subtotal=5,795."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3948dc9dc6d_17_282"
+      tipo: text_box
+      rol: subtotal
+      descripcion: "Subtotal Alimentos (texto: '6,454'). Sheet Alimentos=5,795."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    # ────────── Sector 3: Educación financiera (3 cursos) ──────────
+    - id: "g3948dc9dc6d_17_296"
+      tipo: text_box
+      rol: label_sector
+      descripcion: "Header sector 'Educación financiera'"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_17_297"
+      tipo: text_box
+      rol: lista_cursos
+      descripcion: "Lista cursos Ed Financiera: Finanzas para manejar las deudas / Finanzas para mujeres / Manejo de dinero"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_17_298"
+      tipo: text_box
+      rol: valores_cursos
+      descripcion: "Valores numéricos multilínea Ed Financiera (texto: '1,800/1,659/2,962'). Sheet Ed Financiera=5,254."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3948dc9dc6d_17_300"
+      tipo: text_box
+      rol: subtotal
+      descripcion: "Subtotal Ed Financiera (texto: '6,421'). Sheet Ed Financiera=5,254."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    # ────────── Sector 4: Servicios en transporte (3 cursos) ──────────
+    - id: "g3948dc9dc6d_17_270"
+      tipo: text_box
+      rol: label_sector
+      descripcion: "Header sector 'Servicios en transporte'"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_17_271"
+      tipo: text_box
+      rol: lista_cursos
+      descripcion: "Lista cursos Transporte: Bodeguero / Conductor de transporte público / Repartidor a domicilio"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_17_272"
+      tipo: text_box
+      rol: valores_cursos
+      descripcion: "Valores numéricos Transporte (texto: '1,168/244/171'). Sheet Transporte=1,828."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3948dc9dc6d_17_274"
+      tipo: text_box
+      rol: subtotal
+      descripcion: "Subtotal Transporte (texto: '1,583'). Sheet Transporte=1,828."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    # ────────── Sector 5: Servicios de limpieza y mantenimiento (5 cursos) ──────────
+    - id: "g3948dc9dc6d_17_262"
+      tipo: text_box
+      rol: label_sector
+      descripcion: "Header sector 'Servicios de limpieza y mantenimiento'"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_17_263"
+      tipo: text_box
+      rol: lista_cursos
+      descripcion: "Lista cursos Limpieza: Aseador de oficina / Controlador de plagas en espacios urbanos / Planchador / Técnico en manejo de residuos sólidos urbanos / Trabajador doméstico"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_17_264"
+      tipo: text_box
+      rol: valores_cursos
+      descripcion: "Valores numéricos Limpieza (texto: '1,318/972/161/2,264/189'). Sheet Limpieza=4,428."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3948dc9dc6d_17_266"
+      tipo: text_box
+      rol: subtotal
+      descripcion: "Subtotal Limpieza (texto: '4,904'). Sheet Limpieza=4,428."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    # ────────── Sector 6: Actividades agropecuarias (2 cursos) ──────────
+    - id: "g3948dc9dc6d_17_287"
+      tipo: text_box
+      rol: label_sector
+      descripcion: "Header sector 'Actividades agropecuarias'"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_17_288"
+      tipo: text_box
+      rol: lista_cursos
+      descripcion: "Lista cursos Agropecuarias: Granjero de lechería / Técnico procesador de frutas y verduras"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_17_289"
+      tipo: text_box
+      rol: valores_cursos
+      descripcion: "Valores numéricos Agropecuarias (texto: '827/2,233'). Sheet Agropecuarias=2,685."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3948dc9dc6d_17_291"
+      tipo: text_box
+      rol: subtotal
+      descripcion: "Subtotal Agropecuarias (texto: '3,060'). Sheet Agropecuarias=2,685."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    # ────────── TOTAL general ──────────
+    - id: "g3948dc9dc6d_17_320"
+      tipo: text_box
+      rol: total_general
+      descripcion: "TOTAL general (texto: 'Total                      35,858'). Suma de subtotales: 13,436+6,454+6,421+1,583+4,904+3,060=35,858. Sheet TOTAL=33,954 — diverge por periodo."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    # ────────── Labels repetidos ("Personas beneficiadas") ──────────
+    - id: "g3948dc9dc6d_17_305"
+      tipo: text_box
+      rol: label_columna
+      descripcion: "Label 'Personas beneficiadas' (header de columna repetido en cada sector)"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_17_307"
+      tipo: text_box
+      rol: label_columna
+      descripcion: "Label 'Personas beneficiadas' repetido"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_17_311"
+      tipo: text_box
+      rol: label_columna
+      descripcion: "Label 'Personas beneficiadas' repetido"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_17_314"
+      tipo: text_box
+      rol: label_columna
+      descripcion: "Label 'Personas beneficiadas' repetido"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_17_317"
+      tipo: text_box
+      rol: label_columna
+      descripcion: "Label 'Personas beneficiadas' repetido"
+      metrica: null
+      formato_texto: null
+    # ────────── Header / contexto de slide ──────────
+    - id: "g3948dc9dc6d_0_5"
+      tipo: text_box
+      rol: titulo
+      descripcion: "Título slide 'Educación y empleo: Pobreza moderada'"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_0_8"
+      tipo: text_box
+      rol: label
+      descripcion: "Header 'Acciones programadas:'"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_0_17"
+      tipo: text_box
+      rol: label
+      descripcion: "Header 'Desarrollo de contenido en:'"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_0_18"
+      tipo: text_box
+      rol: lista
+      descripcion: "Lista multilínea 'Oficios y empleabilidad digital / Inclusión digital / Microemprendimiento...'"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_0_19"
+      tipo: text_box
+      rol: label
+      descripcion: "Header 'Educación financiera:' (sub-título bloque Programadas)"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_0_20"
+      tipo: text_box
+      rol: label
+      descripcion: "Header 'Acciones realizadas:'"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_0_26"
+      tipo: text_box
+      rol: narrativa
+      descripcion: "Narrativa 'Promover el uso de plataformas y contenidos en redes sociales.'"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_0_291"
+      tipo: text_box
+      rol: header_periodo
+      descripcion: "Header 'Cifras de México periodo Sep. 2024- Sep. 2025' (notar: el Sheet slide2 usa '2025-09-01 a 2026-08-01' — diverge)"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_15_2"
+      tipo: text_box
+      rol: lista_narrativa
+      descripcion: "Lista narrativa 'Alfabetización funcional / Regularización escolar / Acompañamiento...'"
+      metrica: null
+      formato_texto: null
+    - id: "g3948dc9dc6d_15_3"
+      tipo: text_box
+      rol: label
+      descripcion: "Header 'Desarrollo de contenido en:' (repetido)"
+      metrica: null
+      formato_texto: null
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Slide 3: Educación y empleo (tabla comparativa)
+# ─────────────────────────────────────────────────────────────────────────────
 - numero: 3
   titulo: "Educación y empleo"
   page_id: "g375ce6fdc96_0_0"
