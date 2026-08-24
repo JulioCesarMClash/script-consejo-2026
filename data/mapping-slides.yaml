@@ -5,248 +5,406 @@
 # qué formato tiene, y cómo se actualiza.
 #
 # Los objectId son estables — se obtienen una vez via API y no cambian.
-# Para reconstruir: GET presentations/{id} con la API de Google Slides.
+# Para reconstruir: GET presentations/{id} con la API de Google Slides,
+# tool `google_slides_get_presentation` del MCP de Slides.
+#
+# REVISIÓN 2026-08-19: regenerado desde cero, validado contra la presentación
+# actual. Los 27 IDs de la versión anterior (2026-07-30) siguen siendo
+# válidos — verificado vía API. Se agregan 4 slides nuevas (13, 15, 16, 18)
+# que tienen KPIs claros. Slide 20 se documenta con DIVERGENCIA pendiente.
 # =============================================================================
 
-version: 1
-presentation_id: "1uZC2RFa_PlKaTer4RXrRy4AoVGjcrJ8TG6p3GuctJVg"
-actualizado: "2026-07-30"
+version: 2
+presentacion_id: "1uZC2RFa_PlKaTer4RXrRy4AoVGjcrJ8TG6p3GuctJVg"
+actualizado: "2026-08-19"
+origen: "API Slides (revisión desde cero, 27 IDs viejos validados + 4 nuevas)"
 
 slides:
 
-  # ── Slide 3: Educación y empleo (tabla comparativa) ──
-  - numero: 3
-    titulo: "Educación y empleo"
-    page_id: "g375ce6fdc96_0_0"
-    tipo: tabla_comparativa
-    objetos:
+# ─────────────────────────────────────────────────────────────────────────────
+# Slide 3: Educación y empleo (tabla comparativa)
+# ─────────────────────────────────────────────────────────────────────────────
+- numero: 3
+  titulo: "Educación y empleo"
+  page_id: "g375ce6fdc96_0_0"
+  tipo: tabla_comparativa
+  objetos:
+    - id: "g375ce6fdc96_0_263"
+      tipo: text_box
+      rol: etiqueta_filas
+      descripcion: "Nombres de los programas: Educación Inicial / PruébaT / Khan Academy en Español / Capacítate / etc."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g375ce6fdc96_0_264"
+      tipo: text_box
+      rol: valor_columna_2025
+      descripcion: "Columna Enero-Diciembre 2025 (ventana fija)"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g375ce6fdc96_0_265"
+      tipo: text_box
+      rol: valor_columna_sep2026
+      descripcion: "Columna Enero-Septiembre 2026 (ventana fija)"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g375ce6fdc96_0_266"
+      tipo: text_box
+      rol: valor_columna_dic2026
+      descripcion: "Columna Enero-Diciembre 2026 (proyección lineal)"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g375ce6fdc96_0_267"
+      tipo: text_box
+      rol: valor_columna_acumulado
+      descripcion: "Columna Acumulado histórico (manual)"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
 
-      - id: "g375ce6fdc96_0_263"
-        tipo: text_box
-        rol: etiqueta_filas
-        descripcion: "Nombres de los programas (filas): Capacitate Empleo / Capacitate Carso / Academica Labs"
-        metrica: null
+# ─────────────────────────────────────────────────────────────────────────────
+# Slide 4: Educación y divulgación
+# ─────────────────────────────────────────────────────────────────────────────
+- numero: 4
+  titulo: "Educación y divulgación"
+  page_id: "g375ce6fdc96_0_268"
+  tipo: tabla_comparativa
+  objetos:
+    - id: "g375ce6fdc96_0_530"
+      tipo: text_box
+      rol: valor_columna_2024
+      descripcion: "Columna 2024 acumulado"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g375ce6fdc96_0_531"
+      tipo: text_box
+      rol: valor_columna_sep2025
+      descripcion: "Columna sep 2025"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g375ce6fdc96_0_532"
+      tipo: text_box
+      rol: valor_columna_dic2025
+      descripcion: "Columna dic 2025"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g375ce6fdc96_0_533"
+      tipo: text_box
+      rol: valor_columna_acumulado
+      descripcion: "Columna acumulado histórico"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
 
-      - id: "g375ce6fdc96_0_264"
-        tipo: text_box
-        rol: valor_columna_2025
-        descripcion: "Columna: Enero a diciembre 2025 (ventana fija)"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
+# ─────────────────────────────────────────────────────────────────────────────
+# Slide 7: Educación y empleo — cards
+# ─────────────────────────────────────────────────────────────────────────────
+- numero: 7
+  titulo: "Educación y empleo — cards"
+  page_id: "g375ce6fdc96_0_366"
+  tipo: cards
+  objetos:
+    - id: "g3735641ff7a_1_55"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Educación Inicial — total de beneficiados"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3735641ff7a_1_66"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "PruébaT — usuarios"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3735641ff7a_1_69"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Khan Academy — usuarios"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3735641ff7a_1_72"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Académica — usuarios"
+      metrica: academica_usuarios
+      formato_texto: "{valor:,.0f}"
+    - id: "g3735641ff7a_1_76"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Capacítate Carso — usuarios"
+      metrica: capacitarte_carso_usuarios
+      formato_texto: "{valor:,.0f}"
+    - id: "g3735641ff7a_1_79"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Capacítate para el Empleo — usuarios"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
 
-      - id: "g375ce6fdc96_0_265"
-        tipo: text_box
-        rol: valor_columna_sep2026
-        descripcion: "Columna: Enero a septiembre 2026 (ventana fija)"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
+# ─────────────────────────────────────────────────────────────────────────────
+# Slide 8: Educación y divulgación — cards
+# ─────────────────────────────────────────────────────────────────────────────
+- numero: 8
+  titulo: "Educación y divulgación — cards"
+  page_id: "g375ce6fdc96_0_371"
+  tipo: cards
+  objetos:
+    - id: "g375d3d93919_0_94"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Pabellón Biodiversidad — visitantes"
+      metrica: pabellon_visitantes
+      formato_texto: "{valor:,.0f}"
+    - id: "g375d3d93919_0_105"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Biblioteca Digital — descargas"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g375d3d93919_0_110"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Acciones La Merced — estudiantes"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g375d3d93919_0_120"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Centro Estudios Historia — participantes"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g375d3d93919_0_125"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Cultura y Salud Aprende — registros"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
 
-      - id: "g375ce6fdc96_0_266"
-        tipo: text_box
-        rol: valor_columna_dic2026
-        descripcion: "Columna: Enero a diciembre 2026 (proyección lineal: sep2026 + promedio mensual x meses restantes)"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
+# ─────────────────────────────────────────────────────────────────────────────
+# Slide 11: Redes sociales
+# ─────────────────────────────────────────────────────────────────────────────
+- numero: 11
+  titulo: "Redes sociales"
+  page_id: "g375ce6fdc96_0_381"
+  tipo: tabla_redes
+  objetos:
+    - id: "g3735641ff7a_1_315"
+      tipo: text_box
+      rol: valor_total
+      descripcion: "Comunidad Aprende — total (texto actual incluye 'Comunidad Aprende 3,276,426' como string)"
+      metrica: redes_comunidad_aprende
+      formato_texto: "{valor:,.0f}"
 
-      - id: "g375ce6fdc96_0_267"
-        tipo: text_box
-        rol: valor_columna_acumulado
-        descripcion: "Columna: Acumulado a septiembre 2026 (manual)"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
+# ─────────────────────────────────────────────────────────────────────────────
+# Slide 13: Formación en centros penitenciarios — cards
+# ─────────────────────────────────────────────────────────────────────────────
+- numero: 13
+  titulo: "Formación en centros penitenciarios"
+  page_id: "g3735641ff7a_1_115"
+  tipo: cards
+  objetos:
+    - id: "g3735641ff7a_1_133"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Centros penitenciarios operando (texto visible: '7')"
+      metrica: null  # no está en catálogo slide13_penitenciarios_*
+      formato_texto: "{valor:,.0f}"
+    - id: "g3735641ff7a_1_137"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Certificados (texto: '641')"
+      metrica: slide13_penitenciarios_certificados
+      formato_texto: "{valor:,.0f}"
+    - id: "g3735641ff7a_1_141"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Usuarios únicos registrados (texto: '335')"
+      metrica: slide13_penitenciarios_usuarios_registrados
+      formato_texto: "{valor:,.0f}"
+    - id: "g3735641ff7a_1_145"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Cursos ofertados únicos (texto: '98')"
+      metrica: slide13_penitenciarios_cursos_ofertados
+      formato_texto: "{valor:,.0f}"
+    - id: "g3735641ff7a_1_149"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Inscripciones totales (texto: '1,878')"
+      metrica: slide13_penitenciarios_inscripciones
+      formato_texto: "{valor:,.0f}"
+    - id: "g3735641ff7a_1_153"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Cursos promedio por persona (texto: '5.61') — NO existe métrica en catálogo"
+      metrica: null
+      formato_texto: "{valor:.2f}"
 
-  # ── Slide 4: Educación y divulgación (tabla) ──
-  - numero: 4
-    titulo: "Educación y divulgación"
-    page_id: "g375ce6fdc96_0_268"
-    tipo: tabla_comparativa
-    objetos:
+# ─────────────────────────────────────────────────────────────────────────────
+# Slide 15: Mario Molina Premio Nobel — cards
+# ─────────────────────────────────────────────────────────────────────────────
+- numero: 15
+  titulo: "Mario Molina Premio Nobel"
+  page_id: "g3735641ff7a_1_93"
+  tipo: cards
+  objetos:
+    - id: "g3735641ff7a_1_99"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Consultas a la sección Mario Molina (texto: '7,056')"
+      metrica: slide15_mario_molina_vistas
+      formato_texto: "{valor:,.0f}"
+    - id: "g374967fdf7d_0_5"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Inscripciones a cursos Mario Molina (texto: '159,896'; etiqueta en g374967fdf7d_0_4)"
+      metrica: slide15_mario_molina_inscripciones
+      formato_texto: "{valor:,.0f}"
 
-      - id: "g375ce6fdc96_0_530"
-        tipo: text_box
-        rol: valor_columna_2024
-        descripcion: "Columna 2024"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
+# ─────────────────────────────────────────────────────────────────────────────
+# Slide 16: Biblioteca digital — cards
+# ─────────────────────────────────────────────────────────────────────────────
+- numero: 16
+  titulo: "Biblioteca digital"
+  page_id: "g375e07eb7ab_1_27"
+  tipo: cards
+  objetos:
+    - id: "g375e07eb7ab_0_346"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Descargas totales (texto: '6,758,717')"
+      metrica: null  # no existe en catálogo — pendiente crear métrica
+      formato_texto: "{valor:,.0f}"
+    - id: "g375e07eb7ab_0_350"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Libros en inglés (texto: '119')"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g375e07eb7ab_0_354"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Libros en español (texto: '539')"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
 
-      - id: "g375ce6fdc96_0_531"
-        tipo: text_box
-        rol: valor_columna_sep2025
-        descripcion: "Columna sep 2025"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
+# ─────────────────────────────────────────────────────────────────────────────
+# Slide 17: Pabellón Nacional de la Biodiversidad
+# ─────────────────────────────────────────────────────────────────────────────
+- numero: 17
+  titulo: "Pabellón Nacional de la Biodiversidad"
+  page_id: "g375e07eb7ab_1_31"
+  tipo: cards
+  objetos:
+    - id: "g375e07eb7ab_0_46"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Visitantes totales (texto: '560,625')"
+      metrica: pabellon_visitantes
+      formato_texto: "{valor:,.0f}"
+    - id: "g375e07eb7ab_0_50"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Talleres impartidos (texto: '5,645')"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g375e07eb7ab_0_54"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Personas en visitas guiadas (texto: '72,692')"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g375e07eb7ab_0_65"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Becas de apoyo nutricional (texto: '180,539')"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
 
-      - id: "g375ce6fdc96_0_532"
-        tipo: text_box
-        rol: valor_columna_dic2025
-        descripcion: "Columna dic 2025"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
+# ─────────────────────────────────────────────────────────────────────────────
+# Slide 18: Centro de estudios de Historia de México
+# ─────────────────────────────────────────────────────────────────────────────
+- numero: 18
+  titulo: "Centro de estudios de Historia de México Fundación"
+  page_id: "g375e07eb7ab_1_35"
+  tipo: tabla
+  objetos:
+    - id: "g375e07eb7ab_0_368"
+      tipo: text_box
+      rol: valor_acumulado
+      descripcion: "Visualizaciones acumulado (texto: '1,378,747')"
+      metrica: null  # no existe en catálogo
+      formato_texto: "{valor:,.0f}"
+    - id: "g375e07eb7ab_0_369"
+      tipo: text_box
+      rol: valor_septiembre
+      descripcion: "Visualizaciones enero-septiembre (texto: '366,378')"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g375e07eb7ab_0_370"
+      tipo: text_box
+      rol: valor_diciembre
+      descripcion: "Visualizaciones enero-diciembre (texto: '28,304' parece bajo — verificar si es otra ventana)"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g375e07eb7ab_0_383"
+      tipo: text_box
+      rol: valor_videoconferencias
+      descripcion: "Videoconferencias participantes (texto: '58,988')"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
 
-      - id: "g375ce6fdc96_0_533"
-        tipo: text_box
-        rol: valor_columna_acumulado
-        descripcion: "Columna acumulado histórico"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
+# ─────────────────────────────────────────────────────────────────────────────
+# Slide 19: Pilotos Seguridad Vial
+# ─────────────────────────────────────────────────────────────────────────────
+- numero: 19
+  titulo: "Pilotos Seguridad Vial"
+  page_id: "g3735641ff7a_1_161"
+  tipo: cards
+  objetos:
+    - id: "g3735641ff7a_1_173"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Usuarios registrados (texto: '995,183')"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3735641ff7a_1_222"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Estudiantes (texto: '146,132')"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
 
-  # ── Slide 7: Educación y empleo (cards individuales) ──
-  - numero: 7
-    titulo: "Educación y empleo — cards"
-    page_id: "g375ce6fdc96_0_366"
-    tipo: cards
-    objetos:
-
-      - id: "g3735641ff7a_1_55"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "Educación Inicial — beneficiados"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
-
-      - id: "g3735641ff7a_1_66"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "PruébaT — usuarios"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
-
-      - id: "g3735641ff7a_1_69"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "Khan Academy — usuarios"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
-
-      - id: "g3735641ff7a_1_72"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "Académica — usuarios"
-        metrica: academica_usuarios
-        formato_texto: "{valor:,.0f}"
-
-      - id: "g3735641ff7a_1_76"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "Capacítate Carso — usuarios"
-        metrica: capacitarte_carso_usuarios
-        formato_texto: "{valor:,.0f}"
-
-      - id: "g3735641ff7a_1_79"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "Capacítate para el Empleo — usuarios"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
-
-  # ── Slide 8: Educación y divulgación (cards) ──
-  - numero: 8
-    titulo: "Educación y divulgación — cards"
-    page_id: "g375ce6fdc96_0_371"
-    tipo: cards
-    objetos:
-
-      - id: "g375d3d93919_0_94"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "Pabellón Biodiversidad — visitantes"
-        metrica: pabellon_visitantes
-        formato_texto: "{valor:,.0f}"
-
-      - id: "g375d3d93919_0_105"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "Biblioteca Digital — descargas"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
-
-      - id: "g375d3d93919_0_110"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "Acciones La Merced — estudiantes"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
-
-      - id: "g375d3d93919_0_120"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "Centro Estudios Historia — participantes"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
-
-      - id: "g375d3d93919_0_125"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "Cultura y Salud Aprende — registros"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
-
-  # ── Slide 11: Redes sociales ──
-  - numero: 11
-    titulo: "Redes sociales"
-    page_id: "g375ce6fdc96_0_381"
-    tipo: tabla_redes
-    objetos:
-
-      - id: "g3735641ff7a_1_315"
-        tipo: text_box
-        rol: valor_total
-        descripcion: "Comunidad Aprende — total"
-        metrica: redes_comunidad_aprende
-        formato_texto: "{valor:,.0f}"
-
-  # ── Slide 17: Pabellón Biodiversidad ──
-  - numero: 17
-    titulo: "Pabellón Nacional de la Biodiversidad"
-    page_id: "g375e07eb7ab_1_31"
-    tipo: cards
-    objetos:
-
-      - id: "g375e07eb7ab_0_46"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "Visitantes totales"
-        metrica: pabellon_visitantes
-        formato_texto: "{valor:,.0f}"
-
-      - id: "g375e07eb7ab_0_50"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "Talleres impartidos"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
-
-      - id: "g375e07eb7ab_0_54"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "Personas visitas guiadas"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
-
-      - id: "g375e07eb7ab_0_65"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "Becas apoyo nutricional"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
-
-  # ── Slide 19: Seguridad Vial ──
-  - numero: 19
-    titulo: "Pilotos Seguridad Vial"
-    page_id: "g3735641ff7a_1_161"
-    tipo: cards
-    objetos:
-
-      - id: "g3735641ff7a_1_173"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "Usuarios registrados"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
-
-      - id: "g3735641ff7a_1_222"
-        tipo: text_box
-        rol: valor_card
-        descripcion: "Estudiantes"
-        metrica: null
-        formato_texto: "{valor:,.0f}"
+# ─────────────────────────────────────────────────────────────────────────────
+# Slide 20: Crecimiento integral — ⚠️ DIVERGENCIA CON SHEET ⚠️
+# ─────────────────────────────────────────────────────────────────────────────
+- numero: 20
+  titulo: "Crecimiento integral"
+  page_id: "g3752707f08b_0_37"
+  tipo: cards
+  divergencia_con_sheet: |
+    ⚠️ DIVERGENCIA 2026-08-19: La Slide tiene 3 KPIs ("Usuarios registrados"
+    13,530 / "Inscripciones a cursos" 22,524 / "Contenido" 89). El Sheet
+    (slide20_crecimiento_integral_*) tiene 2 KPIs del cohort cross-pollination
+    desde PG (Inscripciones 58,185 / Personas únicas 34,246 con corte
+    >= 2025-04-03 AND < 2026-08-01).
+    Estas métricas son DIFERENTES: el Sheet apunta al universo de crecimiento
+    integral desde PG; la Slide apunta a KPIs resumidos distintos (registrados,
+    inscripciones locales, contenidos publicados). HAY QUE ALINEAR ANTES
+    DE PUBLICAR.
+  objetos:
+    - id: "g3752707f08b_0_43"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Usuarios registrados (texto: '13,530')"
+      metrica: null  # pendiente alinear con Sheet
+      formato_texto: "{valor:,.0f}"
+    - id: "g3752707f08b_0_52"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Inscripciones a cursos (texto: '22,524')"
+      metrica: null  # pendiente alinear con Sheet
+      formato_texto: "{valor:,.0f}"
+    - id: "g3752707f08b_0_60"
+      tipo: text_box
+      rol: valor_card
+      descripcion: "Contenido publicado (texto: '89')"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
