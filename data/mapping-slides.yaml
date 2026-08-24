@@ -22,6 +22,90 @@ origen: "API Slides (revisión desde cero, 27 IDs viejos validados + 4 nuevas)"
 slides:
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Slide 1: Formación en habilidades productivas y para la vida
+# ─────────────────────────────────────────────────────────────────────────────
+- numero: 1
+  titulo: "Formación en habilidades productivas y para la vida (Pobreza extrema)"
+  page_id: "g3948dc9dc6d_2_5"
+  tipo: cards_2_columnas
+  nota: |
+    Decisión 2026-08-19: el Sheet slide1 reporta Certificados (TOTAL=210,740
+    con periodo '2025-09-01 a 2026-08-01'). La Slide física actual muestra
+    'Beneficiarios' (TOTAL=290,797). Apps Script pintará los Certificados
+    del Sheet sobre estos IDs — los textos actuales se sobrescribirán al
+    ejecutar. Sin mapeo a métrica catálogo individual: el Sheet slide1
+    tiene 1 fila agregada por categoría; Apps Script debe extraer el valor
+    por (Categoría, columna). Sheet queda como verdad (Certificados);
+    Slide se actualizará cuando se ejecute Apps Script.
+  objetos:
+    - id: "g3948dc9dc6d_2_29"
+      tipo: text_box
+      rol: total_cursos_unicos
+      descripcion: "Cursos únicos TOTAL (texto actual: 'Cursos 16'). Sheet F7 col 4 Cursos totales=108."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3948dc9dc6d_2_14"
+      tipo: text_box
+      rol: cursos_vivienda
+      descripcion: "Cursos totales vivienda (texto: '23'). Sheet slide1_vivienda col 4=16."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3948dc9dc6d_2_17"
+      tipo: text_box
+      rol: cursos_digital
+      descripcion: "Cursos totales digital (texto: '29'). Sheet slide1_digital col 4=23."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3948dc9dc6d_2_18"
+      tipo: text_box
+      rol: cursos_empleo
+      descripcion: "Cursos totales empleo (texto: '29'). Sheet slide1_empleo col 4=29."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3948dc9dc6d_2_24"
+      tipo: text_box
+      rol: cursos_desastres
+      descripcion: "Cursos totales desastres (texto: '11'). Sheet slide1_desastres col 4=11."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3948dc9dc6d_2_31"
+      tipo: text_box
+      rol: cert_vivienda
+      descripcion: "Certificados vivienda (texto actual: 'Total de beneficiarios 21,578'). Sheet slide1_vivienda col 5=13,572."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3948dc9dc6d_2_37"
+      tipo: text_box
+      rol: cert_digital
+      descripcion: "Certificados digital (texto: '56,896'). Sheet slide1_digital col 5=48,101."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3948dc9dc6d_2_38"
+      tipo: text_box
+      rol: cert_empleo
+      descripcion: "Certificados empleo (texto: '93,014'). Sheet slide1_empleo col 5=48,751."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3948dc9dc6d_2_39"
+      tipo: text_box
+      rol: cert_alimentos
+      descripcion: "Certificados alimentos (texto: '51,757'). Sheet slide1_alimentos col 5=55,894."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3948dc9dc6d_2_40"
+      tipo: text_box
+      rol: cert_desastres
+      descripcion: "Certificados desastres (texto: '67,552'). Sheet slide1_desastres col 5=44,422."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3948dc9dc6d_17_326"
+      tipo: text_box
+      rol: total_certificados
+      descripcion: "TOTAL Certificados (texto: 'Total: 290,797'). Sheet F7 col 5=210,740."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Slide 3: Educación y empleo (tabla comparativa)
 # ─────────────────────────────────────────────────────────────────────────────
 - numero: 3
