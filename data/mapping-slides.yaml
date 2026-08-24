@@ -418,6 +418,235 @@ slides:
 # ─────────────────────────────────────────────────────────────────────────────
 # Slide 4: Educación y divulgación
 # ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+# Slide 12: Rutas de aprendizaje
+# ─────────────────────────────────────────────────────────────────────────────
+- numero: 12
+  titulo: "Rutas de aprendizaje (Educación y empleo)"
+  page_id: "g3761cbcde11_9_59"
+  tipo: tabla_compleja_multi_bloque
+  nota: |
+    Decisión 2026-08-19: slide 12 es una slide densa con múltiples bloques
+    (203 elementos totales: rutas de aprendizaje + competencias + 3 tablas
+    adicionales). El Sheet slide12_rutas_aprendizaje (21 filas: 16 rutas
+    + 4 subtotales + 1 TOTAL) corresponde al bloque de RUTAS de aprendizaje.
+    Las cifras del Sheet (TOTAL Inscripciones 6,976,996 / Certificados
+    1,824,922 / Cursos 95) NO coinciden con los IDs numéricos de la slide
+    que ya están poblados (565,245 / 171,355 / etc. — esos son del bloque
+    Competencias). Apps Script deberá:
+      1. Localizar las celdas del bloque Rutas por Sección+Ruta.
+      2. Sobreescribir con Sheet slide12_rutas_aprendizaje.
+      3. NO tocar las otras tablas (sin métrica catálogo).
+    Por la complejidad, este mapeo documenta solo los IDs clave y delega
+    la lógica fina a Apps Script.
+  objetos:
+    # ────────── Header / título ──────────
+    - id: "g3761cbcde11_9_127"
+      tipo: text_box
+      rol: titulo
+      descripcion: "Título slide 'Educación y empleo'"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_149"
+      tipo: text_box
+      rol: header
+      descripcion: "Header 'Cifras acotadas a México.'"
+      metrica: null
+      formato_texto: null
+    # ────────── Sección 1: Construcción ──────────
+    - id: "g3761cbcde11_9_70"
+      tipo: text_box
+      rol: label_ruta
+      descripcion: "Ruta Construcción: 'Proyectos constructivos y mantenimiento' (Sheet slide12 slide12_rutas_aprendizaje F76: 'Construcción'+'Proyectos constructivos y mantenimiento'). Apps Script mapea por Sección+Ruta."
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_71"
+      tipo: text_box
+      rol: label_seccion
+      descripcion: "Label 'Sección: ' (header de columna)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_82"
+      tipo: text_box
+      rol: orden_seccion
+      descripcion: "Orden 1 (Construcción es la 1ra sección)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_86"
+      tipo: text_box
+      rol: total_cursos_seccion
+      descripcion: "Cursos construcción total=16 (Sheet F77 Subtotal Construcción col 4)"
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    # ────────── Sección 2: Habilidades digitales ──────────
+    - id: "g3761cbcde11_9_72"
+      tipo: text_box
+      rol: label_ruta
+      descripcion: "Ruta Habilidades 1: '¿Cómo utilizar un celular?' (Sheet F78)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_73"
+      tipo: text_box
+      rol: label_ruta
+      descripcion: "Ruta Habilidades 2: '¿Cómo utilizar la computadora?' (Sheet F79)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_74"
+      tipo: text_box
+      rol: label_ruta
+      descripcion: "Ruta Habilidades 3: 'Preparación para usar internet' (Sheet F80)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_76"
+      tipo: text_box
+      rol: label_ruta
+      descripcion: "Ruta Habilidades 4: 'Interacción con el mundo digital' (Sheet F81)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_77"
+      tipo: text_box
+      rol: label_seccion
+      descripcion: "Header Sección 'Educación básica y media' (pertenece al label de Habilidades digitales)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_103"
+      tipo: text_box
+      rol: orden_seccion
+      descripcion: "Orden 2 (Habilidades digitales)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_117"
+      tipo: text_box
+      rol: orden
+      descripcion: "Número de orden (Habilidades digitales sección)"
+      metrica: null
+      formato_texto: null
+    # ────────── Sección 3: Capacitación básica ──────────
+    - id: "g3761cbcde11_9_111"
+      tipo: text_box
+      rol: label_ruta
+      descripcion: "Ruta Capacitación 1: 'Seguridad, higiene y cuidado de la salud' (Sheet F83)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_112"
+      tipo: text_box
+      rol: label_ruta
+      descripcion: "Ruta Capacitación 2: 'Uso eficiente de recursos' (Sheet F84)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_113"
+      tipo: text_box
+      rol: label_ruta
+      descripcion: "Ruta Capacitación 3: 'Entendiendo mi situación económica' (Sheet F85)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_114"
+      tipo: text_box
+      rol: label_ruta
+      descripcion: "Ruta Capacitación 4: '¿Cómo puedo mejorar mi entorno?' (Sheet F86)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_115"
+      tipo: text_box
+      rol: label_ruta
+      descripcion: "Ruta Capacitación 5: 'Alimentos desde casa' (Sheet F87)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_91"
+      tipo: text_box
+      rol: label_ruta
+      descripcion: "Ruta Capacitación 6: 'Actuar en caso de desastres naturales' (Sheet F88)"
+      metrica: null
+      formato_texto: null
+    # ────────── Sección 4: Emprendimiento ──────────
+    - id: "g3761cbcde11_9_93"
+      tipo: text_box
+      rol: label_ruta
+      descripcion: "Ruta Emprendimiento 1: 'Planea tu negocio' (Sheet F90)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_94"
+      tipo: text_box
+      rol: label_ruta
+      descripcion: "Ruta Emprendimiento 2: 'Planea los gastos y ganancias de tu negocio' (Sheet F91)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_95"
+      tipo: text_box
+      rol: label_ruta
+      descripcion: "Ruta Emprendimiento 3: '¿Cómo preparar mis productos para venderlos?' (Sheet F92)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_96"
+      tipo: text_box
+      rol: label_ruta
+      descripcion: "Ruta Emprendimiento 4: 'Servicio y ventas de tu negocio' (Sheet F93)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_97"
+      tipo: text_box
+      rol: label_ruta
+      descripcion: "Ruta Emprendimiento 5: 'Mi negocio en internet' (Sheet F94)"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_98"
+      tipo: text_box
+      rol: label_seccion
+      descripcion: "Label 'Sección: ' (header)"
+      metrica: null
+      formato_texto: null
+    # ────────── Bloque Competencias (sin métrica catálogo) ──────────
+    - id: "g3761cbcde11_9_153"
+      tipo: text_box
+      rol: label_bloque
+      descripcion: "Header 'Competencias'"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_155"
+      tipo: text_box
+      rol: cursos_competencia
+      descripcion: "Bloque Competencias: número cursos (texto '7'). NO hay métrica catálogo para este bloque — pendiente crear."
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_162"
+      tipo: text_box
+      rol: valor_competencia
+      descripcion: "Bloque Competencias: valor primera fila (texto '565,245'). Sin métrica catálogo."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    - id: "g3761cbcde11_9_164"
+      tipo: text_box
+      rol: cursos_competencia
+      descripcion: "Cursos Competencia 2 (texto '6')"
+      metrica: null
+      formato_texto: null
+    - id: "g3761cbcde11_9_165"
+      tipo: text_box
+      rol: valor_competencia
+      descripcion: "Valor Competencia 2 (texto '171,355'). Sin métrica catálogo."
+      metrica: null
+      formato_texto: "{valor:,.0f}"
+    # ────────── Tablas adicionales (IDs de tabla, no text_box) ──────────
+    - id: "g37831eb95d4_7_*"
+      tipo: tabla
+      rol: tabla_adicional
+      descripcion: "Tabla con 16 valores grandes (1,153,211 etc.). Sin métrica catálogo — pendiente crear."
+      metrica: null
+      formato_texto: null
+    - id: "g37b66e555cc_5_*"
+      tipo: tabla
+      rol: tabla_adicional
+      descripcion: "Tabla con 12 valores (323,184 etc.). Sin métrica catálogo."
+      metrica: null
+      formato_texto: null
+    - id: "g37b66e555cc_7_*"
+      tipo: tabla
+      rol: tabla_adicional
+      descripcion: "Tabla con 16 valores (10,481,409 etc.) y headers 'Cursos Inscripciones Certifi' — sin métrica catálogo."
+      metrica: null
+      formato_texto: null
+
+
 - numero: 4
   titulo: "Educación y divulgación"
   page_id: "g375ce6fdc96_0_268"
