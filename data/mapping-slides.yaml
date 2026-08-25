@@ -547,8 +547,8 @@ slides:
   - id: g375ce6fdc96_0_266
     tipo: text_box
     rol: valor_columna_dic2026
-    descripcion: 'Columna dic2026. Capacitate Empleo hardcoded a 931,146 (factor 1.025 sobre sep2026, usuario 2026-08-19:
-      época baja, predicción conservadora); Academica Labs 3,204; Capacitate Carso del Sheet (40,834).'
+    descripcion: 'Columna dic2026. Los 3 valores hardcoded con factor 1.025 sobre sep2026 (usuario 2026-08-19, época baja):
+      Capacitate Empleo 908,435→931,146; Academica Labs 1,868→1,915; Capacitate Carso 23,820→24,416.'
     metrica: null
     formato_texto: '{valor:,.0f}'
     sheet_lookup:
@@ -560,8 +560,9 @@ slides:
       - slide3_capacitate_carso
       - slide3_academica_labs
       valor_hardcoded:
-        slide3_academica_labs: 3204
+        slide3_academica_labs: 1915
         slide3_capacitate_empleo: 931146
+        slide3_capacitate_carso: 24415
   - id: g375ce6fdc96_0_267
     tipo: text_box
     rol: valor_columna_acumulado
