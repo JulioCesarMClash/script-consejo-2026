@@ -79,6 +79,12 @@ El código incluye:
    - Antes: "Total de beneficiarios 21,578"
    - Después: "13,572" (Certificados vivienda del Sheet)
 
+#### Si aparece error "TypeError: ... is not a function"
+
+`SlidesApp` en Apps Script NO expone `getPageById` ni `getShapeById`. La versión actual de `code.gs` usa el endpoint REST `slides.presentations.batchUpdate` directamente con `UrlFetchApp` (patrón estándar en Apps Script para modificar presentaciones).
+
+Si seguís viendo ese error, asegurate de haber pegado el `code.gs` actualizado (no el anterior que usaba `SlidesApp`).
+
 #### ¿Qué valores esperás ver?
 
 | Text box (objectId) | Label en Slide 1 | Valor pintado |
