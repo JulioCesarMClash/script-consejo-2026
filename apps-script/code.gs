@@ -379,11 +379,14 @@ function paintSlide1Only() {
       skipped++;
       continue;
     }
+    const shape = findShapeByObjectId(slide, obj.objectId);
+    if (!shape) {
+      Logger.log('  SKIP (shape no encontrado en iteration): ' + obj.objectId);
+      skipped++;
+      continue;
+    }
     if (!oldText || oldText === newText) {
-      if (!oldText) {
-        const shape = findShapeByObjectId(slide, obj.objectId);
-        if (shape) shape.getText().setText(newText);
-      }
+      if (!oldText) shape.getText().setText(newText);
       painted++;
       continue;
     }
