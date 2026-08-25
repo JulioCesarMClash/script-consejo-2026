@@ -166,17 +166,34 @@ function buildSheetIndex(rows) {
 // Construye un mapa {objectId: texto_actual} para todos los shapes del slide.
 // Como Apps Script SlidesApp no expone pageElements directamente, usamos
 // getShapes() + iteramos para cada shape.
-// Si un ID no está entre los shapes, se ignora (será 'shape no encontrado').
 function buildShapeTextMap(slide) {
   const map = {};
+  let shapeCount = 0;
+  let textSuccess = 0;
+  let textFail = 0;
   try {
-    for (const shape of slide.getShapes()) {
+    const shapes = slide.getShapes();
+    Logger.log('  [debug] shapes.length=' + shapes.length);
+    for (let i = 0; i < shapes.length; i++) {
+      const shape = shapes[i];
+      shapeCount++;
+      let id = null;
+      try { id = shape.getId(); } catch(e) { Logger.log('  [debug] shape[' + i + '].getId() failed: ' + e.message); }
+      let txt = '';
       try {
-        const txt = shape.getText().asString();
-        if (shape.getId()) map[shape.getId()] = txt;
-      } catch (e) {}
+        txt = shape.getText().asString();
+        textSuccess++;
+      } catch(e) {
+        textFail++;
+        Logger.log('  [debug] shape[' + i + '].getText() failed: ' + e.message);
+      }
+      if (id) map[id] = txt;
     }
-  } catch (e) {}
+    Logger.log('  [debug] shapeCount=' + shapeCount + ' textSuccess=' + textSuccess + ' textFail=' + textFail);
+  } catch (e) {
+    Logger.log('  [debug] getShapes() failed: ' + e.message);
+  }
+  Logger.log('  [debug] map keys (' + Object.keys(map).length + '): ' + JSON.stringify(Object.keys(map).slice(0, 5)));
   return map;
 }
 
