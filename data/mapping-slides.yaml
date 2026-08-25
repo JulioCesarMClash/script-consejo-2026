@@ -511,7 +511,8 @@ slides:
   - id: g375ce6fdc96_0_264
     tipo: text_box
     rol: valor_columna_2025
-    descripcion: Columna 2025. Academica Labs hardcoded a 0 (sin certificados en 2025); los otros 2 vienen del Sheet.
+    descripcion: 'Columna 2025. Capacitate Empleo hardcoded a 911,116 (cálculo usuario 2026-08-19: cierre dic-2025 13,690,619
+      menos cierre dic-2024 12,779,503); Academica Labs = 0; Capacitate Carso viene del Sheet (45,805).'
     metrica: null
     formato_texto: '{valor:,.0f}'
     sheet_lookup:
@@ -524,6 +525,7 @@ slides:
       - slide3_academica_labs
       valor_hardcoded:
         slide3_academica_labs: 0
+        slide3_capacitate_empleo: 911116
   - id: g375ce6fdc96_0_265
     tipo: text_box
     rol: valor_columna_sep2026
