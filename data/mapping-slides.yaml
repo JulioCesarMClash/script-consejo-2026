@@ -553,7 +553,8 @@ slides:
   - id: g375ce6fdc96_0_267
     tipo: text_box
     rol: valor_columna_acumulado
-    descripcion: Columna Acumulado histórico (manual)
+    descripcion: 'Columna Acumulado sep2026. Academica Labs hardcoded a 1,868 (usuario 2026-08-19: excluye usuarios duplicados
+      en base CPE); los otros 2 valores vienen del Sheet.'
     metrica: null
     formato_texto: '{valor:,.0f}'
     sheet_lookup:
@@ -564,6 +565,8 @@ slides:
       - slide3_capacitate_empleo
       - slide3_capacitate_carso
       - slide3_academica_labs
+      valor_hardcoded:
+        slide3_academica_labs: 1868
 - numero: 12
   titulo: Rutas de aprendizaje (Educación y empleo)
   page_id: g3761cbcde11_9_59
