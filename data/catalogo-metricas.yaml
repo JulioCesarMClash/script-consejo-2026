@@ -1,1370 +1,1055 @@
-# Catálogo de Métricas — analisis_cpe_db
-# =======================================
-# Versión: 1.2
-# Fecha:   2026-08-10
-# Cambio 1.2: métricas Slide 3 (slide3_capacitate_carso, slide3_academica_labs)
-#              con db_source: mysql → queries contra carso_analisis /
-#              academica_analisis. `db_source` dispacha la conexión; `source`
-#              documenta el modelo conceptual.
-# Cambio 1.1: inscriptions_cpe particionada por plataforma de usuario (plataformaId = 1);
-#              inscriptions_cpe_total = suma de partes disjuntas (CPE + desde Aprende).
-# Base:    analisis_cpe_db (PostgreSQL) + carso_analisis / academica_analisis (MySQL)
-#          para métricas con db_source: mysql.
-#
-# Convenciones:
-# - CPE = Capacitate (platform.id = 1)
-# - Aprende = platform.id = 2
-# - "desde Aprende" = cursos de CPE tomados por usuarios de Aprende
-# - Certificación ≡ certificationDate IS NOT NULL AND advance = 100
-# - source: dim_user → COUNT DISTINCT sobre dim_user (automático)
-# - source: fact_inscription → consulta directa sobre fact_inscription (no usa agg_*)
-# - source: manual → se calcula con DISTINCT directo, se pone a mano en reportes
-# - db_source: mysql → la query corre contra MySQL (pipelines MySQL), con
-#   prefijo <db>.tabla si MYSQL_DATABASE está vacío
-# - Las tablas analytics_snapshot_* existen desde abril 2026, solo para validar comportamiento
-
-# ── Plataformas ──────────────────────────────────────────────────────────
-
 platforms:
-  - id: 1
-    name: Capacitate
-    alias: CPE
-    description: Plataforma Capacitate para el Empleo (Fundación Carlos Slim)
-
-  - id: 2
-    name: Aprende
-    description: Plataforma Aprende
-
-# ── Métricas ─────────────────────────────────────────────────────────────
-
-# Registrados ─── usuarios que crearon cuenta ─────────────────────────────
-
+- id: 1
+  name: Capacitate
+  alias: CPE
+  description: Plataforma Capacitate para el Empleo (Fundación Carlos Slim)
+- id: 2
+  name: Aprende
+  description: Plataforma Aprende
 metrics:
-  - key: registered_cpe
-    name: Registrados CPE
-    description: Usuarios que generaron una cuenta con correo en la plataforma CPE.
-    formula: COUNT(DISTINCT dim_user.userId) WHERE dim_user.plataformaId = 1
-    type: count_distinct
-    source: dim_user
-    platform_scope: [cpe]
-    db_mapping: >
-      SELECT COUNT(DISTINCT "userId")
-      FROM dim_user
-      WHERE "plataformaId" = 1
-    caveats: []
+- key: registered_cpe
+  name: Registrados CPE
+  description: Usuarios que generaron una cuenta con correo en la plataforma CPE.
+  formula: COUNT(DISTINCT dim_user.userId) WHERE dim_user.plataformaId = 1
+  type: count_distinct
+  source: dim_user
+  platform_scope:
+  - cpe
+  db_mapping: 'SELECT COUNT(DISTINCT "userId") FROM dim_user WHERE "plataformaId" = 1
 
-  - key: registered_aprende
-    name: Registrados Aprende
-    description: Usuarios que generaron una cuenta con correo en la plataforma Aprende.
-    formula: COUNT(DISTINCT dim_user.userId) WHERE dim_user.plataformaId = 2
-    type: count_distinct
-    source: dim_user
-    platform_scope: [aprende]
-    db_mapping: >
-      SELECT COUNT(DISTINCT "userId")
-      FROM dim_user
-      WHERE "plataformaId" = 2
-    caveats: []
+    '
+  caveats: []
+- key: registered_aprende
+  name: Registrados Aprende
+  description: Usuarios que generaron una cuenta con correo en la plataforma Aprende.
+  formula: COUNT(DISTINCT dim_user.userId) WHERE dim_user.plataformaId = 2
+  type: count_distinct
+  source: dim_user
+  platform_scope:
+  - aprende
+  db_mapping: 'SELECT COUNT(DISTINCT "userId") FROM dim_user WHERE "plataformaId" = 2
 
-  - key: registered_total
-    name: Registrados totales CPE+Aprende
-    description: Suma de registrados en CPE más registrados en Aprende.
-    formula: registered_cpe + registered_aprende
-    type: sum
-    source: dim_user
-    platform_scope: [cpe, aprende]
-    db_mapping: >
-      Registrados CPE + Registrados Aprende
-    caveats: []
+    '
+  caveats: []
+- key: registered_total
+  name: Registrados totales CPE+Aprende
+  description: Suma de registrados en CPE más registrados en Aprende.
+  formula: registered_cpe + registered_aprende
+  type: sum
+  source: dim_user
+  platform_scope:
+  - cpe
+  - aprende
+  db_mapping: 'Registrados CPE + Registrados Aprende
 
-  # Beneficiarios ─── registrados CPE + inscritos únicos CPE desde Aprende ─
+    '
+  caveats: []
+- key: beneficiaries
+  name: Beneficiarios
+  description: 'Usuarios registrados en CPE + Inscritos únicos CPE desde Aprende. Mide el alcance combinado de ambas plataformas.
 
-  - key: beneficiaries
-    name: Beneficiarios
-    description: >
-      Usuarios registrados en CPE + Inscritos únicos CPE desde Aprende.
-      Mide el alcance combinado de ambas plataformas.
-    formula: >
-      registered_cpe + inscritos_unicos_cpe_desde_aprende
-      (calculado con DISTINCT directo sobre fact_inscription, no desde agregadas)
-    type: count_distinct
-    source: fact_inscription
-    platform_scope: [cpe, aprende]
-    db_mapping: >
-      SELECT (
-        (SELECT COUNT(DISTINCT "userId") FROM dim_user WHERE "plataformaId" = 1)
-        +
-        (SELECT COUNT(DISTINCT fi."userId")
-         FROM fact_inscription fi
-         JOIN course c ON c."id" = fi."courseId"
-         JOIN dim_user du ON du."userId" = fi."userId"
-         WHERE c."platformId" = 1 AND du."plataformaId" = 2)
-      )
-    caveats:
-      - "No usar tablas agregadas (agg_*). Se calcula con DISTINCT directo sobre fact_inscription."
-      - "Derivada: se calcula automáticamente como suma de registered_cpe + inscribed_unique_cpe_from_aprende (según su fórmula)."
+    '
+  formula: 'registered_cpe + inscritos_unicos_cpe_desde_aprende (calculado con DISTINCT directo sobre fact_inscription, no
+    desde agregadas)
 
-  # Inscripciones ─── eventos de inscripción ──────────────────────────────
+    '
+  type: count_distinct
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  - aprende
+  db_mapping: "SELECT (\n  (SELECT COUNT(DISTINCT \"userId\") FROM dim_user WHERE \"plataformaId\" = 1)\n  +\n  (SELECT COUNT(DISTINCT\
+    \ fi.\"userId\")\n   FROM fact_inscription fi\n   JOIN course c ON c.\"id\" = fi.\"courseId\"\n   JOIN dim_user du ON\
+    \ du.\"userId\" = fi.\"userId\"\n   WHERE c.\"platformId\" = 1 AND du.\"plataformaId\" = 2)\n)\n"
+  caveats:
+  - No usar tablas agregadas (agg_*). Se calcula con DISTINCT directo sobre fact_inscription.
+  - 'Derivada: se calcula automáticamente como suma de registered_cpe + inscribed_unique_cpe_from_aprende (según su fórmula).'
+- key: inscriptions_cpe
+  name: Inscripciones CPE
+  description: 'Inscripciones en cursos de CPE realizadas por usuarios de CPE (plataformaId = 1). Puede incluir más de una
+    inscripción por usuario.
 
-  - key: inscriptions_cpe
-    name: Inscripciones CPE
-    description: >
-      Inscripciones en cursos de CPE realizadas por usuarios de CPE
-      (plataformaId = 1). Puede incluir más de una inscripción por usuario.
-    formula: >
-      COUNT(*) FROM fact_inscription
-      JOIN course ON course.platformId = 1
-      JOIN dim_user ON dim_user.userId = fact_inscription.userId AND dim_user.plataformaId = 1
-    type: count
-    source: fact_inscription
-    platform_scope: [cpe]
-    db_mapping: >
-      SELECT COUNT(*)
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      JOIN dim_user du ON du."userId" = fi."userId"
-      WHERE c."platformId" = 1 AND du."plataformaId" = 1
-    caveats:
-      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
-      - "Particionada por plataforma de usuario: inscriptions_cpe_total = inscriptions_cpe + inscriptions_cpe_from_aprende."
+    '
+  formula: 'COUNT(*) FROM fact_inscription JOIN course ON course.platformId = 1 JOIN dim_user ON dim_user.userId = fact_inscription.userId
+    AND dim_user.plataformaId = 1
 
-  - key: inscriptions_cpe_from_aprende
-    name: Inscripciones CPE desde Aprende
-    description: >
-      Total de inscripciones realizadas en cursos de CPE por usuarios de Aprende.
-      Puede incluir más de una inscripción por usuario.
-    formula: >
-      COUNT(*) FROM fact_inscription
-      JOIN course ON course.platformId = 1
-      JOIN dim_user ON dim_user.userId = fact_inscription.userId AND dim_user.plataformaId = 2
-    type: count
-    source: fact_inscription
-    platform_scope: [cpe]
-    db_mapping: >
-      SELECT COUNT(*)
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      JOIN dim_user du ON du."userId" = fi."userId"
-      WHERE c."platformId" = 1 AND du."plataformaId" = 2
-    caveats:
-      - "Mide usuarios Aprende consumiendo contenido CPE."
-      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+    '
+  type: count
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  db_mapping: 'SELECT COUNT(*) FROM fact_inscription fi JOIN course c ON c."id" = fi."courseId" JOIN dim_user du ON du."userId"
+    = fi."userId" WHERE c."platformId" = 1 AND du."plataformaId" = 1
 
-  - key: inscriptions_cpe_total
-    name: Inscripciones totales CPE
-    description: >
-      Total de inscripciones en cursos de CPE (desde CPE y desde Aprende).
-      Incluye más de una inscripción por usuario.
-    formula: inscriptions_cpe + inscriptions_cpe_from_aprende
-    type: sum
-    source: fact_inscription
-    platform_scope: [cpe]
-    db_mapping: "Inscripciones CPE + Inscripciones CPE desde Aprende"
-    caveats:
-      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
-      - "Partes disjuntas por plataforma de usuario (1 y 2); la suma iguala el total."
+    '
+  caveats:
+  - No usa tablas agregadas (agg_*). Consulta directa a fact_inscription.
+  - 'Particionada por plataforma de usuario: inscriptions_cpe_total = inscriptions_cpe + inscriptions_cpe_from_aprende.'
+- key: inscriptions_cpe_from_aprende
+  name: Inscripciones CPE desde Aprende
+  description: 'Total de inscripciones realizadas en cursos de CPE por usuarios de Aprende. Puede incluir más de una inscripción
+    por usuario.
 
-  # Inscritos únicos ─── usuarios distintos inscritos ─────────────────────
+    '
+  formula: 'COUNT(*) FROM fact_inscription JOIN course ON course.platformId = 1 JOIN dim_user ON dim_user.userId = fact_inscription.userId
+    AND dim_user.plataformaId = 2
 
-  - key: inscribed_unique_cpe
-    name: Inscritos únicos CPE
-    description: Usuarios únicos inscritos en al menos un curso de CPE.
-    formula: >
-      COUNT(DISTINCT fact_inscription.userId)
-      JOIN course ON course.platformId = 1
-      JOIN dim_user ON dim_user.plataformaId = 1
-    type: count_distinct
-    source: fact_inscription
-    platform_scope: [cpe]
-    db_mapping: >
-      SELECT COUNT(DISTINCT fi."userId")
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      JOIN dim_user du ON du."userId" = fi."userId"
-      WHERE c."platformId" = 1 AND du."plataformaId" = 1
-    caveats:
-      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+    '
+  type: count
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  db_mapping: 'SELECT COUNT(*) FROM fact_inscription fi JOIN course c ON c."id" = fi."courseId" JOIN dim_user du ON du."userId"
+    = fi."userId" WHERE c."platformId" = 1 AND du."plataformaId" = 2
 
-  - key: inscribed_unique_cpe_from_aprende
-    name: Inscritos únicos CPE desde Aprende
-    description: Usuarios únicos inscritos en al menos un curso de CPE desde Aprende.
-    formula: >
-      COUNT(DISTINCT fact_inscription.userId)
-      JOIN course ON course.platformId = 1
-      JOIN dim_user ON dim_user.plataformaId = 2
-    type: count_distinct
-    source: fact_inscription
-    platform_scope: [cpe]
-    db_mapping: >
-      SELECT COUNT(DISTINCT fi."userId")
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      JOIN dim_user du ON du."userId" = fi."userId"
-      WHERE c."platformId" = 1 AND du."plataformaId" = 2
-    caveats:
-      - "Usuarios de Aprende que se inscribieron en cursos CPE."
+    '
+  caveats:
+  - Mide usuarios Aprende consumiendo contenido CPE.
+  - No usa tablas agregadas (agg_*). Consulta directa a fact_inscription.
+- key: inscriptions_cpe_total
+  name: Inscripciones totales CPE
+  description: 'Total de inscripciones en cursos de CPE (desde CPE y desde Aprende). Incluye más de una inscripción por usuario.
 
-  - key: beneficiaries_unique
-    name: Beneficiarios únicos
-    description: >
-      Inscritos únicos CPE + Inscritos únicos CPE desde Aprende.
-      Representa el total de personas alcanzadas por cursos CPE.
-    formula: >
-      inscribed_unique_cpe + inscribed_unique_cpe_from_aprende
-      (calculado con DISTINCT directo sobre fact_inscription, no desde agregadas)
-    type: sum
-    source: fact_inscription
-    platform_scope: [cpe, aprende]
-    db_mapping: >
-      Inscritos únicos CPE + Inscritos únicos CPE desde Aprende
-    caveats:
-      - "Se calcula automáticamente como suma de inscritos únicos por origen."
+    '
+  formula: inscriptions_cpe + inscriptions_cpe_from_aprende
+  type: sum
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  db_mapping: Inscripciones CPE + Inscripciones CPE desde Aprende
+  caveats:
+  - No usa tablas agregadas (agg_*). Consulta directa a fact_inscription.
+  - Partes disjuntas por plataforma de usuario (1 y 2); la suma iguala el total.
+- key: inscribed_unique_cpe
+  name: Inscritos únicos CPE
+  description: Usuarios únicos inscritos en al menos un curso de CPE.
+  formula: 'COUNT(DISTINCT fact_inscription.userId) JOIN course ON course.platformId = 1 JOIN dim_user ON dim_user.plataformaId
+    = 1
 
-  # Certificados ─── eventos de certificación ─────────────────────────────
+    '
+  type: count_distinct
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  db_mapping: 'SELECT COUNT(DISTINCT fi."userId") FROM fact_inscription fi JOIN course c ON c."id" = fi."courseId" JOIN dim_user
+    du ON du."userId" = fi."userId" WHERE c."platformId" = 1 AND du."plataformaId" = 1
 
-  - key: certifications_cpe
-    name: Certificados CPE
-    description: >
-      Total de certificados emitidos en CPE.
-      Incluye más de un certificado por usuario.
-      Regla: certificationDate IS NOT NULL AND advance = 100.
-    formula: >
-      COUNT(*) FROM fact_inscription
-      JOIN course ON course.platformId = 1
-      JOIN dim_user ON dim_user.plataformaId = 1
-      WHERE advance = 100 AND certificationDate IS NOT NULL
-    type: count
-    source: fact_inscription
-    platform_scope: [cpe]
-    db_mapping: >
-      SELECT COUNT(*)
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      JOIN dim_user du ON du."userId" = fi."userId"
-      WHERE c."platformId" = 1
-        AND du."plataformaId" = 1
-        AND fi."advance" = 100
-        AND fi."certificationDate" IS NOT NULL
-        AND fi."certificationDate" >= %(period_start)s
-        AND fi."certificationDate" < %(period_end)s
-    caveats:
-      - "Requiere advance = 100 AND certificationDate IS NOT NULL. Usar solo certificationDate sobrecuenta."
-      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+    '
+  caveats:
+  - No usa tablas agregadas (agg_*). Consulta directa a fact_inscription.
+- key: inscribed_unique_cpe_from_aprende
+  name: Inscritos únicos CPE desde Aprende
+  description: Usuarios únicos inscritos en al menos un curso de CPE desde Aprende.
+  formula: 'COUNT(DISTINCT fact_inscription.userId) JOIN course ON course.platformId = 1 JOIN dim_user ON dim_user.plataformaId
+    = 2
 
-  - key: certifications_cpe_from_aprende
-    name: Certificados CPE desde Aprende
-    description: >
-      Total de certificados emitidos en CPE a usuarios de Aprende.
-      Incluye más de un certificado por usuario.
-      Regla: certificationDate IS NOT NULL AND advance = 100.
-    formula: >
-      COUNT(*) FROM fact_inscription
-      JOIN course ON course.platformId = 1
-      JOIN dim_user ON dim_user.plataformaId = 2
-      WHERE advance = 100 AND certificationDate IS NOT NULL
-    type: count
-    source: fact_inscription
-    platform_scope: [cpe]
-    db_mapping: >
-      SELECT COUNT(*)
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      JOIN dim_user du ON du."userId" = fi."userId"
-      WHERE c."platformId" = 1
-        AND du."plataformaId" = 2
-        AND fi."advance" = 100
-        AND fi."certificationDate" IS NOT NULL
-        AND fi."certificationDate" >= %(period_start)s
-        AND fi."certificationDate" < %(period_end)s
-    caveats:
-      - "Requiere advance = 100 AND certificationDate IS NOT NULL."
-      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+    '
+  type: count_distinct
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  db_mapping: 'SELECT COUNT(DISTINCT fi."userId") FROM fact_inscription fi JOIN course c ON c."id" = fi."courseId" JOIN dim_user
+    du ON du."userId" = fi."userId" WHERE c."platformId" = 1 AND du."plataformaId" = 2
 
-  - key: certifications_cpe_total
-    name: Certificados totales CPE
-    description: >
-      Total de certificados emitidos en CPE + certificados CPE desde Aprende.
-      Incluye más de un certificado por usuario.
-    formula: certifications_cpe + certifications_cpe_from_aprende
-    type: sum
-    source: fact_inscription
-    platform_scope: [cpe]
-    db_mapping: "Certificados CPE + Certificados CPE desde Aprende"
-    caveats:
-      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+    '
+  caveats:
+  - Usuarios de Aprende que se inscribieron en cursos CPE.
+- key: beneficiaries_unique
+  name: Beneficiarios únicos
+  description: 'Inscritos únicos CPE + Inscritos únicos CPE desde Aprende. Representa el total de personas alcanzadas por
+    cursos CPE.
 
-  # Certificados únicos ─── usuarios distintos certificados ───────────────
+    '
+  formula: 'inscribed_unique_cpe + inscribed_unique_cpe_from_aprende (calculado con DISTINCT directo sobre fact_inscription,
+    no desde agregadas)
 
-  - key: certified_unique_cpe
-    name: Certificados únicos CPE
-    description: >
-      Usuarios que han terminado al menos un curso en CPE.
-      Regla: certificationDate IS NOT NULL AND advance = 100.
-    formula: >
-      COUNT(DISTINCT fact_inscription.userId)
-      JOIN course ON course.platformId = 1
-      JOIN dim_user ON dim_user.plataformaId = 1
-      WHERE advance = 100 AND certificationDate IS NOT NULL
-    type: count_distinct
-    source: fact_inscription
-    platform_scope: [cpe]
-    db_mapping: >
-      SELECT COUNT(DISTINCT fi."userId")
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      JOIN dim_user du ON du."userId" = fi."userId"
-      WHERE c."platformId" = 1
-        AND du."plataformaId" = 1
-        AND fi."advance" = 100
-        AND fi."certificationDate" IS NOT NULL
-    caveats:
-      - "Requiere advance = 100 AND certificationDate IS NOT NULL."
-      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+    '
+  type: sum
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  - aprende
+  db_mapping: 'Inscritos únicos CPE + Inscritos únicos CPE desde Aprende
 
-  - key: certified_unique_cpe_from_aprende
-    name: Certificados únicos CPE desde Aprende
-    description: >
-      Usuarios que han terminado al menos un curso en CPE desde Aprende.
-      Regla: certificationDate IS NOT NULL AND advance = 100.
-    formula: >
-      COUNT(DISTINCT fact_inscription.userId)
-      JOIN course ON course.platformId = 1
-      JOIN dim_user ON dim_user.plataformaId = 2
-      WHERE advance = 100 AND certificationDate IS NOT NULL
-    type: count_distinct
-    source: fact_inscription
-    platform_scope: [cpe]
-    db_mapping: >
-      SELECT COUNT(DISTINCT fi."userId")
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      JOIN dim_user du ON du."userId" = fi."userId"
-      WHERE c."platformId" = 1
-        AND du."plataformaId" = 2
-        AND fi."advance" = 100
-        AND fi."certificationDate" IS NOT NULL
-    caveats:
-      - "Usuarios de Aprende que certificaron cursos CPE."
-      - "No usa tablas agregadas (agg_*). Consulta directa a fact_inscription."
+    '
+  caveats:
+  - Se calcula automáticamente como suma de inscritos únicos por origen.
+- key: certifications_cpe
+  name: Certificados CPE
+  description: 'Total de certificados emitidos en CPE. Incluye más de un certificado por usuario. Regla: certificationDate
+    IS NOT NULL AND advance = 100.
 
-  - key: certified_unique_cpe_total
-    name: Certificados únicos totales CPE
-    description: >
-      Total de usuarios que han terminado al menos un curso en CPE (global y desde Aprende).
-    formula: certified_unique_cpe + certified_unique_cpe_from_aprende
-    type: sum
-    source: fact_inscription
-    platform_scope: [cpe, aprende]
-    db_mapping: "Certificados únicos CPE + Certificados únicos CPE desde Aprende"
-    caveats:
-      - "No incluye tablas agregadas (agg_*). Consulta directa a fact_inscription."
+    '
+  formula: 'COUNT(*) FROM fact_inscription JOIN course ON course.platformId = 1 JOIN dim_user ON dim_user.plataformaId = 1
+    WHERE advance = 100 AND certificationDate IS NOT NULL
 
-  # Herramientas de capacitación por categoría ── Slide 1 (Pobreza extrema) ──
+    '
+  type: count
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  db_mapping: "SELECT COUNT(*) FROM fact_inscription fi JOIN course c ON c.\"id\" = fi.\"courseId\" JOIN dim_user du ON du.\"\
+    userId\" = fi.\"userId\" WHERE c.\"platformId\" = 1\n  AND du.\"plataformaId\" = 1\n  AND fi.\"advance\" = 100\n  AND\
+    \ fi.\"certificationDate\" IS NOT NULL\n  AND fi.\"certificationDate\" >= %(period_start)s\n  AND fi.\"certificationDate\"\
+    \ < %(period_end)s\n"
+  caveats:
+  - Requiere advance = 100 AND certificationDate IS NOT NULL. Usar solo certificationDate sobrecuenta.
+  - No usa tablas agregadas (agg_*). Consulta directa a fact_inscription.
+- key: certifications_cpe_from_aprende
+  name: Certificados CPE desde Aprende
+  description: 'Total de certificados emitidos en CPE a usuarios de Aprende. Incluye más de un certificado por usuario. Regla:
+    certificationDate IS NOT NULL AND advance = 100.
 
-  - key: slide1_herramientas_pobreza
-    name: Herramientas de capacitación combate pobreza extrema (Slide 1)
-    description: >
-      Tabla slide 1: 5 categorías de cursos (vivienda, digital, alimentos,
-      desastres, empleo) para el combate a la pobreza extrema. value = cursos
-      únicos por categoría (count de IDs, derivado del array); cursos_totales
-      = cursos únicos + compartidos; certificados = personas certificadas
-      únicas (COUNT DISTINCT userId) con advance = 100, certificationDate en
-      el período y plataforma 1 (CPE) o 2 (Aprende). La slide del deck muestra
-      "Personas beneficiadas" en cada categoría, por lo que usamos el conteo
-      único (sin doble certificación de la misma persona en varios cursos de
-      la misma categoría). El curso 342 (Introducción a Primer Respondiente)
-      pertenece solo a desastres. La fila total se compone en la hoja (Slide
-      1) con fórmula =SUM.
-    formula: >
-      Por categoría: value = array_length(IDs cursos),
-      cursos_totales = value + compartidos,
-      certificados = COUNT(DISTINCT fact_inscription.userId) de
-      fact_inscription WHERE advance = 100 AND certificationDate en período
-      AND plataforma IN (1,2).
-    type: count_distinct
-    source: fact_inscription
-    platform_scope: [cpe, aprende]
-    db_mapping: >
-      WITH categorias AS (
-        SELECT * FROM (VALUES
-        ('slide1_vivienda',
-         ARRAY[9,187,4,389,390,367,11,30,140,23,29,24,12,100157,244,240]::bigint[], 0),
-        ('slide1_digital',
-         ARRAY[254,399,213,258,285,379,43,321,374,375,100002,
-                100006,394,380,100003,345,368,372,373,100212,366]::bigint[], 2),
-        ('slide1_alimentos',
-         ARRAY[33,241,282,410,103,145,242,362,382,128,129,130,141,347,
-                89,291,100147,100322,142,299,348,364]::bigint[], 7),
-        ('slide1_desastres',
-         ARRAY[57,95,120,276,281,314,342,354,387,393,100098]::bigint[], 0),
-        ('slide1_empleo',
-         ARRAY[93,156,157,158,100092,100149,159,167,169,100105,106,107,117,
-                153,100074,118,234,301,100101,100310,100320,143,170,320,343,
-                358]::bigint[], 3)
-      ) AS RECORDS(metric_id, categoria_ids, compartidos)
-      )
-      SELECT c.metric_id,
-             'fact_inscription' AS source,
-             array_length(c.categoria_ids, 1) AS value,
-             c.compartidos,
-             array_length(c.categoria_ids, 1) + c.compartidos AS cursos_totales,
-             (SELECT COUNT(DISTINCT fi."userId")
-               FROM fact_inscription fi
-               JOIN dim_user u ON u."userId" = fi."userId"
-               JOIN dim_local l ON l."localId" = u."localId"
-               WHERE fi."courseId" = ANY(c.categoria_ids)
-                 AND fi.advance = 100
-                 AND fi."certificationDate" >= %(period_start)s
-                 AND fi."certificationDate" < %(period_end)s
-                 AND u."plataformaId" IN (1,2)
-                 AND l."countryName" = 'México'
-              ) AS certificados,
-             %(period_start)s AS periodo_inicio,
-             %(period_end)s AS periodo_fin
-      FROM categorias c
-      ORDER BY c.metric_id
-    caveats:
-      - "El total (cursos únicos y certificados) se compone en la hoja Slide 1 con fórmula =SUM, no en SQL."
-      - "Certificación: advance = 100 AND certificationDate IS NOT NULL, plataforma 1 o 2, período oficial de certificados, filtrado por México (l.countryName = 'México' vía JOIN a dim_local). La slide del deck dice 'Cifras de México'. Conteos con COUNT(DISTINCT userId) — 'Personas beneficiadas' (no de inscripciones), por lo que se descartan dobles certificaciones de la misma persona en la misma categoría."
-      - "El curso 342 (Introducción a Primer Respondiente) pertenece SOLO a desastres para no duplicar certificados; alimentos no lo incluye."
-      - "Organización de cursos estática, validada contra Consultas consejo panel.sql (Sep-2025) + cursos IA (100212, 366)."
-      - "Excluye IDs 100433/100436 (sector 81) con 0 certificados/inscripciones en fact_inscription."
-      - "Resultado al corte < '2026-08-01' (periodo 2025-09-01..2026-08-01, PG): vivienda=20,653 / digital=76,371 / alimentos=99,355 / desastres=74,569 / empleo=81,258 / TOTAL=352,206 personas únicas certificadas."
+    '
+  formula: 'COUNT(*) FROM fact_inscription JOIN course ON course.platformId = 1 JOIN dim_user ON dim_user.plataformaId = 2
+    WHERE advance = 100 AND certificationDate IS NOT NULL
 
-  # Rutas de aprendizaje ── Slide 12 ──
+    '
+  type: count
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  db_mapping: "SELECT COUNT(*) FROM fact_inscription fi JOIN course c ON c.\"id\" = fi.\"courseId\" JOIN dim_user du ON du.\"\
+    userId\" = fi.\"userId\" WHERE c.\"platformId\" = 1\n  AND du.\"plataformaId\" = 2\n  AND fi.\"advance\" = 100\n  AND\
+    \ fi.\"certificationDate\" IS NOT NULL\n  AND fi.\"certificationDate\" >= %(period_start)s\n  AND fi.\"certificationDate\"\
+    \ < %(period_end)s\n"
+  caveats:
+  - Requiere advance = 100 AND certificationDate IS NOT NULL.
+  - No usa tablas agregadas (agg_*). Consulta directa a fact_inscription.
+- key: certifications_cpe_total
+  name: Certificados totales CPE
+  description: 'Total de certificados emitidos en CPE + certificados CPE desde Aprende. Incluye más de un certificado por
+    usuario.
 
-  - key: slide12_rutas_aprendizaje
-    name: Rutas de aprendizaje (Slide 12)
-    description: >
-      Tabla slide 12: 16 rutas de aprendizaje en 4 secciones (Construcción,
-      Habilidades digitales, Capacitación básica, Emprendimiento) con las
-      columnas Cursos | Inscripciones | Certificados. value = cursos por ruta
-      (count de IDs, derivado del array); inscripciones = COUNT (sin DISTINCT)
-      de fact_inscription con inscripcionDate < '2026-08-01' y plataforma 1
-      (CPE) o 2 (Aprende); certificados = COUNT (sin DISTINCT) con advance =
-      100 AND certificationDate < '2026-08-01' y plataforma 1 o 2. Métrica
-      ACUMULADA (sin límite inferior) replicando el patrón del panel
-      Consultas_consejo_panel.sql (corte de negocio: hasta 2026-08-01). El
-      total por sección y el total global se componen en la hoja (Slide 12)
-      con fórmula =SUM.
-    formula: >
-      Por ruta: value = array_length(IDs cursos),
-      inscripciones = COUNT(*) de fact_inscription WHERE inscripcionDate <
-      '2026-08-01' AND plataforma IN (1,2) (acumulado, sin límite inferior),
-      certificados = COUNT(*) WHERE advance = 100 AND certificationDate <
-      '2026-08-01' AND plataforma IN (1,2) (acumulado, sin límite inferior).
-    type: count
-    source: fact_inscription
-    platform_scope: [cpe, aprende]
-    db_mapping: >
-      WITH rutas AS (
-        SELECT * FROM (VALUES
-        (1, 'Construcción', 'Proyectos constructivos y mantenimiento', ARRAY[9,187,4,389,390,367,11,30,140,23,29,24,12,100157,244,240]::bigint[]),
-        (2, 'Habilidades digitales', '¿Cómo utilizar un celular?', ARRAY[254,399]::bigint[]),
-        (3, 'Habilidades digitales', '¿Cómo utilizar la computadora?', ARRAY[213,379,285,258]::bigint[]),
-        (4, 'Habilidades digitales', 'Preparación para usar internet', ARRAY[43,100002,375,321,374]::bigint[]),
-        (5, 'Habilidades digitales', 'Interacción con el mundo digital', ARRAY[100006,394,380,373,100003,345,368,372]::bigint[]),
-        (6, 'Capacitación básica', 'Seguridad, higiene y cuidado de la salud', ARRAY[362,342,382,242,145,103]::bigint[]),
-        (7, 'Capacitación básica', 'Uso eficiente de recursos', ARRAY[129,141,347,128,130]::bigint[]),
-        (8, 'Capacitación básica', 'Entendiendo mi situación económica', ARRAY[100147,291,100322,89]::bigint[]),
-        (9, 'Capacitación básica', '¿Cómo mejorar mi entorno?', ARRAY[142,299,364,348]::bigint[]),
-        (10, 'Capacitación básica', 'Alimentos desde casa', ARRAY[410,282,241,33]::bigint[]),
-        (11, 'Capacitación básica', 'Actuar en caso de desastres naturales', ARRAY[387,95,100098,120,314,354,281,57,393,276]::bigint[]),
-        (12, 'Emprendimiento', 'Planea tu negocio', ARRAY[93,100092,100149,157,156,158,100327]::bigint[]),
-        (13, 'Emprendimiento', 'Planea los gastos y ganancias de tu negocio', ARRAY[169,159,167,100105]::bigint[]),
-        (14, 'Emprendimiento', '¿Cómo preparar mis productos para venderlos?', ARRAY[100074,106,107,117,153]::bigint[]),
-        (15, 'Emprendimiento', 'Servicio y ventas de tu negocio', ARRAY[100320,118,301,234,100310,100101]::bigint[]),
-        (16, 'Emprendimiento', 'Mi negocio en internet', ARRAY[170,320,143,358,343]::bigint[])
-      ) AS RECORDS(orden, seccion, ruta, curso_ids)
-      )
-      SELECT r.seccion, r.ruta, array_length(r.curso_ids, 1) AS value,
-             COUNT(fi."userId") FILTER (WHERE fi."inscripcionDate" < '2026-08-01') AS inscripciones,
-             COUNT(fi."userId") FILTER (WHERE fi.advance = 100 AND fi."certificationDate" < '2026-08-01') AS certificados,
-             'Acumulado' AS periodo_inicio,
-             '2026-08-01' AS periodo_fin,
-             'fact_inscription' AS source
-      FROM rutas r
-      JOIN fact_inscription fi ON fi."courseId" = ANY(r.curso_ids)
-      JOIN dim_user u ON u."userId" = fi."userId"
-      JOIN dim_local l ON l."localId" = u."localId"
-      WHERE u."plataformaId" IN (1,2)
-        AND l."countryName" = 'México'
-      GROUP BY r.orden, r.seccion, r.ruta, r.curso_ids
-      ORDER BY r.orden
-    caveats:
-      - "Métrica ACUMULADA: sin límite inferior, corte < '2026-08-01' (decisión de negocio 2026-08-11). El resto del script usa ventana 2025-09-01..2026-07-31 vía .env."
-      - "Inscripciones se cuentan por inscripcionDate (no certificationDate), igual que el panel: incluye inscripciones sin certificar."
-      - "El total por sección y el total global se compone en la hoja Slide 12 con fórmula =SUM (Cursos, Inscripciones, Certificados), no en SQL."
-      - "Certificación: advance = 100 AND certificationDate < '2026-08-01', plataforma 1 o 2 (misma regla que Slide 1), filtrado por México (l.countryName = 'México' vía JOIN a dim_local). La slide del deck dice 'Cifras acotadas a México'."
-      - "El curso 342 (Introducción a Primer Respondiente) pertenece SOLO a 'Seguridad, higiene y cuidado de la salud' (NO a 'Actuar en caso de desastres naturales') para no duplicar certificados. Misma lógica que slide1 (342 pertenece SOLO a desastres; alimentos no lo incluye)."
-      - "'Planea tu negocio' incluye el curso 100327 'Plan de negocios' (confirmado en tabla course) que no aparece en el spreadsheet."
+    '
+  formula: certifications_cpe + certifications_cpe_from_aprende
+  type: sum
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  db_mapping: Certificados CPE + Certificados CPE desde Aprende
+  caveats:
+  - No usa tablas agregadas (agg_*). Consulta directa a fact_inscription.
+- key: certified_unique_cpe
+  name: Certificados únicos CPE
+  description: 'Usuarios que han terminado al menos un curso en CPE. Regla: certificationDate IS NOT NULL AND advance = 100.
 
-  # Formación en Centros Penitenciarios — Slide 13 ──
+    '
+  formula: 'COUNT(DISTINCT fact_inscription.userId) JOIN course ON course.platformId = 1 JOIN dim_user ON dim_user.plataformaId
+    = 1 WHERE advance = 100 AND certificationDate IS NOT NULL
 
-  - key: slide13_penitenciarios_inscripciones
-    name: Slide 13 — Inscripciones totales (Centros Penitenciarios)
-    description: >
-      Métrica de Slide 13 "Formación en Centros Penitenciarios":
-      total acumulado de inscripciones a los cursos del programa en los
-      centros penitenciarios administrados por los brands CEFERESOS (id 18)
-      y DETPCDMX (id 16), con corte < '2026-08-01'., con corte < '2026-08-01'. Lista de course IDs
-      (100 cursos: 36 CEFERESOS + 64 DETPCDMX/Reclusorio norte) viene del
-      archivo Consultas_consejo_panel.sql. Sin filtro de plataforma
-      (los usuarios de penitenciarías pueden tener plataformaId = 1 o
-      2; el filtro es por brand).
-    formula: >
-      COUNT(*) de capacitate_analisis.inscription JOIN userbrand JOIN
-      brand (brandId IN 16, 18) WHERE courseId IN (lista 100 cursos
-      del panel) AND inscripcionDate < '2026-08-01'.
-    type: count
-    source: fact_inscription
-    platform_scope: []
-    db_source: mysql
-    db_mapping: >
-      SELECT COUNT(i.userId) AS value,
-             'Acumulado' AS periodo_inicio,
-             '2026-08-01' AS periodo_fin,
-             'inscription' AS source
-      FROM capacitate_analisis.inscription i
-      INNER JOIN capacitate_analisis.course c ON c.id = i.courseId
-      INNER JOIN capacitate_analisis.userbrand ub ON i.userId = ub.userId
-      INNER JOIN capacitate_analisis.brand b ON ub.brandId = b.id
-      INNER JOIN (
-          SELECT 3 AS id UNION ALL SELECT 4 AS id UNION ALL SELECT 5 AS id
-          UNION ALL SELECT 8 AS id UNION ALL SELECT 9 AS id UNION ALL SELECT 12 AS id
-          UNION ALL SELECT 20 AS id UNION ALL SELECT 21 AS id UNION ALL SELECT 23 AS id
-          UNION ALL SELECT 24 AS id UNION ALL SELECT 26 AS id UNION ALL SELECT 27 AS id
-          UNION ALL SELECT 31 AS id UNION ALL SELECT 32 AS id UNION ALL SELECT 33 AS id
-          UNION ALL SELECT 35 AS id UNION ALL SELECT 36 AS id UNION ALL SELECT 37 AS id
-          UNION ALL SELECT 40 AS id UNION ALL SELECT 57 AS id UNION ALL SELECT 78 AS id
-          UNION ALL SELECT 86 AS id UNION ALL SELECT 95 AS id UNION ALL SELECT 98 AS id
-          UNION ALL SELECT 114 AS id UNION ALL SELECT 120 AS id UNION ALL SELECT 131 AS id
-          UNION ALL SELECT 137 AS id UNION ALL SELECT 138 AS id UNION ALL SELECT 140 AS id
-          UNION ALL SELECT 213 AS id UNION ALL SELECT 244 AS id UNION ALL SELECT 282 AS id
-          UNION ALL SELECT 291 AS id UNION ALL SELECT 367 AS id UNION ALL SELECT 100157 AS id UNION ALL SELECT 2 AS id UNION ALL SELECT 6 AS id UNION ALL SELECT 11 AS id
-          UNION ALL SELECT 14 AS id UNION ALL SELECT 15 AS id UNION ALL SELECT 16 AS id
-          UNION ALL SELECT 18 AS id UNION ALL SELECT 25 AS id UNION ALL SELECT 28 AS id
-          UNION ALL SELECT 30 AS id UNION ALL SELECT 41 AS id UNION ALL SELECT 42 AS id
-          UNION ALL SELECT 48 AS id UNION ALL SELECT 51 AS id UNION ALL SELECT 52 AS id
-          UNION ALL SELECT 58 AS id UNION ALL SELECT 66 AS id UNION ALL SELECT 77 AS id
-          UNION ALL SELECT 99 AS id UNION ALL SELECT 101 AS id
-          UNION ALL SELECT 107 AS id UNION ALL SELECT 109 AS id UNION ALL SELECT 118 AS id
-          UNION ALL SELECT 141 AS id UNION ALL SELECT 142 AS id UNION ALL SELECT 143 AS id
-          UNION ALL SELECT 144 AS id UNION ALL SELECT 151 AS id UNION ALL SELECT 152 AS id
-          UNION ALL SELECT 155 AS id UNION ALL SELECT 156 AS id UNION ALL SELECT 157 AS id
-          UNION ALL SELECT 159 AS id UNION ALL SELECT 170 AS id UNION ALL SELECT 177 AS id
-          UNION ALL SELECT 178 AS id UNION ALL SELECT 201 AS id UNION ALL SELECT 211 AS id
-          UNION ALL SELECT 212 AS id UNION ALL SELECT 228 AS id UNION ALL SELECT 232 AS id
-          UNION ALL SELECT 241 AS id UNION ALL SELECT 246 AS id UNION ALL SELECT 263 AS id
-          UNION ALL SELECT 272 AS id UNION ALL SELECT 275 AS id UNION ALL SELECT 280 AS id
-          UNION ALL SELECT 285 AS id UNION ALL SELECT 293 AS id UNION ALL SELECT 298 AS id UNION ALL SELECT 301 AS id UNION ALL SELECT 305 AS id
-          UNION ALL SELECT 312 AS id UNION ALL SELECT 354 AS id UNION ALL SELECT 376 AS id
-          UNION ALL SELECT 387 AS id UNION ALL SELECT 408 AS id UNION ALL SELECT 100012 AS id
-          UNION ALL SELECT 100064 AS id UNION ALL SELECT 100092 AS id UNION ALL SELECT 100214 AS id
-          UNION ALL SELECT 100320 AS id
-                  ) AS pen_cursos ON pen_cursos.id = c.id
-      WHERE b.id IN (16, 18)
-        AND i.inscripcionDate < '2026-08-01'
-    caveats:
-      - "BD de análisis: MySQL local `capacitate_analisis` (MYSQL_HOST=127.0.0.1:8889). El plan del proyecto declara MySQL como fuente temporal; esta métrica aterriza las queries del archivo Consultas_consejo_panel.sql en el esquema nativo `capacitate_analisis.*` en lugar de traducirlas a PostgreSQL public.*."
-      - "Lista de 98 course IDs viene del archivo Consultas_consejo_panel.sql (100 cursos menos 2 con `course.hide = 1`: ID 100 'Management operativo' e ID 297 'Prácticas de cortesía') (sección Centros Penitenciarios: 36 cursos CEFERESOS + 64 cursos DETPCDMX/Reclusorio norte). Se expande con UNION ALL porque MySQL 5.7 no soporta arrays literales en IN. Se excluyen cursos con `course.hide = 1` para alinearse con la distribución de slide 13 según el sheet 'Copia de Septiembre - 2025 V2'."
-      - "Filtro por brand (brandId IN 16,18 = DETPCDMX, CEFERESOS), NO por plataformaId — los usuarios de penitenciarías pueden tener plataformaId 1 (CPE) o 2 (Aprende)."
-      - "Corte duro a '2026-08-01' (alineado con la decisión de negocio del resto del script; el panel original cortaba en '2025-09-30')."
+    '
+  type: count_distinct
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  db_mapping: "SELECT COUNT(DISTINCT fi.\"userId\") FROM fact_inscription fi JOIN course c ON c.\"id\" = fi.\"courseId\" JOIN\
+    \ dim_user du ON du.\"userId\" = fi.\"userId\" WHERE c.\"platformId\" = 1\n  AND du.\"plataformaId\" = 1\n  AND fi.\"\
+    advance\" = 100\n  AND fi.\"certificationDate\" IS NOT NULL\n"
+  caveats:
+  - Requiere advance = 100 AND certificationDate IS NOT NULL.
+  - No usa tablas agregadas (agg_*). Consulta directa a fact_inscription.
+- key: certified_unique_cpe_from_aprende
+  name: Certificados únicos CPE desde Aprende
+  description: 'Usuarios que han terminado al menos un curso en CPE desde Aprende. Regla: certificationDate IS NOT NULL AND
+    advance = 100.
 
-  - key: slide13_penitenciarios_certificados
-    name: Slide 13 — Certificados (Centros Penitenciarios)
-    description: >
-      Métrica de Slide 13: total acumulado de certificados (advance =
-      100) del programa Centros Penitenciarios (brand 16+18), con
-      corte < '2026-08-01'., con
-      lista de course IDs del panel y corte < '2026-08-01'.
-    formula: >
-      COUNT(*) de capacitate_analisis.inscription JOIN userbrand JOIN
-      brand WHERE brandId IN (16, 18), courseId IN (lista 100 cursos),
-      advance = 100 AND certificationDate < '2026-08-01'.
-    type: count
-    source: fact_inscription
-    platform_scope: []
-    db_source: mysql
-    db_mapping: >
-      SELECT COUNT(i.userId) AS value,
-             'Acumulado' AS periodo_inicio,
-             '2026-08-01' AS periodo_fin,
-             'inscription' AS source
-      FROM capacitate_analisis.inscription i
-      INNER JOIN capacitate_analisis.course c ON c.id = i.courseId
-      INNER JOIN capacitate_analisis.userbrand ub ON i.userId = ub.userId
-      INNER JOIN capacitate_analisis.brand b ON ub.brandId = b.id
-      INNER JOIN (
-          SELECT 3 AS id UNION ALL SELECT 4 AS id UNION ALL SELECT 5 AS id
-          UNION ALL SELECT 8 AS id UNION ALL SELECT 9 AS id UNION ALL SELECT 12 AS id
-          UNION ALL SELECT 20 AS id UNION ALL SELECT 21 AS id UNION ALL SELECT 23 AS id
-          UNION ALL SELECT 24 AS id UNION ALL SELECT 26 AS id UNION ALL SELECT 27 AS id
-          UNION ALL SELECT 31 AS id UNION ALL SELECT 32 AS id UNION ALL SELECT 33 AS id
-          UNION ALL SELECT 35 AS id UNION ALL SELECT 36 AS id UNION ALL SELECT 37 AS id
-          UNION ALL SELECT 40 AS id UNION ALL SELECT 57 AS id UNION ALL SELECT 78 AS id
-          UNION ALL SELECT 86 AS id UNION ALL SELECT 95 AS id UNION ALL SELECT 98 AS id
-          UNION ALL SELECT 114 AS id UNION ALL SELECT 120 AS id UNION ALL SELECT 131 AS id
-          UNION ALL SELECT 137 AS id UNION ALL SELECT 138 AS id UNION ALL SELECT 140 AS id
-          UNION ALL SELECT 213 AS id UNION ALL SELECT 244 AS id UNION ALL SELECT 282 AS id
-          UNION ALL SELECT 291 AS id UNION ALL SELECT 367 AS id UNION ALL SELECT 100157 AS id UNION ALL SELECT 2 AS id UNION ALL SELECT 6 AS id UNION ALL SELECT 11 AS id
-          UNION ALL SELECT 14 AS id UNION ALL SELECT 15 AS id UNION ALL SELECT 16 AS id
-          UNION ALL SELECT 18 AS id UNION ALL SELECT 25 AS id UNION ALL SELECT 28 AS id
-          UNION ALL SELECT 30 AS id UNION ALL SELECT 41 AS id UNION ALL SELECT 42 AS id
-          UNION ALL SELECT 48 AS id UNION ALL SELECT 51 AS id UNION ALL SELECT 52 AS id
-          UNION ALL SELECT 58 AS id UNION ALL SELECT 66 AS id UNION ALL SELECT 77 AS id
-          UNION ALL SELECT 99 AS id UNION ALL SELECT 101 AS id
-          UNION ALL SELECT 107 AS id UNION ALL SELECT 109 AS id UNION ALL SELECT 118 AS id
-          UNION ALL SELECT 141 AS id UNION ALL SELECT 142 AS id UNION ALL SELECT 143 AS id
-          UNION ALL SELECT 144 AS id UNION ALL SELECT 151 AS id UNION ALL SELECT 152 AS id
-          UNION ALL SELECT 155 AS id UNION ALL SELECT 156 AS id UNION ALL SELECT 157 AS id
-          UNION ALL SELECT 159 AS id UNION ALL SELECT 170 AS id UNION ALL SELECT 177 AS id
-          UNION ALL SELECT 178 AS id UNION ALL SELECT 201 AS id UNION ALL SELECT 211 AS id
-          UNION ALL SELECT 212 AS id UNION ALL SELECT 228 AS id UNION ALL SELECT 232 AS id
-          UNION ALL SELECT 241 AS id UNION ALL SELECT 246 AS id UNION ALL SELECT 263 AS id
-          UNION ALL SELECT 272 AS id UNION ALL SELECT 275 AS id UNION ALL SELECT 280 AS id
-          UNION ALL SELECT 285 AS id UNION ALL SELECT 293 AS id UNION ALL SELECT 298 AS id UNION ALL SELECT 301 AS id UNION ALL SELECT 305 AS id
-          UNION ALL SELECT 312 AS id UNION ALL SELECT 354 AS id UNION ALL SELECT 376 AS id
-          UNION ALL SELECT 387 AS id UNION ALL SELECT 408 AS id UNION ALL SELECT 100012 AS id
-          UNION ALL SELECT 100064 AS id UNION ALL SELECT 100092 AS id UNION ALL SELECT 100214 AS id
-          UNION ALL SELECT 100320 AS id
-                  ) AS pen_cursos ON pen_cursos.id = c.id
-      WHERE b.id IN (16, 18)
-        AND i.advance = 100
-        AND i.certificationDate < '2026-08-01'
-    caveats:
-      - "Misma lista de course IDs y filtros de brand que slide13_penitenciarios_inscripciones."
+    '
+  formula: 'COUNT(DISTINCT fact_inscription.userId) JOIN course ON course.platformId = 1 JOIN dim_user ON dim_user.plataformaId
+    = 2 WHERE advance = 100 AND certificationDate IS NOT NULL
 
-  - key: slide13_penitenciarios_usuarios_registrados
-    name: Slide 13 — Usuarios únicos registrados (Centros Penitenciarios)
-    description: >
-      Métrica de Slide 13: cantidad de usuarios únicos (DISTINCT) que
-      están registrados en los brands 16 (DETPCDMX) o 18 (CEFERESOS), con
-      registrationDate < '2026-08-01'. NO filtra por cursos ni por
-      inscripción — es el universo total de usuarios del programa de
-      Centros Penitenciarios (coincide con el deck slide 7 que dice
-      'Usuarios registrados: 335' al corte sep-2025; al corte 1-ago-2026
-      el catálogo da 345).
-    formula: >
-      COUNT(DISTINCT u.id) de capacitate_analisis.user JOIN userbrand
-      JOIN brand WHERE brandId IN (16, 18) AND registrationDate <
-      '2026-08-01'.
-    type: count_distinct
-    source: dim_user
-    platform_scope: []
-    db_source: mysql
-    db_mapping: >
-      SELECT COUNT(DISTINCT u.id) AS value,
-             'Acumulado' AS periodo_inicio,
-             '2026-08-01' AS periodo_fin,
-             'dim_user' AS source
-      FROM capacitate_analisis.user u
-      INNER JOIN capacitate_analisis.userbrand ub ON u.id = ub.userId
-      INNER JOIN capacitate_analisis.brand b ON ub.brandId = b.id
-      WHERE b.id IN (16, 18)
-        AND u.registrationDate < '2026-08-01'
-    caveats:
-      - "Cuenta usuarios únicos REGISTRADOS en los brands de Centros Penitenciarios, NO inscritos a cursos específicos."
-      - "Sin filtro de cursos ni de inscripción — es el universo total del programa."
+    '
+  type: count_distinct
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  db_mapping: "SELECT COUNT(DISTINCT fi.\"userId\") FROM fact_inscription fi JOIN course c ON c.\"id\" = fi.\"courseId\" JOIN\
+    \ dim_user du ON du.\"userId\" = fi.\"userId\" WHERE c.\"platformId\" = 1\n  AND du.\"plataformaId\" = 2\n  AND fi.\"\
+    advance\" = 100\n  AND fi.\"certificationDate\" IS NOT NULL\n"
+  caveats:
+  - Usuarios de Aprende que certificaron cursos CPE.
+  - No usa tablas agregadas (agg_*). Consulta directa a fact_inscription.
+- key: certified_unique_cpe_total
+  name: Certificados únicos totales CPE
+  description: 'Total de usuarios que han terminado al menos un curso en CPE (global y desde Aprende).
 
-  - key: slide13_penitenciarios_cursos_ofertados
-    name: Slide 13 — Cursos ofertados únicos (Centros Penitenciarios)
-    description: >
-      Métrica de Slide 13: cantidad de cursos distintos del programa
-      Centros Penitenciarios (brand 16+18) que tienen al menos una
-      inscripción, con corte < '2026-08-01'., con corte < '2026-08-01'.
-    formula: >
-      COUNT(DISTINCT i.courseId) de capacitate_analisis.inscription JOIN
-      userbrand JOIN brand WHERE brandId IN (16, 18), courseId IN
-      (lista 100 cursos) AND inscripcionDate < '2026-08-01'.
-    type: count_distinct
-    source: fact_inscription
-    platform_scope: []
-    db_source: mysql
-    db_mapping: >
-      SELECT COUNT(DISTINCT i.courseId) AS value,
-             'Acumulado' AS periodo_inicio,
-             '2026-08-01' AS periodo_fin,
-             'inscription' AS source
-      FROM capacitate_analisis.inscription i
-      INNER JOIN capacitate_analisis.course c ON c.id = i.courseId
-      INNER JOIN capacitate_analisis.userbrand ub ON i.userId = ub.userId
-      INNER JOIN capacitate_analisis.brand b ON ub.brandId = b.id
-      INNER JOIN (
-          SELECT 3 AS id UNION ALL SELECT 4 AS id UNION ALL SELECT 5 AS id
-          UNION ALL SELECT 8 AS id UNION ALL SELECT 9 AS id UNION ALL SELECT 12 AS id
-          UNION ALL SELECT 20 AS id UNION ALL SELECT 21 AS id UNION ALL SELECT 23 AS id
-          UNION ALL SELECT 24 AS id UNION ALL SELECT 26 AS id UNION ALL SELECT 27 AS id
-          UNION ALL SELECT 31 AS id UNION ALL SELECT 32 AS id UNION ALL SELECT 33 AS id
-          UNION ALL SELECT 35 AS id UNION ALL SELECT 36 AS id UNION ALL SELECT 37 AS id
-          UNION ALL SELECT 40 AS id UNION ALL SELECT 57 AS id UNION ALL SELECT 78 AS id
-          UNION ALL SELECT 86 AS id UNION ALL SELECT 95 AS id UNION ALL SELECT 98 AS id
-          UNION ALL SELECT 114 AS id UNION ALL SELECT 120 AS id UNION ALL SELECT 131 AS id
-          UNION ALL SELECT 137 AS id UNION ALL SELECT 138 AS id UNION ALL SELECT 140 AS id
-          UNION ALL SELECT 213 AS id UNION ALL SELECT 244 AS id UNION ALL SELECT 282 AS id
-          UNION ALL SELECT 291 AS id UNION ALL SELECT 367 AS id UNION ALL SELECT 100157 AS id UNION ALL SELECT 2 AS id UNION ALL SELECT 6 AS id UNION ALL SELECT 11 AS id
-          UNION ALL SELECT 14 AS id UNION ALL SELECT 15 AS id UNION ALL SELECT 16 AS id
-          UNION ALL SELECT 18 AS id UNION ALL SELECT 25 AS id UNION ALL SELECT 28 AS id
-          UNION ALL SELECT 30 AS id UNION ALL SELECT 41 AS id UNION ALL SELECT 42 AS id
-          UNION ALL SELECT 48 AS id UNION ALL SELECT 51 AS id UNION ALL SELECT 52 AS id
-          UNION ALL SELECT 58 AS id UNION ALL SELECT 66 AS id UNION ALL SELECT 77 AS id
-          UNION ALL SELECT 99 AS id UNION ALL SELECT 101 AS id
-          UNION ALL SELECT 107 AS id UNION ALL SELECT 109 AS id UNION ALL SELECT 118 AS id
-          UNION ALL SELECT 141 AS id UNION ALL SELECT 142 AS id UNION ALL SELECT 143 AS id
-          UNION ALL SELECT 144 AS id UNION ALL SELECT 151 AS id UNION ALL SELECT 152 AS id
-          UNION ALL SELECT 155 AS id UNION ALL SELECT 156 AS id UNION ALL SELECT 157 AS id
-          UNION ALL SELECT 159 AS id UNION ALL SELECT 170 AS id UNION ALL SELECT 177 AS id
-          UNION ALL SELECT 178 AS id UNION ALL SELECT 201 AS id UNION ALL SELECT 211 AS id
-          UNION ALL SELECT 212 AS id UNION ALL SELECT 228 AS id UNION ALL SELECT 232 AS id
-          UNION ALL SELECT 241 AS id UNION ALL SELECT 246 AS id UNION ALL SELECT 263 AS id
-          UNION ALL SELECT 272 AS id UNION ALL SELECT 275 AS id UNION ALL SELECT 280 AS id
-          UNION ALL SELECT 285 AS id UNION ALL SELECT 293 AS id UNION ALL SELECT 298 AS id UNION ALL SELECT 301 AS id UNION ALL SELECT 305 AS id
-          UNION ALL SELECT 312 AS id UNION ALL SELECT 354 AS id UNION ALL SELECT 376 AS id
-          UNION ALL SELECT 387 AS id UNION ALL SELECT 408 AS id UNION ALL SELECT 100012 AS id
-          UNION ALL SELECT 100064 AS id UNION ALL SELECT 100092 AS id UNION ALL SELECT 100214 AS id
-          UNION ALL SELECT 100320 AS id
-                  ) AS pen_cursos ON pen_cursos.id = c.id
-      WHERE b.id IN (16, 18)
-        AND i.inscripcionDate < '2026-08-01'
-    caveats:
-      - "Misma lista de course IDs y filtros de brand que slide13_penitenciarios_inscripciones."
-      - "Este conteo (100 cursos únicos en MySQL vs 98 en PostgreSQL) coincide con el valor aprobado de la presentación Slides original ('Cursos ofertados: 98' o cercano), lo que valida la lista de course IDs del panel como la fuente correcta."
+    '
+  formula: certified_unique_cpe + certified_unique_cpe_from_aprende
+  type: sum
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  - aprende
+  db_mapping: Certificados únicos CPE + Certificados únicos CPE desde Aprende
+  caveats:
+  - No incluye tablas agregadas (agg_*). Consulta directa a fact_inscription.
+- key: slide1_herramientas_pobreza
+  name: Herramientas de capacitación combate pobreza extrema (Slide 1)
+  description: 'Tabla slide 1: 5 categorías de cursos (vivienda, digital, alimentos, desastres, empleo) para el combate a
+    la pobreza extrema. value = cursos únicos por categoría (count de IDs, derivado del array); cursos_totales = cursos únicos
+    + compartidos; certificados = personas certificadas únicas (COUNT DISTINCT userId) con advance = 100, certificationDate
+    en el período y plataforma 1 (CPE) o 2 (Aprende). La slide del deck muestra "Personas beneficiadas" en cada categoría,
+    por lo que usamos el conteo único (sin doble certificación de la misma persona en varios cursos de la misma categoría).
+    El curso 342 (Introducción a Primer Respondiente) pertenece solo a desastres. La fila total se compone en la hoja (Slide
+    1) con fórmula =SUM.
 
-  # Mario Molina Premio Nobel — Slide 15 ──
+    '
+  formula: 'Por categoría: value = array_length(IDs cursos), cursos_totales = value + compartidos, certificados = COUNT(DISTINCT
+    fact_inscription.userId) de fact_inscription WHERE advance = 100 AND certificationDate en período AND plataforma IN (1,2).
 
-  - key: slide15_mario_molina_inscripciones
-    name: Slide 15 — Inscripciones a cursos de Mario Molina
-    description: >
-      Métrica de Slide 15 "Mario Molina Premio Nobel": total acumulado de
-      inscripciones a los 3 cursos del programa Mario Molina (IDs 217
-      'Cálculo de huella de carbono', 236 'Gobernanza del aire' y 310
-      'Concentración de agentes contaminantes en el aire'), con corte
-      estricto < '2026-08-01' (alineado con la decisión de negocio del
-      resto del script). Query del archivo Consultas_consejo_panel.sql
-      (sección "Script de SQL para consultar inscripciones a los cursos
-      de Mario Molina"); corte del panel era <= '2026-04-01' — aquí se
-      extiende a '2026-08-01' para coincidir con el resto del script.
-      Migrada a analisis_cpe_db (PostgreSQL): las tablas `course`,
-      `fact_inscription` y `dim_user` existen en el schema `public` con
-      los mismos nombres de columna que la BD MySQL (sin el prefijo
-      del schema).
-    formula: >
-      COUNT(fact_inscription.userId) de fact_inscription JOIN course
-      JOIN dim_user WHERE course.id IN (217, 236, 310) AND
-      inscripcionDate < '2026-08-01'.
-    type: count
-    source: fact_inscription
-    platform_scope: [cpe, aprende]
-    db_mapping: >
-      SELECT COUNT(fi."userId") AS value,
-             'Acumulado' AS periodo_inicio,
-             '2026-08-01' AS periodo_fin,
-             'fact_inscription' AS source
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      JOIN dim_user du ON du."userId" = fi."userId"
-      WHERE c."id" IN (217, 236, 310)
-        AND fi."inscripcionDate" < '2026-08-01'
-    caveats:
-      - "Los 3 cursos (217/236/310) son los cursos del programa Mario Molina en la BD; vienen del archivo Consultas_consejo_panel.sql."
-      - "El slide 15 original mostraba '159.896' (al corte del snapshot histórico); al corte < '2026-08-01' mi query da ~174k inscr porque la BD actual tiene inscr con fecha anterior que se agregaron al sistema después de generar el slide (backfill de datos)."
-      - "Migrada de MySQL `capacitate_analisis` a PostgreSQL `analisis_cpe_db` (schema `public`). Resultado al corte < '2026-08-01': PG=174,164 vs MySQL=174,161 (diff +3 inscr por timestamp updates)."
+    '
+  type: count_distinct
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  - aprende
+  db_mapping: "WITH categorias AS (\n  SELECT * FROM (VALUES\n  ('slide1_vivienda',\n   ARRAY[9,187,4,389,390,367,11,30,140,23,29,24,12,100157,244,240]::bigint[],\
+    \ 0),\n  ('slide1_digital',\n   ARRAY[254,399,213,258,285,379,43,321,374,375,100002,\n          100006,394,380,100003,345,368,372,373,100212,366]::bigint[],\
+    \ 2),\n  ('slide1_alimentos',\n   ARRAY[33,241,282,410,103,145,242,362,382,128,129,130,141,347,\n          89,291,100147,100322,142,299,348,364]::bigint[],\
+    \ 7),\n  ('slide1_desastres',\n   ARRAY[57,95,120,276,281,314,342,354,387,393,100098]::bigint[], 0),\n  ('slide1_empleo',\n\
+    \   ARRAY[93,156,157,158,100092,100149,159,167,169,100105,106,107,117,\n          153,100074,118,234,301,100101,100310,100320,143,170,320,343,\n\
+    \          358]::bigint[], 3)\n) AS RECORDS(metric_id, categoria_ids, compartidos) ) SELECT c.metric_id,\n       'fact_inscription'\
+    \ AS source,\n       array_length(c.categoria_ids, 1) AS value,\n       c.compartidos,\n       array_length(c.categoria_ids,\
+    \ 1) + c.compartidos AS cursos_totales,\n       (SELECT COUNT(DISTINCT fi.\"userId\")\n         FROM fact_inscription\
+    \ fi\n         JOIN dim_user u ON u.\"userId\" = fi.\"userId\"\n         JOIN dim_local l ON l.\"localId\" = u.\"localId\"\
+    \n         WHERE fi.\"courseId\" = ANY(c.categoria_ids)\n           AND fi.advance = 100\n           AND fi.\"certificationDate\"\
+    \ >= %(period_start)s\n           AND fi.\"certificationDate\" < %(period_end)s\n           AND u.\"plataformaId\" IN\
+    \ (1,2)\n           AND l.\"countryName\" = 'México'\n        ) AS certificados,\n       %(period_start)s AS periodo_inicio,\n\
+    \       %(period_end)s AS periodo_fin\nFROM categorias c ORDER BY c.metric_id\n"
+  caveats:
+  - El total (cursos únicos y certificados) se compone en la hoja Slide 1 con fórmula =SUM, no en SQL.
+  - 'Certificación: advance = 100 AND certificationDate IS NOT NULL, plataforma 1 o 2, período oficial de certificados, filtrado
+    por México (l.countryName = ''México'' vía JOIN a dim_local). La slide del deck dice ''Cifras de México''. Conteos con
+    COUNT(DISTINCT userId) — ''Personas beneficiadas'' (no de inscripciones), por lo que se descartan dobles certificaciones
+    de la misma persona en la misma categoría.'
+  - El curso 342 (Introducción a Primer Respondiente) pertenece SOLO a desastres para no duplicar certificados; alimentos
+    no lo incluye.
+  - Organización de cursos estática, validada contra Consultas consejo panel.sql (Sep-2025) + cursos IA (100212, 366).
+  - Excluye IDs 100433/100436 (sector 81) con 0 certificados/inscripciones en fact_inscription.
+  - 'Resultado al corte < ''2026-08-01'' (periodo 2025-09-01..2026-08-01, PG): vivienda=20,653 / digital=76,371 / alimentos=99,355
+    / desastres=74,569 / empleo=81,258 / TOTAL=352,206 personas únicas certificadas.'
+- key: slide12_rutas_aprendizaje
+  name: Rutas de aprendizaje (Slide 12)
+  description: 'Tabla slide 12: 16 rutas de aprendizaje en 4 secciones (Construcción, Habilidades digitales, Capacitación
+    básica, Emprendimiento) con las columnas Cursos | Inscripciones | Certificados. value = cursos por ruta (count de IDs,
+    derivado del array); inscripciones = COUNT (sin DISTINCT) de fact_inscription con inscripcionDate < ''2026-08-01'' y plataforma
+    1 (CPE) o 2 (Aprende); certificados = COUNT (sin DISTINCT) con advance = 100 AND certificationDate < ''2026-08-01'' y
+    plataforma 1 o 2. Métrica ACUMULADA (sin límite inferior) replicando el patrón del panel Consultas_consejo_panel.sql (corte
+    de negocio: hasta 2026-08-01). El total por sección y el total global se componen en la hoja (Slide 12) con fórmula =SUM.
 
-  # Pilotos por la seguridad vial / Aprende de seguridad vial — Slide 19 ──
+    '
+  formula: 'Por ruta: value = array_length(IDs cursos), inscripciones = COUNT(*) de fact_inscription WHERE inscripcionDate
+    < ''2026-08-01'' AND plataforma IN (1,2) (acumulado, sin límite inferior), certificados = COUNT(*) WHERE advance = 100
+    AND certificationDate < ''2026-08-01'' AND plataforma IN (1,2) (acumulado, sin límite inferior).
 
-  - key: slide19_seguridad_vial_inscripciones
-    name: Slide 19 — Inscripciones a cursos de seguridad vial
-    description: >
-      Métrica de Slide 19 "Pilotos por la seguridad vial / Aprende de
-      seguridad vial": total acumulado de inscripciones en los 16 cursos
-      del programa de seguridad vial (IDs 80, 79, 352, 351, 305, 100156,
-      100326, 175, 54, 41, 202, 98, 203, 204, 36, 114), con corte estricto
-      < '2026-08-01'. Query del archivo Consultas_consejo_panel.sql
-      (sección "Script para consultar el total de Inscripciones a los
-      cursos de seguridad vial"); corte del panel era <= '2026-04-01' —
-      aquí se extiende a '2026-08-01' para coincidir con el resto del
-      script. Fuente PostgreSQL `analisis_cpe_db` (schema `public`):
-      decisión del usuario (2026-08-19) de leer inscripciones/personas
-      únicas/certificados desde el warehouse PG; solo personas
-      certificadas únicas permanece en MySQL (validación CT del
-      usuario) porque PG quedó incompleto en certificaciones
-      (LOOKBACK_DAYS=3 en el ETL).
-    formula: >
-      COUNT(fact_inscription."userId") de analisis_cpe_db JOIN course
-      JOIN dim_user WHERE course."id" IN (16 IDs de seguridad vial) AND
-      fact_inscription."inscripcionDate" < '2026-08-01'.
-    type: count
-    source: fact_inscription
-    platform_scope: [cpe, aprende]
-    db_source: postgres
-    db_mapping: >
-      SELECT COUNT(fi."userId") AS value,
-             'Acumulado' AS periodo_inicio,
-             '2026-08-01' AS periodo_fin,
-             'fact_inscription' AS source
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      JOIN dim_user du ON du."userId" = fi."userId"
-      WHERE c."id" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
-                       41, 202, 98, 203, 204, 36, 114)
-        AND fi."inscripcionDate" < '2026-08-01'
-    caveats:
-      - "Los 16 cursos vienen del archivo Consultas_consejo_panel.sql (listas slide4_aprende_seguridad_vial)."
-      - "Decisión del usuario (2026-08-19): esta métrica lee del warehouse PG analisis_cpe_db (PG=1,498,335 vs MySQL=1,498,007, +328). El panel SQL y la validación CT original son MySQL."
+    '
+  type: count
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  - aprende
+  db_mapping: "WITH rutas AS (\n  SELECT * FROM (VALUES\n  (1, 'Construcción', 'Proyectos constructivos y mantenimiento',\
+    \ ARRAY[9,187,4,389,390,367,11,30,140,23,29,24,12,100157,244,240]::bigint[]),\n  (2, 'Habilidades digitales', '¿Cómo utilizar\
+    \ un celular?', ARRAY[254,399]::bigint[]),\n  (3, 'Habilidades digitales', '¿Cómo utilizar la computadora?', ARRAY[213,379,285,258]::bigint[]),\n\
+    \  (4, 'Habilidades digitales', 'Preparación para usar internet', ARRAY[43,100002,375,321,374]::bigint[]),\n  (5, 'Habilidades\
+    \ digitales', 'Interacción con el mundo digital', ARRAY[100006,394,380,373,100003,345,368,372]::bigint[]),\n  (6, 'Capacitación\
+    \ básica', 'Seguridad, higiene y cuidado de la salud', ARRAY[362,342,382,242,145,103]::bigint[]),\n  (7, 'Capacitación\
+    \ básica', 'Uso eficiente de recursos', ARRAY[129,141,347,128,130]::bigint[]),\n  (8, 'Capacitación básica', 'Entendiendo\
+    \ mi situación económica', ARRAY[100147,291,100322,89]::bigint[]),\n  (9, 'Capacitación básica', '¿Cómo mejorar mi entorno?',\
+    \ ARRAY[142,299,364,348]::bigint[]),\n  (10, 'Capacitación básica', 'Alimentos desde casa', ARRAY[410,282,241,33]::bigint[]),\n\
+    \  (11, 'Capacitación básica', 'Actuar en caso de desastres naturales', ARRAY[387,95,100098,120,314,354,281,57,393,276]::bigint[]),\n\
+    \  (12, 'Emprendimiento', 'Planea tu negocio', ARRAY[93,100092,100149,157,156,158,100327]::bigint[]),\n  (13, 'Emprendimiento',\
+    \ 'Planea los gastos y ganancias de tu negocio', ARRAY[169,159,167,100105]::bigint[]),\n  (14, 'Emprendimiento', '¿Cómo\
+    \ preparar mis productos para venderlos?', ARRAY[100074,106,107,117,153]::bigint[]),\n  (15, 'Emprendimiento', 'Servicio\
+    \ y ventas de tu negocio', ARRAY[100320,118,301,234,100310,100101]::bigint[]),\n  (16, 'Emprendimiento', 'Mi negocio en\
+    \ internet', ARRAY[170,320,143,358,343]::bigint[])\n) AS RECORDS(orden, seccion, ruta, curso_ids) ) SELECT r.seccion,\
+    \ r.ruta, array_length(r.curso_ids, 1) AS value,\n       COUNT(fi.\"userId\") FILTER (WHERE fi.\"inscripcionDate\" < '2026-08-01')\
+    \ AS inscripciones,\n       COUNT(fi.\"userId\") FILTER (WHERE fi.advance = 100 AND fi.\"certificationDate\" < '2026-08-01')\
+    \ AS certificados,\n       'Acumulado' AS periodo_inicio,\n       '2026-08-01' AS periodo_fin,\n       'fact_inscription'\
+    \ AS source\nFROM rutas r JOIN fact_inscription fi ON fi.\"courseId\" = ANY(r.curso_ids) JOIN dim_user u ON u.\"userId\"\
+    \ = fi.\"userId\" JOIN dim_local l ON l.\"localId\" = u.\"localId\" WHERE u.\"plataformaId\" IN (1,2)\n  AND l.\"countryName\"\
+    \ = 'México'\nGROUP BY r.orden, r.seccion, r.ruta, r.curso_ids ORDER BY r.orden\n"
+  caveats:
+  - 'Métrica ACUMULADA: sin límite inferior, corte < ''2026-08-01'' (decisión de negocio 2026-08-11). El resto del script
+    usa ventana 2025-09-01..2026-07-31 vía .env.'
+  - 'Inscripciones se cuentan por inscripcionDate (no certificationDate), igual que el panel: incluye inscripciones sin certificar.'
+  - El total por sección y el total global se compone en la hoja Slide 12 con fórmula =SUM (Cursos, Inscripciones, Certificados),
+    no en SQL.
+  - 'Certificación: advance = 100 AND certificationDate < ''2026-08-01'', plataforma 1 o 2 (misma regla que Slide 1), filtrado
+    por México (l.countryName = ''México'' vía JOIN a dim_local). La slide del deck dice ''Cifras acotadas a México''.'
+  - El curso 342 (Introducción a Primer Respondiente) pertenece SOLO a 'Seguridad, higiene y cuidado de la salud' (NO a 'Actuar
+    en caso de desastres naturales') para no duplicar certificados. Misma lógica que slide1 (342 pertenece SOLO a desastres;
+    alimentos no lo incluye).
+  - '''Planea tu negocio'' incluye el curso 100327 ''Plan de negocios'' (confirmado en tabla course) que no aparece en el
+    spreadsheet.'
+- key: slide13_penitenciarios_inscripciones
+  name: Slide 13 — Inscripciones totales (Centros Penitenciarios)
+  description: 'Métrica de Slide 13 ''Formación en Centros Penitenciarios'': consulta sobre 99 course IDs (36 CEFERESOS brand
+    18 + 65 DETPCDMX brand 16) actualizado 2026-08-19. Sin filtro de plataforma. JOIN con userbrand + brand para filtrar brand
+    IN (16, 18).'
+  formula: 'COUNT(*) de capacitate_analisis.inscription JOIN userbrand JOIN brand (brandId IN 16, 18) WHERE courseId IN (lista
+    100 cursos del panel) AND inscripcionDate < ''2026-08-01''.
 
-  - key: slide19_seguridad_vial_personas_unicas_inscritas
-    name: Slide 19 — Personas únicas inscritas en seguridad vial
-    description: >
-      Métrica de Slide 19: cantidad de usuarios únicos (DISTINCT) inscritos
-      en los 16 cursos de seguridad vial, con corte < '2026-08-01'.
-      Query del archivo Consultas_consejo_panel.sql (sección "Script
-      para consultar el total de personas unicas inscritas a los cursos
-      de seguridad vial"). Fuente PostgreSQL `analisis_cpe_db` (decisión
-      del usuario 2026-08-19: inscripciones/personas únicas leen de PG;
-      solo personas certificadas únicas permanece en MySQL).
-    formula: >
-      COUNT(DISTINCT fact_inscription."userId") de analisis_cpe_db JOIN
-      course JOIN dim_user WHERE course."id" IN (16 IDs) AND
-      fact_inscription."inscripcionDate" < '2026-08-01'.
-    type: count_distinct
-    source: fact_inscription
-    platform_scope: [cpe, aprende]
-    db_source: postgres
-    db_mapping: >
-      SELECT COUNT(DISTINCT fi."userId") AS value,
-             'Acumulado' AS periodo_inicio,
-             '2026-08-01' AS periodo_fin,
-             'fact_inscription' AS source
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      JOIN dim_user du ON du."userId" = fi."userId"
-      WHERE c."id" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
-                       41, 202, 98, 203, 204, 36, 114)
-        AND fi."inscripcionDate" < '2026-08-01'
-    caveats:
-      - "Misma lista de 16 cursos que slide19_seguridad_vial_inscripciones."
-      - "Decisión del usuario (2026-08-19): lee del warehouse PG (PG=1,065,664 vs MySQL=1,065,474, +190)."
+    '
+  type: count
+  source: fact_inscription
+  platform_scope: []
+  db_source: mysql
+  db_mapping: "      SELECT COUNT(i.userId) AS value,\n             'Acumulado' AS periodo_inicio,\n             '2026-08-01'\
+    \ AS periodo_fin,\n             'inscription' AS source\n      FROM capacitate_analisis.inscription i\n      INNER JOIN\
+    \ capacitate_analisis.course c ON c.id = i.courseId\n      INNER JOIN capacitate_analisis.userbrand ub ON i.userId = ub.userId\n\
+    \      INNER JOIN capacitate_analisis.brand b ON ub.brandId = b.id\n      INNER JOIN (\n          SELECT 1 AS id\n   \
+    \       UNION ALL SELECT 2 AS id\n          UNION ALL SELECT 3 AS id\n          UNION ALL SELECT 4 AS id\n          UNION\
+    \ ALL SELECT 5 AS id\n          UNION ALL SELECT 6 AS id\n          UNION ALL SELECT 8 AS id\n          UNION ALL SELECT\
+    \ 9 AS id\n          UNION ALL SELECT 11 AS id\n          UNION ALL SELECT 12 AS id\n          UNION ALL SELECT 14 AS\
+    \ id\n          UNION ALL SELECT 15 AS id\n          UNION ALL SELECT 16 AS id\n          UNION ALL SELECT 18 AS id\n\
+    \          UNION ALL SELECT 20 AS id\n          UNION ALL SELECT 21 AS id\n          UNION ALL SELECT 23 AS id\n     \
+    \     UNION ALL SELECT 24 AS id\n          UNION ALL SELECT 25 AS id\n          UNION ALL SELECT 26 AS id\n          UNION\
+    \ ALL SELECT 27 AS id\n          UNION ALL SELECT 28 AS id\n          UNION ALL SELECT 30 AS id\n          UNION ALL SELECT\
+    \ 31 AS id\n          UNION ALL SELECT 32 AS id\n          UNION ALL SELECT 33 AS id\n          UNION ALL SELECT 35 AS\
+    \ id\n          UNION ALL SELECT 36 AS id\n          UNION ALL SELECT 37 AS id\n          UNION ALL SELECT 40 AS id\n\
+    \          UNION ALL SELECT 41 AS id\n          UNION ALL SELECT 42 AS id\n          UNION ALL SELECT 50 AS id\n     \
+    \     UNION ALL SELECT 51 AS id\n          UNION ALL SELECT 52 AS id\n          UNION ALL SELECT 57 AS id\n          UNION\
+    \ ALL SELECT 58 AS id\n          UNION ALL SELECT 66 AS id\n          UNION ALL SELECT 77 AS id\n          UNION ALL SELECT\
+    \ 78 AS id\n          UNION ALL SELECT 86 AS id\n          UNION ALL SELECT 95 AS id\n          UNION ALL SELECT 98 AS\
+    \ id\n          UNION ALL SELECT 99 AS id\n          UNION ALL SELECT 100 AS id\n          UNION ALL SELECT 101 AS id\n\
+    \          UNION ALL SELECT 107 AS id\n          UNION ALL SELECT 109 AS id\n          UNION ALL SELECT 114 AS id\n  \
+    \        UNION ALL SELECT 118 AS id\n          UNION ALL SELECT 120 AS id\n          UNION ALL SELECT 131 AS id\n    \
+    \      UNION ALL SELECT 137 AS id\n          UNION ALL SELECT 138 AS id\n          UNION ALL SELECT 140 AS id\n      \
+    \    UNION ALL SELECT 141 AS id\n          UNION ALL SELECT 142 AS id\n          UNION ALL SELECT 143 AS id\n        \
+    \  UNION ALL SELECT 144 AS id\n          UNION ALL SELECT 151 AS id\n          UNION ALL SELECT 152 AS id\n          UNION\
+    \ ALL SELECT 155 AS id\n          UNION ALL SELECT 156 AS id\n          UNION ALL SELECT 157 AS id\n          UNION ALL\
+    \ SELECT 159 AS id\n          UNION ALL SELECT 170 AS id\n          UNION ALL SELECT 177 AS id\n          UNION ALL SELECT\
+    \ 178 AS id\n          UNION ALL SELECT 201 AS id\n          UNION ALL SELECT 211 AS id\n          UNION ALL SELECT 212\
+    \ AS id\n          UNION ALL SELECT 213 AS id\n          UNION ALL SELECT 228 AS id\n          UNION ALL SELECT 232 AS\
+    \ id\n          UNION ALL SELECT 241 AS id\n          UNION ALL SELECT 244 AS id\n          UNION ALL SELECT 246 AS id\n\
+    \          UNION ALL SELECT 258 AS id\n          UNION ALL SELECT 263 AS id\n          UNION ALL SELECT 272 AS id\n  \
+    \        UNION ALL SELECT 275 AS id\n          UNION ALL SELECT 280 AS id\n          UNION ALL SELECT 282 AS id\n    \
+    \      UNION ALL SELECT 285 AS id\n          UNION ALL SELECT 291 AS id\n          UNION ALL SELECT 293 AS id\n      \
+    \    UNION ALL SELECT 297 AS id\n          UNION ALL SELECT 298 AS id\n          UNION ALL SELECT 301 AS id\n        \
+    \  UNION ALL SELECT 312 AS id\n          UNION ALL SELECT 354 AS id\n          UNION ALL SELECT 376 AS id\n          UNION\
+    \ ALL SELECT 387 AS id\n          UNION ALL SELECT 408 AS id\n          UNION ALL SELECT 100064 AS id\n          UNION\
+    \ ALL SELECT 100092 AS id\n          UNION ALL SELECT 100157 AS id\n          UNION ALL SELECT 100214 AS id\n        \
+    \  UNION ALL SELECT 100320 AS id\n      ) AS pen_cursos ON pen_cursos.id = c.id\n      WHERE b.id IN (16, 18)\n      \
+    \  AND i.inscripcionDate < '2026-08-01'"
+  caveats:
+  - 'Lista de 99 course IDs: 36 CEFERESOS (brand 18) + 65 DETPCDMX/Reclusorio norte (brand 16) — actualizado 2026-08-19 con
+    el catálogo actual de cursos penitenciarios.'
+  - Filtro por brand (brandId IN 16, 18 = DETPCDMX, CEFERESOS), NO por plataformaId — los usuarios de penitenciarías pueden
+    tener plataformaId 1 (CPE) o 2 (Aprende).
+  - Corte duro a '2026-08-01'.
+- key: slide13_penitenciarios_certificados
+  name: Slide 13 — Certificados (Centros Penitenciarios)
+  description: 'Métrica de Slide 13 ''Formación en Centros Penitenciarios'': consulta sobre 99 course IDs (36 CEFERESOS brand
+    18 + 65 DETPCDMX brand 16) actualizado 2026-08-19. Sin filtro de plataforma. JOIN con userbrand + brand para filtrar brand
+    IN (16, 18).'
+  formula: 'COUNT(*) de capacitate_analisis.inscription JOIN userbrand JOIN brand WHERE brandId IN (16, 18), courseId IN (lista
+    100 cursos), advance = 100 AND certificationDate < ''2026-08-01''.
 
-  - key: slide19_seguridad_vial_certificados
-    name: Slide 19 — Certificados en cursos de seguridad vial
-    description: >
-      Métrica de Slide 19: total acumulado de certificados (advance = 100)
-      en los 16 cursos de seguridad vial, con corte < '2026-08-01'. Query
-      del archivo Consultas_consejo_panel.sql (sección "Script para
-      consultar el total de Certificados a los cursos de seguridad vial").
-      Fuente PostgreSQL `analisis_cpe_db` (decisión del usuario
-      2026-08-19): los certificados leen del warehouse PG aunque quedó
-      incompleto en certificaciones (LOOKBACK_DAYS=3); solo personas
-      certificadas únicas permanece en MySQL.
-    formula: >
-      COUNT(fact_inscription."userId") de analisis_cpe_db JOIN course
-      JOIN dim_user WHERE course."id" IN (16 IDs) AND
-      fact_inscription."advance" = 100 AND fact_inscription."certificationDate"
-      < '2026-08-01'.
-    type: count
-    source: fact_inscription
-    platform_scope: [cpe, aprende]
-    db_source: postgres
-    db_mapping: >
-      SELECT COUNT(fi."userId") AS value,
-             'Acumulado' AS periodo_inicio,
-             '2026-08-01' AS periodo_fin,
-             'fact_inscription' AS source
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      JOIN dim_user du ON du."userId" = fi."userId"
-      WHERE c."id" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
-                       41, 202, 98, 203, 204, 36, 114)
-        AND fi."advance" = 100
-        AND fi."certificationDate" < '2026-08-01'
-    caveats:
-      - "Misma lista de 16 cursos que slide19_seguridad_vial_inscripciones."
-      - "Decisión del usuario (2026-08-19): lee del warehouse PG (PG=238,557 vs MySQL=240,497, −1,940; incompleto por LOOKBACK_DAYS=3)."
+    '
+  type: count
+  source: fact_inscription
+  platform_scope: []
+  db_source: mysql
+  db_mapping: "      SELECT COUNT(i.userId) AS value,\n             'Acumulado' AS periodo_inicio,\n             '2026-08-01'\
+    \ AS periodo_fin,\n             'inscription' AS source\n      FROM capacitate_analisis.inscription i\n      INNER JOIN\
+    \ capacitate_analisis.course c ON c.id = i.courseId\n      INNER JOIN capacitate_analisis.userbrand ub ON i.userId = ub.userId\n\
+    \      INNER JOIN capacitate_analisis.brand b ON ub.brandId = b.id\n      INNER JOIN (\n          SELECT 1 AS id\n   \
+    \       UNION ALL SELECT 2 AS id\n          UNION ALL SELECT 3 AS id\n          UNION ALL SELECT 4 AS id\n          UNION\
+    \ ALL SELECT 5 AS id\n          UNION ALL SELECT 6 AS id\n          UNION ALL SELECT 8 AS id\n          UNION ALL SELECT\
+    \ 9 AS id\n          UNION ALL SELECT 11 AS id\n          UNION ALL SELECT 12 AS id\n          UNION ALL SELECT 14 AS\
+    \ id\n          UNION ALL SELECT 15 AS id\n          UNION ALL SELECT 16 AS id\n          UNION ALL SELECT 18 AS id\n\
+    \          UNION ALL SELECT 20 AS id\n          UNION ALL SELECT 21 AS id\n          UNION ALL SELECT 23 AS id\n     \
+    \     UNION ALL SELECT 24 AS id\n          UNION ALL SELECT 25 AS id\n          UNION ALL SELECT 26 AS id\n          UNION\
+    \ ALL SELECT 27 AS id\n          UNION ALL SELECT 28 AS id\n          UNION ALL SELECT 30 AS id\n          UNION ALL SELECT\
+    \ 31 AS id\n          UNION ALL SELECT 32 AS id\n          UNION ALL SELECT 33 AS id\n          UNION ALL SELECT 35 AS\
+    \ id\n          UNION ALL SELECT 36 AS id\n          UNION ALL SELECT 37 AS id\n          UNION ALL SELECT 40 AS id\n\
+    \          UNION ALL SELECT 41 AS id\n          UNION ALL SELECT 42 AS id\n          UNION ALL SELECT 50 AS id\n     \
+    \     UNION ALL SELECT 51 AS id\n          UNION ALL SELECT 52 AS id\n          UNION ALL SELECT 57 AS id\n          UNION\
+    \ ALL SELECT 58 AS id\n          UNION ALL SELECT 66 AS id\n          UNION ALL SELECT 77 AS id\n          UNION ALL SELECT\
+    \ 78 AS id\n          UNION ALL SELECT 86 AS id\n          UNION ALL SELECT 95 AS id\n          UNION ALL SELECT 98 AS\
+    \ id\n          UNION ALL SELECT 99 AS id\n          UNION ALL SELECT 100 AS id\n          UNION ALL SELECT 101 AS id\n\
+    \          UNION ALL SELECT 107 AS id\n          UNION ALL SELECT 109 AS id\n          UNION ALL SELECT 114 AS id\n  \
+    \        UNION ALL SELECT 118 AS id\n          UNION ALL SELECT 120 AS id\n          UNION ALL SELECT 131 AS id\n    \
+    \      UNION ALL SELECT 137 AS id\n          UNION ALL SELECT 138 AS id\n          UNION ALL SELECT 140 AS id\n      \
+    \    UNION ALL SELECT 141 AS id\n          UNION ALL SELECT 142 AS id\n          UNION ALL SELECT 143 AS id\n        \
+    \  UNION ALL SELECT 144 AS id\n          UNION ALL SELECT 151 AS id\n          UNION ALL SELECT 152 AS id\n          UNION\
+    \ ALL SELECT 155 AS id\n          UNION ALL SELECT 156 AS id\n          UNION ALL SELECT 157 AS id\n          UNION ALL\
+    \ SELECT 159 AS id\n          UNION ALL SELECT 170 AS id\n          UNION ALL SELECT 177 AS id\n          UNION ALL SELECT\
+    \ 178 AS id\n          UNION ALL SELECT 201 AS id\n          UNION ALL SELECT 211 AS id\n          UNION ALL SELECT 212\
+    \ AS id\n          UNION ALL SELECT 213 AS id\n          UNION ALL SELECT 228 AS id\n          UNION ALL SELECT 232 AS\
+    \ id\n          UNION ALL SELECT 241 AS id\n          UNION ALL SELECT 244 AS id\n          UNION ALL SELECT 246 AS id\n\
+    \          UNION ALL SELECT 258 AS id\n          UNION ALL SELECT 263 AS id\n          UNION ALL SELECT 272 AS id\n  \
+    \        UNION ALL SELECT 275 AS id\n          UNION ALL SELECT 280 AS id\n          UNION ALL SELECT 282 AS id\n    \
+    \      UNION ALL SELECT 285 AS id\n          UNION ALL SELECT 291 AS id\n          UNION ALL SELECT 293 AS id\n      \
+    \    UNION ALL SELECT 297 AS id\n          UNION ALL SELECT 298 AS id\n          UNION ALL SELECT 301 AS id\n        \
+    \  UNION ALL SELECT 312 AS id\n          UNION ALL SELECT 354 AS id\n          UNION ALL SELECT 376 AS id\n          UNION\
+    \ ALL SELECT 387 AS id\n          UNION ALL SELECT 408 AS id\n          UNION ALL SELECT 100064 AS id\n          UNION\
+    \ ALL SELECT 100092 AS id\n          UNION ALL SELECT 100157 AS id\n          UNION ALL SELECT 100214 AS id\n        \
+    \  UNION ALL SELECT 100320 AS id\n      ) AS pen_cursos ON pen_cursos.id = c.id\n      WHERE b.id IN (16, 18)\n      \
+    \  AND i.certificationDate IS NOT NULL\n        AND i.advance = 100\n        AND i.certificationDate < '2026-08-01'"
+  caveats:
+  - 'Lista de 99 course IDs: 36 CEFERESOS (brand 18) + 65 DETPCDMX/Reclusorio norte (brand 16) — actualizado 2026-08-19 con
+    el catálogo actual de cursos penitenciarios.'
+  - Filtro por brand (brandId IN 16, 18 = DETPCDMX, CEFERESOS), NO por plataformaId — los usuarios de penitenciarías pueden
+    tener plataformaId 1 (CPE) o 2 (Aprende).
+  - Corte duro a '2026-08-01'.
+- key: slide13_penitenciarios_usuarios_registrados
+  name: Slide 13 — Usuarios únicos registrados (Centros Penitenciarios)
+  description: 'Métrica de Slide 13 ''Formación en Centros Penitenciarios'': consulta sobre 99 course IDs (36 CEFERESOS brand
+    18 + 65 DETPCDMX brand 16) actualizado 2026-08-19. Sin filtro de plataforma. JOIN con userbrand + brand para filtrar brand
+    IN (16, 18).'
+  formula: 'COUNT(DISTINCT u.id) de capacitate_analisis.user JOIN userbrand JOIN brand WHERE brandId IN (16, 18) AND registrationDate
+    < ''2026-08-01''.
 
-  - key: slide19_seguridad_vial_personas_certificadas_unicas
-    name: Slide 19 — Personas únicas certificadas en seguridad vial
-    description: >
-      Métrica de Slide 19: cantidad de usuarios únicos (DISTINCT)
-      certificados (advance = 100) en los 16 cursos de seguridad vial,
-      con corte < '2026-08-01'. Query del archivo
-      Consultas_consejo_panel.sql (sección "Script para consultar el
-      total de personas cetificadas unicas a los cursos de seguridad
-      vial"). Fuente MySQL `capacitate_analisis`: es la query CT que el
-      usuario validó (207,562) — PG reportaba 206,030 porque el ETL
-      cargó incompleto (LOOKBACK_DAYS=3).
-    formula: >
-      COUNT(DISTINCT inscription.userId) de capacitate_analisis.inscription
-      JOIN course WHERE course.id IN (16 IDs) AND advance = 100 AND
-      certificationDate < '2026-08-01'.
-    type: count_distinct
-    source: fact_inscription
-    platform_scope: [cpe, aprende]
-    db_source: mysql
-    db_mapping: >
-      SELECT COUNT(DISTINCT i.userId) AS value,
-             'Acumulado' AS periodo_inicio,
-             '2026-08-01' AS periodo_fin,
-             'inscription' AS source
-      FROM capacitate_analisis.inscription i
-      JOIN capacitate_analisis.course c ON i.courseId = c.id
-      WHERE c.id IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
-                     41, 202, 98, 203, 204, 36, 114)
-        AND i.advance = 100
-        AND i.certificationDate < '2026-08-01'
-    caveats:
-      - "Misma lista de 16 cursos que slide19_seguridad_vial_inscripciones."
-      - "Migrada a MySQL (2026-08-13): coincide con la query CT del usuario (207,562)."
+    '
+  type: count_distinct
+  source: dim_user
+  platform_scope: []
+  db_source: mysql
+  db_mapping: "      SELECT COUNT(DISTINCT u.id) AS value,\n             'Acumulado' AS periodo_inicio,\n             '2026-08-01'\
+    \ AS periodo_fin,\n             'dim_user' AS source\n      FROM capacitate_analisis.user u\n      INNER JOIN capacitate_analisis.userbrand\
+    \ ub ON u.id = ub.userId\n      INNER JOIN capacitate_analisis.brand b ON ub.brandId = b.id\n      INNER JOIN (\n    \
+    \      SELECT 1 AS id\n          UNION ALL SELECT 2 AS id\n          UNION ALL SELECT 3 AS id\n          UNION ALL SELECT\
+    \ 4 AS id\n          UNION ALL SELECT 5 AS id\n          UNION ALL SELECT 6 AS id\n          UNION ALL SELECT 8 AS id\n\
+    \          UNION ALL SELECT 9 AS id\n          UNION ALL SELECT 11 AS id\n          UNION ALL SELECT 12 AS id\n      \
+    \    UNION ALL SELECT 14 AS id\n          UNION ALL SELECT 15 AS id\n          UNION ALL SELECT 16 AS id\n          UNION\
+    \ ALL SELECT 18 AS id\n          UNION ALL SELECT 20 AS id\n          UNION ALL SELECT 21 AS id\n          UNION ALL SELECT\
+    \ 23 AS id\n          UNION ALL SELECT 24 AS id\n          UNION ALL SELECT 25 AS id\n          UNION ALL SELECT 26 AS\
+    \ id\n          UNION ALL SELECT 27 AS id\n          UNION ALL SELECT 28 AS id\n          UNION ALL SELECT 30 AS id\n\
+    \          UNION ALL SELECT 31 AS id\n          UNION ALL SELECT 32 AS id\n          UNION ALL SELECT 33 AS id\n     \
+    \     UNION ALL SELECT 35 AS id\n          UNION ALL SELECT 36 AS id\n          UNION ALL SELECT 37 AS id\n          UNION\
+    \ ALL SELECT 40 AS id\n          UNION ALL SELECT 41 AS id\n          UNION ALL SELECT 42 AS id\n          UNION ALL SELECT\
+    \ 50 AS id\n          UNION ALL SELECT 51 AS id\n          UNION ALL SELECT 52 AS id\n          UNION ALL SELECT 57 AS\
+    \ id\n          UNION ALL SELECT 58 AS id\n          UNION ALL SELECT 66 AS id\n          UNION ALL SELECT 77 AS id\n\
+    \          UNION ALL SELECT 78 AS id\n          UNION ALL SELECT 86 AS id\n          UNION ALL SELECT 95 AS id\n     \
+    \     UNION ALL SELECT 98 AS id\n          UNION ALL SELECT 99 AS id\n          UNION ALL SELECT 100 AS id\n         \
+    \ UNION ALL SELECT 101 AS id\n          UNION ALL SELECT 107 AS id\n          UNION ALL SELECT 109 AS id\n          UNION\
+    \ ALL SELECT 114 AS id\n          UNION ALL SELECT 118 AS id\n          UNION ALL SELECT 120 AS id\n          UNION ALL\
+    \ SELECT 131 AS id\n          UNION ALL SELECT 137 AS id\n          UNION ALL SELECT 138 AS id\n          UNION ALL SELECT\
+    \ 140 AS id\n          UNION ALL SELECT 141 AS id\n          UNION ALL SELECT 142 AS id\n          UNION ALL SELECT 143\
+    \ AS id\n          UNION ALL SELECT 144 AS id\n          UNION ALL SELECT 151 AS id\n          UNION ALL SELECT 152 AS\
+    \ id\n          UNION ALL SELECT 155 AS id\n          UNION ALL SELECT 156 AS id\n          UNION ALL SELECT 157 AS id\n\
+    \          UNION ALL SELECT 159 AS id\n          UNION ALL SELECT 170 AS id\n          UNION ALL SELECT 177 AS id\n  \
+    \        UNION ALL SELECT 178 AS id\n          UNION ALL SELECT 201 AS id\n          UNION ALL SELECT 211 AS id\n    \
+    \      UNION ALL SELECT 212 AS id\n          UNION ALL SELECT 213 AS id\n          UNION ALL SELECT 228 AS id\n      \
+    \    UNION ALL SELECT 232 AS id\n          UNION ALL SELECT 241 AS id\n          UNION ALL SELECT 244 AS id\n        \
+    \  UNION ALL SELECT 246 AS id\n          UNION ALL SELECT 258 AS id\n          UNION ALL SELECT 263 AS id\n          UNION\
+    \ ALL SELECT 272 AS id\n          UNION ALL SELECT 275 AS id\n          UNION ALL SELECT 280 AS id\n          UNION ALL\
+    \ SELECT 282 AS id\n          UNION ALL SELECT 285 AS id\n          UNION ALL SELECT 291 AS id\n          UNION ALL SELECT\
+    \ 293 AS id\n          UNION ALL SELECT 297 AS id\n          UNION ALL SELECT 298 AS id\n          UNION ALL SELECT 301\
+    \ AS id\n          UNION ALL SELECT 312 AS id\n          UNION ALL SELECT 354 AS id\n          UNION ALL SELECT 376 AS\
+    \ id\n          UNION ALL SELECT 387 AS id\n          UNION ALL SELECT 408 AS id\n          UNION ALL SELECT 100064 AS\
+    \ id\n          UNION ALL SELECT 100092 AS id\n          UNION ALL SELECT 100157 AS id\n          UNION ALL SELECT 100214\
+    \ AS id\n          UNION ALL SELECT 100320 AS id\n      ) AS pen_cursos ON pen_cursos.id IN (\n          SELECT i.courseId\
+    \ FROM capacitate_analisis.inscription i\n          WHERE i.userId = u.id\n          AND i.inscripcionDate < '2026-08-01'\n\
+    \      )\n      WHERE b.id IN (16, 18)\n        AND u.registrationDate < '2026-08-01'"
+  caveats:
+  - 'Lista de 99 course IDs: 36 CEFERESOS (brand 18) + 65 DETPCDMX/Reclusorio norte (brand 16) — actualizado 2026-08-19 con
+    el catálogo actual de cursos penitenciarios.'
+  - Filtro por brand (brandId IN 16, 18 = DETPCDMX, CEFERESOS), NO por plataformaId — los usuarios de penitenciarías pueden
+    tener plataformaId 1 (CPE) o 2 (Aprende).
+  - Corte duro a '2026-08-01'.
+- key: slide13_penitenciarios_cursos_ofertados
+  name: Slide 13 — Cursos ofertados únicos (Centros Penitenciarios)
+  description: 'Métrica de Slide 13 ''Formación en Centros Penitenciarios'': consulta sobre 99 course IDs (36 CEFERESOS brand
+    18 + 65 DETPCDMX brand 16) actualizado 2026-08-19. Sin filtro de plataforma. JOIN con userbrand + brand para filtrar brand
+    IN (16, 18).'
+  formula: 'COUNT(DISTINCT i.courseId) de capacitate_analisis.inscription JOIN userbrand JOIN brand WHERE brandId IN (16,
+    18), courseId IN (lista 100 cursos) AND inscripcionDate < ''2026-08-01''.
 
-  # Crecimiento integral — Slide 20 ─────────────────────────────────────
-  # Migrada a PostgreSQL `analisis_cpe_db` (schema `public`) como fuente
-  # del bloque visible (igual que slide15/slide4). Query declarada por el
-  # usuario 2026-08-19 como "la buena": filtro solo `du.plataformaId = 2`
-  # (sin filtro de platformId del curso), corte >= '2025-04-03' AND <
-  # '2026-08-01'. De los 78 cursos, 76 son CPE (`platformId=1`) y 2 son
-  # Aprende (`platformId=2`). PG queda ~15% bajo MySQL en esta ventana por
-  # el ETL incompleto (LOOKBACK_DAYS=3) — ver caveat en cada métrica.
+    '
+  type: count_distinct
+  source: fact_inscription
+  platform_scope: []
+  db_source: mysql
+  db_mapping: "      SELECT COUNT(DISTINCT i.courseId) AS value,\n             'Acumulado' AS periodo_inicio,\n          \
+    \   '2026-08-01' AS periodo_fin,\n             'inscription' AS source\n      FROM capacitate_analisis.inscription i\n\
+    \      INNER JOIN capacitate_analisis.course c ON c.id = i.courseId\n      INNER JOIN capacitate_analisis.userbrand ub\
+    \ ON i.userId = ub.userId\n      INNER JOIN capacitate_analisis.brand b ON ub.brandId = b.id\n      INNER JOIN (\n   \
+    \       SELECT 1 AS id\n          UNION ALL SELECT 2 AS id\n          UNION ALL SELECT 3 AS id\n          UNION ALL SELECT\
+    \ 4 AS id\n          UNION ALL SELECT 5 AS id\n          UNION ALL SELECT 6 AS id\n          UNION ALL SELECT 8 AS id\n\
+    \          UNION ALL SELECT 9 AS id\n          UNION ALL SELECT 11 AS id\n          UNION ALL SELECT 12 AS id\n      \
+    \    UNION ALL SELECT 14 AS id\n          UNION ALL SELECT 15 AS id\n          UNION ALL SELECT 16 AS id\n          UNION\
+    \ ALL SELECT 18 AS id\n          UNION ALL SELECT 20 AS id\n          UNION ALL SELECT 21 AS id\n          UNION ALL SELECT\
+    \ 23 AS id\n          UNION ALL SELECT 24 AS id\n          UNION ALL SELECT 25 AS id\n          UNION ALL SELECT 26 AS\
+    \ id\n          UNION ALL SELECT 27 AS id\n          UNION ALL SELECT 28 AS id\n          UNION ALL SELECT 30 AS id\n\
+    \          UNION ALL SELECT 31 AS id\n          UNION ALL SELECT 32 AS id\n          UNION ALL SELECT 33 AS id\n     \
+    \     UNION ALL SELECT 35 AS id\n          UNION ALL SELECT 36 AS id\n          UNION ALL SELECT 37 AS id\n          UNION\
+    \ ALL SELECT 40 AS id\n          UNION ALL SELECT 41 AS id\n          UNION ALL SELECT 42 AS id\n          UNION ALL SELECT\
+    \ 50 AS id\n          UNION ALL SELECT 51 AS id\n          UNION ALL SELECT 52 AS id\n          UNION ALL SELECT 57 AS\
+    \ id\n          UNION ALL SELECT 58 AS id\n          UNION ALL SELECT 66 AS id\n          UNION ALL SELECT 77 AS id\n\
+    \          UNION ALL SELECT 78 AS id\n          UNION ALL SELECT 86 AS id\n          UNION ALL SELECT 95 AS id\n     \
+    \     UNION ALL SELECT 98 AS id\n          UNION ALL SELECT 99 AS id\n          UNION ALL SELECT 100 AS id\n         \
+    \ UNION ALL SELECT 101 AS id\n          UNION ALL SELECT 107 AS id\n          UNION ALL SELECT 109 AS id\n          UNION\
+    \ ALL SELECT 114 AS id\n          UNION ALL SELECT 118 AS id\n          UNION ALL SELECT 120 AS id\n          UNION ALL\
+    \ SELECT 131 AS id\n          UNION ALL SELECT 137 AS id\n          UNION ALL SELECT 138 AS id\n          UNION ALL SELECT\
+    \ 140 AS id\n          UNION ALL SELECT 141 AS id\n          UNION ALL SELECT 142 AS id\n          UNION ALL SELECT 143\
+    \ AS id\n          UNION ALL SELECT 144 AS id\n          UNION ALL SELECT 151 AS id\n          UNION ALL SELECT 152 AS\
+    \ id\n          UNION ALL SELECT 155 AS id\n          UNION ALL SELECT 156 AS id\n          UNION ALL SELECT 157 AS id\n\
+    \          UNION ALL SELECT 159 AS id\n          UNION ALL SELECT 170 AS id\n          UNION ALL SELECT 177 AS id\n  \
+    \        UNION ALL SELECT 178 AS id\n          UNION ALL SELECT 201 AS id\n          UNION ALL SELECT 211 AS id\n    \
+    \      UNION ALL SELECT 212 AS id\n          UNION ALL SELECT 213 AS id\n          UNION ALL SELECT 228 AS id\n      \
+    \    UNION ALL SELECT 232 AS id\n          UNION ALL SELECT 241 AS id\n          UNION ALL SELECT 244 AS id\n        \
+    \  UNION ALL SELECT 246 AS id\n          UNION ALL SELECT 258 AS id\n          UNION ALL SELECT 263 AS id\n          UNION\
+    \ ALL SELECT 272 AS id\n          UNION ALL SELECT 275 AS id\n          UNION ALL SELECT 280 AS id\n          UNION ALL\
+    \ SELECT 282 AS id\n          UNION ALL SELECT 285 AS id\n          UNION ALL SELECT 291 AS id\n          UNION ALL SELECT\
+    \ 293 AS id\n          UNION ALL SELECT 297 AS id\n          UNION ALL SELECT 298 AS id\n          UNION ALL SELECT 301\
+    \ AS id\n          UNION ALL SELECT 312 AS id\n          UNION ALL SELECT 354 AS id\n          UNION ALL SELECT 376 AS\
+    \ id\n          UNION ALL SELECT 387 AS id\n          UNION ALL SELECT 408 AS id\n          UNION ALL SELECT 100064 AS\
+    \ id\n          UNION ALL SELECT 100092 AS id\n          UNION ALL SELECT 100157 AS id\n          UNION ALL SELECT 100214\
+    \ AS id\n          UNION ALL SELECT 100320 AS id\n      ) AS pen_cursos ON pen_cursos.id = c.id\n      WHERE b.id IN (16,\
+    \ 18)\n        AND i.inscripcionDate < '2026-08-01'"
+  caveats:
+  - 'Lista de 99 course IDs: 36 CEFERESOS (brand 18) + 65 DETPCDMX/Reclusorio norte (brand 16) — actualizado 2026-08-19 con
+    el catálogo actual de cursos penitenciarios.'
+  - Filtro por brand (brandId IN 16, 18 = DETPCDMX, CEFERESOS), NO por plataformaId — los usuarios de penitenciarías pueden
+    tener plataformaId 1 (CPE) o 2 (Aprende).
+  - Corte duro a '2026-08-01'.
+- key: slide15_mario_molina_inscripciones
+  name: Slide 15 — Inscripciones a cursos de Mario Molina
+  description: 'Métrica de Slide 15 "Mario Molina Premio Nobel": total acumulado de inscripciones a los 3 cursos del programa
+    Mario Molina (IDs 217 ''Cálculo de huella de carbono'', 236 ''Gobernanza del aire'' y 310 ''Concentración de agentes contaminantes
+    en el aire''), con corte estricto < ''2026-08-01'' (alineado con la decisión de negocio del resto del script). Query del
+    archivo Consultas_consejo_panel.sql (sección "Script de SQL para consultar inscripciones a los cursos de Mario Molina");
+    corte del panel era <= ''2026-04-01'' — aquí se extiende a ''2026-08-01'' para coincidir con el resto del script. Migrada
+    a analisis_cpe_db (PostgreSQL): las tablas `course`, `fact_inscription` y `dim_user` existen en el schema `public` con
+    los mismos nombres de columna que la BD MySQL (sin el prefijo del schema).
 
-  - key: slide20_crecimiento_integral_inscripciones
-    name: Slide 20 — Inscripciones a cursos de crecimiento integral
-    description: >
-      Métrica de Slide 20 "Crecimiento integral" (última slide de la
-      presentación del Consejo 2026): total acumulado de inscripciones
-      de **usuarios de Aprende** (`u.plataformaId = 2`) en los 78 cursos
-      de la sección crecimiento integral, con corte >= '2025-04-03' AND
-      < '2026-08-01'. Query del archivo Consultas_consejo_panel.sql
-      (sección "Script para consultar el numero de usuarios
-      registrados e inscritos a los cursos de crecimiento integral" —
-      segunda variante con corte inicial '2025-04-03' declarada como
-      "la buena" por el usuario 2026-08-19). Migrada a PostgreSQL
-      `analisis_cpe_db` (schema `public`).
-    formula: >
-      COUNT(fact_inscription.userId) de fact_inscription JOIN course
-      JOIN dim_user WHERE course.id IN (78 cursos de crecimiento
-      integral) AND dim_user.plataformaId = 2 AND inscripcionDate
-      >= '2025-04-03' AND < '2026-08-01'.
-    type: count
-    source: fact_inscription
-    platform_scope: [aprende]
-    db_source: postgres
-    db_mapping: >
-      SELECT COUNT(fi."userId") AS value,
-             'Acumulado' AS periodo_inicio,
-             '2026-08-01' AS periodo_fin,
-             'fact_inscription' AS source
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      JOIN dim_user du ON du."userId" = fi."userId"
-      WHERE c."id" IN (100321, 408, 100220, 100312, 100839, 100338,
-                     100339, 100340, 100341, 100342, 100399, 100343,
-                     100344, 100345, 100346, 100347, 100348, 100349,
-                     100350, 100351, 100352, 100355, 100356, 100660,
-                     100337, 100367, 100695, 100696, 100697, 100698,
-                     100699, 100331, 100362, 100365, 100700, 100371,
-                     100374, 100701, 100702, 100703, 100704, 100705,
-                     100706, 100357, 100358, 100659, 100360, 100364,
-                     100369, 100366, 100707, 100708, 100709, 100710,
-                     100330, 100109, 100379, 100382, 100384, 100386,
-                     100387, 100388, 100389, 100390, 100712, 100713,
-                     100714, 100715, 100716, 100717, 100396, 100718,
-                     100397, 100719, 100722, 100723, 100724, 100725)
-        AND du."plataformaId" = 2
-        AND fi."inscripcionDate" >= '2025-04-03'
-        AND fi."inscripcionDate" < '2026-08-01'
-    caveats:
-      - "La lista de 78 cursos viene de la sección 'Crecimiento integral' de Consultas_consejo_panel.sql (segunda variante de la query 'usuarios registrados e inscritos', declarada como 'la buena' por el usuario)."
-      - "Filtro solo por plataformaId=2 (Aprende), sin filtro de platformId del curso. De los 78 cursos, 76 son CPE (`platformId=1`) y 2 son Aprende (`platformId=2`) — quitar el filtro de curso apenas cambia MySQL (68,065 vs 68,236 con cross-pollination, ~0.25% menos) pero PG queda más corto por el ETL incompleto."
-      - "Resultado al corte >= '2025-04-03' AND < '2026-08-01': PG=58,185 vs MySQL=68,065 (diff -9,880 / -14.5%). PG queda corto por el ETL incompleto (LOOKBACK_DAYS=3): la ventana 2025-04-03 en adelante es la más afectada porque el ETL sólo trae 3 días de historial en cada corrida."
+    '
+  formula: 'COUNT(fact_inscription.userId) de fact_inscription JOIN course JOIN dim_user WHERE course.id IN (217, 236, 310)
+    AND inscripcionDate < ''2026-08-01''.
 
-  - key: slide20_crecimiento_integral_personas_unicas_inscritas
-    name: Slide 20 — Personas únicas inscritas en crecimiento integral
-    description: >
-      Métrica de Slide 20: cantidad de usuarios únicos (DISTINCT) de
-      Aprende (`u.plataformaId = 2`) inscritos en los 78 cursos de
-      crecimiento integral, con corte >= '2025-04-03' AND < '2026-08-01'.
-      Misma query que slide20_crecimiento_integral_inscripciones pero
-      con COUNT(DISTINCT).
-    formula: >
-      COUNT(DISTINCT fact_inscription.userId) de fact_inscription
-      JOIN course JOIN dim_user WHERE course.id IN (78 cursos de
-      crecimiento integral) AND dim_user.plataformaId = 2 AND
-      inscripcionDate >= '2025-04-03' AND < '2026-08-01'.
-    type: count_distinct
-    source: fact_inscription
-    platform_scope: [aprende]
-    db_source: postgres
-    db_mapping: >
-      SELECT COUNT(DISTINCT fi."userId") AS value,
-             'Acumulado' AS periodo_inicio,
-             '2026-08-01' AS periodo_fin,
-             'fact_inscription' AS source
-      FROM fact_inscription fi
-      JOIN course c ON c."id" = fi."courseId"
-      JOIN dim_user du ON du."userId" = fi."userId"
-      WHERE c."id" IN (100321, 408, 100220, 100312, 100839, 100338,
-                     100339, 100340, 100341, 100342, 100399, 100343,
-                     100344, 100345, 100346, 100347, 100348, 100349,
-                     100350, 100351, 100352, 100355, 100356, 100660,
-                     100337, 100367, 100695, 100696, 100697, 100698,
-                     100699, 100331, 100362, 100365, 100700, 100371,
-                     100374, 100701, 100702, 100703, 100704, 100705,
-                     100706, 100357, 100358, 100659, 100360, 100364,
-                     100369, 100366, 100707, 100708, 100709, 100710,
-                     100330, 100109, 100379, 100382, 100384, 100386,
-                     100387, 100388, 100389, 100390, 100712, 100713,
-                     100714, 100715, 100716, 100717, 100396, 100718,
-                     100397, 100719, 100722, 100723, 100724, 100725)
-        AND du."plataformaId" = 2
-        AND fi."inscripcionDate" >= '2025-04-03'
-        AND fi."inscripcionDate" < '2026-08-01'
-    caveats:
-      - "Misma lista de 78 cursos y mismo filtro (solo plataformaId=2) que slide20_crecimiento_integral_inscripciones."
-      - "Resultado al corte >= '2025-04-03' AND < '2026-08-01': PG=34,246 vs MySQL=40,532 (diff -6,286 / -15.5%). Mismo gap del ETL incompleto que la métrica de inscripciones."
+    '
+  type: count
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  - aprende
+  db_mapping: "SELECT COUNT(fi.\"userId\") AS value,\n       'Acumulado' AS periodo_inicio,\n       '2026-08-01' AS periodo_fin,\n\
+    \       'fact_inscription' AS source\nFROM fact_inscription fi JOIN course c ON c.\"id\" = fi.\"courseId\" JOIN dim_user\
+    \ du ON du.\"userId\" = fi.\"userId\" WHERE c.\"id\" IN (217, 236, 310)\n  AND fi.\"inscripcionDate\" < '2026-08-01'\n"
+  caveats:
+  - Los 3 cursos (217/236/310) son los cursos del programa Mario Molina en la BD; vienen del archivo Consultas_consejo_panel.sql.
+  - El slide 15 original mostraba '159.896' (al corte del snapshot histórico); al corte < '2026-08-01' mi query da ~174k inscr
+    porque la BD actual tiene inscr con fecha anterior que se agregaron al sistema después de generar el slide (backfill de
+    datos).
+  - 'Migrada de MySQL `capacitate_analisis` a PostgreSQL `analisis_cpe_db` (schema `public`). Resultado al corte < ''2026-08-01'':
+    PG=174,164 vs MySQL=174,161 (diff +3 inscr por timestamp updates).'
+- key: slide19_seguridad_vial_inscripciones
+  name: Slide 19 — Inscripciones a cursos de seguridad vial
+  description: 'Métrica de Slide 19 "Pilotos por la seguridad vial / Aprende de seguridad vial": total acumulado de inscripciones
+    en los 16 cursos del programa de seguridad vial (IDs 80, 79, 352, 351, 305, 100156, 100326, 175, 54, 41, 202, 98, 203,
+    204, 36, 114), con corte estricto < ''2026-08-01''. Query del archivo Consultas_consejo_panel.sql (sección "Script para
+    consultar el total de Inscripciones a los cursos de seguridad vial"); corte del panel era <= ''2026-04-01'' — aquí se
+    extiende a ''2026-08-01'' para coincidir con el resto del script. Fuente PostgreSQL `analisis_cpe_db` (schema `public`):
+    decisión del usuario (2026-08-19) de leer inscripciones/personas únicas/certificados desde el warehouse PG; solo personas
+    certificadas únicas permanece en MySQL (validación CT del usuario) porque PG quedó incompleto en certificaciones (LOOKBACK_DAYS=3
+    en el ETL).
 
-  - key: slide15_mario_molina_vistas
-    name: Slide 15 — Vistas/consultas a la sección Mario Molina
-    description: >
-      Métrica de Slide 15 "Mario Molina Premio Nobel": total acumulado
-      de vistas/consultas a los 33 recursos de la sección Mario Molina
-      (vía `capacitate_analisis.userresource.count` agregado por
-      recurso y sumado), con corte < '2026-08-01'. Query del archivo
-      Consultas_consejo_panel.sql (sección "Script para consultar el
-      total de vistas de los recursos seccion Mario Molina").
-    formula: >
-      SUM(userresource.count) de capacitate_analisis.user JOIN
-      userresource JOIN resource WHERE resource.id IN (33 IDs de la
-      lista del panel) AND userresource.lastUpdate < '2026-08-01'.
-    type: count
-    source: dim_user
-    platform_scope: []
-    db_source: mysql
-    db_mapping: >
-      SELECT SUM(ur.count) AS value,
-             'Acumulado' AS periodo_inicio,
-             '2026-08-01' AS periodo_fin,
-             'userresource' AS source
-      FROM capacitate_analisis.user u
-      JOIN capacitate_analisis.userresource ur ON ur.userId = u.id
-      JOIN capacitate_analisis.resource r ON ur.resourceId = r.id
-      WHERE r.id IN (
-          13069, 13070, 13071, 13072, 13073, 13074, 13075, 13076, 13077, 13078, 13079, 13080,
-          13081, 13083, 13084, 13085, 13086, 13087, 13088, 13089, 13094, 13095, 13096, 13097,
-          13098, 13099, 13100, 13101, 13102, 13103, 13104, 13105, 13106
-        )
-        AND ur.lastUpdate < '2026-08-01'
-    caveats:
-      - "Los 33 IDs de recursos vienen del archivo Consultas_consejo_panel.sql (listas 13069-13089 + 13094-13106, sin 13082)."
-      - "El slide 15 original mostraba '7.056' vistas (al corte del snapshot histórico); al corte < '2026-08-01' mi query da ~8.4k porque la BD actual tiene vistas con fecha anterior que se agregaron al sistema después de generar el slide."
+    '
+  formula: 'COUNT(fact_inscription."userId") de analisis_cpe_db JOIN course JOIN dim_user WHERE course."id" IN (16 IDs de
+    seguridad vial) AND fact_inscription."inscripcionDate" < ''2026-08-01''.
 
-  # Certificados por sector empleo incluyente ── Slide 2 (Pobreza moderada) ──
+    '
+  type: count
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  - aprende
+  db_source: postgres
+  db_mapping: "SELECT COUNT(fi.\"userId\") AS value,\n       'Acumulado' AS periodo_inicio,\n       '2026-08-01' AS periodo_fin,\n\
+    \       'fact_inscription' AS source\nFROM fact_inscription fi JOIN course c ON c.\"id\" = fi.\"courseId\" JOIN dim_user\
+    \ du ON du.\"userId\" = fi.\"userId\" WHERE c.\"id\" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,\n           \
+    \      41, 202, 98, 203, 204, 36, 114)\n  AND fi.\"inscripcionDate\" < '2026-08-01'\n"
+  caveats:
+  - Los 16 cursos vienen del archivo Consultas_consejo_panel.sql (listas slide4_aprende_seguridad_vial).
+  - 'Decisión del usuario (2026-08-19): esta métrica lee del warehouse PG analisis_cpe_db (PG=1,498,335 vs MySQL=1,498,007,
+    +328). El panel SQL y la validación CT original son MySQL.'
+- key: slide19_seguridad_vial_personas_unicas_inscritas
+  name: Slide 19 — Personas únicas inscritas en seguridad vial
+  description: 'Métrica de Slide 19: cantidad de usuarios únicos (DISTINCT) inscritos en los 16 cursos de seguridad vial,
+    con corte < ''2026-08-01''. Query del archivo Consultas_consejo_panel.sql (sección "Script para consultar el total de
+    personas unicas inscritas a los cursos de seguridad vial"). Fuente PostgreSQL `analisis_cpe_db` (decisión del usuario
+    2026-08-19: inscripciones/personas únicas leen de PG; solo personas certificadas únicas permanece en MySQL).
 
-  - key: slide2_empleo_incluyente_por_sector
-    name: Certificados por sector — empleo incluyente (Slide 2)
-    description: >
-      Personas certificadas en los 6 sectores de empleo incluyente
-      (construcción y mantenimiento, limpieza y mantenimiento,
-      transporte, alimentos y atención, agropecuarias, educación
-      financiera). Grano por curso: una persona certificada en dos
-      cursos del mismo sector cuenta en ambos. Fuente original:
-      PerfilesFemeninos.sql (período certificación septiembre a
-      septiembre). Regla: advance = 100, único, plataforma 1 o 2.
-    formula: >
-      COUNT(DISTINCT fact_inscription.userId) POR CURSO
-      en los 6 sectores, WHERE advance = 100 AND certificationDate
-      en período AND plataformaId IN (1,2) AND Mexico.
-    type: count_distinct
-    source: fact_inscription
-    platform_scope: [cpe, aprende]
-    db_mapping: >
-      SELECT grupo, curso, COUNT(DISTINCT "userId") AS value,
-             %(period_start)s AS periodo_inicio,
-             %(period_end)s AS periodo_fin,
-             'fact_inscription' AS source
-      FROM (
-        SELECT fi."userId", c.name AS curso,
-          CASE
-            WHEN fi."courseId" IN (9,187,4,367,205,206,11,30,23,29,24,12) THEN 'Construcción y mantenimiento'
-            WHEN fi."courseId" IN (6,57,8,100214,128) THEN 'Limpieza y mantenimiento'
-            WHEN fi."courseId" IN (77,100310,41) THEN 'Servicios en transporte'
-            WHEN fi."courseId" IN (39,5,38,58) THEN 'Alimentos y atención'
-            WHEN fi."courseId" IN (52,33) THEN 'Actividades agropecuarias'
-            WHEN fi."courseId" IN (100322,100128,100325) THEN 'Educación financiera'
-            ELSE NULL
-          END AS grupo
-        FROM public.fact_inscription fi
-        JOIN public.dim_user u ON u."userId" = fi."userId"
-        JOIN public.dim_local l ON l."localId" = u."localId"
-        JOIN public.course c ON c.id = fi."courseId"
-        WHERE fi.advance = 100
-          AND fi."certificationDate" >= %(period_start)s
-          AND fi."certificationDate" <= %(period_end)s
-          AND u."plataformaId" IN (1,2)
-          AND l."countryName" = 'México'
-      ) detalle
-      WHERE grupo IS NOT NULL
-      GROUP BY grupo, curso
-      ORDER BY grupo, curso ASC
-    caveats:
-      - "Grano por curso: una persona en dos cursos del mismo sector cuenta en ambos."
-      - "Regla certificación: advance = 100 AND certificationDate IS NOT NULL."
-      - "Límite superior del período: INCLUSIVO (<=) para coincidir con Perfiles_Femeninos.sql original."
-      - "Fuente original: Perfiles_Femeninos.sql (IDs exactos por sector)."
-      - "Orden de filas: alfabético por curso dentro de cada sector (no por valor DESC). El sheet repo emite un bloque con subtotales por sector y TOTAL general."
+    '
+  formula: 'COUNT(DISTINCT fact_inscription."userId") de analisis_cpe_db JOIN course JOIN dim_user WHERE course."id" IN (16
+    IDs) AND fact_inscription."inscripcionDate" < ''2026-08-01''.
 
-  # Usuarios registrados por período ── Slide 3 (Educación y empleo) ──
-  # Fuente: MySQL (carso_analisis / academica_analisis). `source` documenta
-  # el modelo conceptual; `db_source: mysql` hace el dispatch a MySQL.
+    '
+  type: count_distinct
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  - aprende
+  db_source: postgres
+  db_mapping: "SELECT COUNT(DISTINCT fi.\"userId\") AS value,\n       'Acumulado' AS periodo_inicio,\n       '2026-08-01'\
+    \ AS periodo_fin,\n       'fact_inscription' AS source\nFROM fact_inscription fi JOIN course c ON c.\"id\" = fi.\"courseId\"\
+    \ JOIN dim_user du ON du.\"userId\" = fi.\"userId\" WHERE c.\"id\" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,\n\
+    \                 41, 202, 98, 203, 204, 36, 114)\n  AND fi.\"inscripcionDate\" < '2026-08-01'\n"
+  caveats:
+  - Misma lista de 16 cursos que slide19_seguridad_vial_inscripciones.
+  - 'Decisión del usuario (2026-08-19): lee del warehouse PG (PG=1,065,664 vs MySQL=1,065,474, +190).'
+- key: slide19_seguridad_vial_certificados
+  name: Slide 19 — Certificados en cursos de seguridad vial
+  description: 'Métrica de Slide 19: total acumulado de certificados (advance = 100) en los 16 cursos de seguridad vial, con
+    corte < ''2026-08-01''. Query del archivo Consultas_consejo_panel.sql (sección "Script para consultar el total de Certificados
+    a los cursos de seguridad vial"). Fuente PostgreSQL `analisis_cpe_db` (decisión del usuario 2026-08-19): los certificados
+    leen del warehouse PG aunque quedó incompleto en certificaciones (LOOKBACK_DAYS=3); solo personas certificadas únicas
+    permanece en MySQL.
 
-  - key: slide3_capacitate_carso
-    name: Capacítate Carso — usuarios registrados por ventana fija (Slide 3)
-    description: >
-      Usuarios únicos registrados en carso_analisis.user con
-      registrationDate dentro de CUATRO ventanas de tiempo fijas. Devuelve
-      UNA fila con cuatro columnas: "2025" ([2025-01-01, 2026-01-01)),
-      "sep2026" ([2026-01-01, 2026-08-01)), "acumulado"
-      ([2000-01-01, 2026-08-01), histórico completo desde 2000) y
-      "base_dic2026" ([2026-08-01, 2027-01-01), solo base para
-      proyección futura).
-      Las ventanas son fijas (NO usan period_start/period_end) porque
-      alimentan la tabla comparativa del slide 3, no una métrica del corte.
-    formula: >
-      COUNT(DISTINCT carso_analisis.user.id) por cada ventana fija de la
-      tabla comparativa del slide 3.
-    type: count_distinct
-    source: dim_user
-    platform_scope: []
-    db_source: mysql
-    db_mapping: >
-      SELECT
-        (SELECT COUNT(DISTINCT u.id) FROM carso_analisis.user u
-         WHERE u.registrationDate >= '2025-01-01' AND u.registrationDate < '2026-01-01') AS "2025",
-        (SELECT COUNT(DISTINCT u.id) FROM carso_analisis.user u
-         WHERE u.registrationDate >= '2026-01-01' AND u.registrationDate < '2026-08-01') AS "sep2026",
-        (SELECT COUNT(DISTINCT u.id) FROM carso_analisis.user u
-         WHERE u.registrationDate >= '2000-01-01' AND u.registrationDate < '2026-08-01') AS "acumulado",
-        (SELECT COUNT(DISTINCT u.id) FROM carso_analisis.user u
-         WHERE u.registrationDate >= '2026-08-01' AND u.registrationDate < '2027-01-01') AS "base_dic2026"
-    caveats:
-      - "Ventanas FIJAS (ignoran period_start/period_end): tabla comparativa del slide 3 (columna 2025 y sep2026)."
-      - "La fila 'Capacitate Empleo' de la tabla es manual; esta métrica cubre solo Capacítate Carso."
-      - "base_dic2026 es SOLO base de cálculo para una proyección futura de dic2026; NO se escribe en el snapshot."
-      - "db_source mysql: ejecuta contra carso_analisis. MYSQL_DATABASE vacío → prefijo <db>.tabla requerido."
-      - "source dim_user documenta el modelo conceptual; el dispatch real lo hace db_source."
+    '
+  formula: 'COUNT(fact_inscription."userId") de analisis_cpe_db JOIN course JOIN dim_user WHERE course."id" IN (16 IDs) AND
+    fact_inscription."advance" = 100 AND fact_inscription."certificationDate" < ''2026-08-01''.
 
-  - key: slide3_academica_labs
-    name: Académica Labs — usuarios inscritos por ventana fija (Slide 3)
-    description: >
-      Usuarios únicos que se inscribieron a al menos un curso en
-      academica_analisis.userinscription con createdAt dentro de CUATRO
-      ventanas de tiempo fijas. Devuelve UNA fila con cuatro columnas:
-      "2025" ([2025-01-01, 2026-01-01)), "sep2026"
-      ([2026-01-01, 2026-08-01)), "acumulado"
-      ([2000-01-01, 2026-08-01), histórico completo desde 2000) y
-      "base_dic2026" ([2026-08-01, 2027-01-01), solo base para
-      proyección futura).
-      Reemplaza la fila Académica.org. 2025 suele ser 0 porque la tabla
-      arrancó el 2026-01-15 (no es un error de extracción).
-    formula: >
-      COUNT(DISTINCT academica_analisis.userinscription.userId) por cada
-      ventana fija de la tabla comparativa del slide 3.
-    type: count_distinct
-    source: dim_user
-    platform_scope: []
-    db_source: mysql
-    db_mapping: >
-      SELECT
-        (SELECT COUNT(DISTINCT ui.userId) FROM academica_analisis.userinscription ui
-         WHERE ui.createdAt >= '2025-01-01' AND ui.createdAt < '2026-01-01') AS "2025",
-        (SELECT COUNT(DISTINCT ui.userId) FROM academica_analisis.userinscription ui
-         WHERE ui.createdAt >= '2026-01-01' AND ui.createdAt < '2026-08-01') AS "sep2026",
-        (SELECT COUNT(DISTINCT ui.userId) FROM academica_analisis.userinscription ui
-         WHERE ui.createdAt >= '2000-01-01' AND ui.createdAt < '2026-08-01') AS "acumulado",
-        (SELECT COUNT(DISTINCT ui.userId) FROM academica_analisis.userinscription ui
-         WHERE ui.createdAt >= '2026-08-01' AND ui.createdAt < '2027-01-01') AS "base_dic2026"
-    caveats:
-      - "No existía definición previa (ni SP ni query original); se define como usuarios únicos inscritos por createdAt, semejante al conteo de Carso."
-      - "Ventanas FIJAS (ignoran period_start/period_end): tabla comparativa del slide 3 (columna 2025 y sep2026)."
-      - "2025 = 0 es CORRECTO: academica_analisis.userinscription arrancó el 2026-01-15."
-      - "La fila 'Capacitate Empleo' de la tabla es manual; esta métrica cubre solo Académica Labs."
-      - "base_dic2026 es SOLO base de cálculo para una proyección futura de dic2026; NO se escribe en el snapshot."
-      - "db_source mysql: ejecuta contra academica_analisis. MYSQL_DATABASE vacío → prefijo <db>.tabla requerido."
-      - "source dim_user documenta el modelo conceptual; el dispatch real lo hace db_source."
+    '
+  type: count
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  - aprende
+  db_source: postgres
+  db_mapping: "SELECT COUNT(fi.\"userId\") AS value,\n       'Acumulado' AS periodo_inicio,\n       '2026-08-01' AS periodo_fin,\n\
+    \       'fact_inscription' AS source\nFROM fact_inscription fi JOIN course c ON c.\"id\" = fi.\"courseId\" JOIN dim_user\
+    \ du ON du.\"userId\" = fi.\"userId\" WHERE c.\"id\" IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,\n           \
+    \      41, 202, 98, 203, 204, 36, 114)\n  AND fi.\"advance\" = 100\n  AND fi.\"certificationDate\" < '2026-08-01'\n"
+  caveats:
+  - Misma lista de 16 cursos que slide19_seguridad_vial_inscripciones.
+  - 'Decisión del usuario (2026-08-19): lee del warehouse PG (PG=238,557 vs MySQL=240,497, −1,940; incompleto por LOOKBACK_DAYS=3).'
+- key: slide19_seguridad_vial_personas_certificadas_unicas
+  name: Slide 19 — Personas únicas certificadas en seguridad vial
+  description: 'Métrica de Slide 19: cantidad de usuarios únicos (DISTINCT) certificados (advance = 100) en los 16 cursos
+    de seguridad vial, con corte < ''2026-08-01''. Query del archivo Consultas_consejo_panel.sql (sección "Script para consultar
+    el total de personas cetificadas unicas a los cursos de seguridad vial"). Fuente MySQL `capacitate_analisis`: es la query
+    CT que el usuario validó (207,562) — PG reportaba 206,030 porque el ETL cargó incompleto (LOOKBACK_DAYS=3).
 
-  # ── Slide 4 (Educación y divulgación) ──
-  # Fuente MIXTA: slide4_aprende_seguridad_vial ejecuta las ventanas fijas
-  # 2025/sep2026/dic2026 contra PostgreSQL (public.fact_inscription) y el
-  # acumulado histórico contra MySQL via la métrica hermana
-  # slide4_aprende_seguridad_vial_acumulado (sin fila propia; se fusiona en
-  # la misma fila con fuente "postgres + mysql"). slide4_cultura queda en
-  # PostgreSQL. Ventanas FIJAS de la tabla comparativa: 2025, sep2026,
-  # dic2026 y acumulado histórico a sep2026.
-  # Definición operativa dada por el usuario (reemplaza la lámina vieja).
+    '
+  formula: 'COUNT(DISTINCT inscription.userId) de capacitate_analisis.inscription JOIN course WHERE course.id IN (16 IDs)
+    AND advance = 100 AND certificationDate < ''2026-08-01''.
 
-  - key: slide4_aprende_seguridad_vial
-    name: Aprende de seguridad vial — personas únicas certificadas por ventana fija (Slide 4)
-    description: >
-      Personas únicas certificadas (advance = 100) en los 16 cursos de
-      seguridad vial, por ventana fija: "2025" ([2025-01-01, 2026-01-01)),
-      "sep2026" ([2026-01-01, 2026-10-01)) y "dic2026" ([2026-01-01,
-      2027-01-01)). Ejecuta contra PostgreSQL `public.fact_inscription`
-      (query original de Consultas_consejo_panel.sql con las ventanas del
-      período actual). El acumulado histórico (< '2026-08-01') vive en la
-      métrica hermana slide4_aprende_seguridad_vial_acumulado (MySQL);
-      esta métrica NO devuelve acumulado. Restaura la tabla comparativa de
-      la hoja Datos con las ventanas del período actual
-      (2025/sep2026/dic2026), antes degradadas a un solo valor acumulado.
-    formula: >
-      COUNT(DISTINCT fact_inscription.userId) con advance = 100 y
-      certificationDate en la ventana fija, para los 16 cursos de
-      seguridad vial.
-    type: count_distinct
-    source: fact_inscription
-    platform_scope: []
-    db_source: postgres
-    db_mapping: >
-      SELECT
-        (SELECT COUNT(DISTINCT i."userId") FROM public.fact_inscription i
-         WHERE i."courseId" IN (80,79,352,351,305,100156,100326,175,54,41,202,98,203,204,36,114)
-           AND i.advance = 100
-           AND i."certificationDate" >= '2025-01-01' AND i."certificationDate" < '2026-01-01') AS "2025",
-        (SELECT COUNT(DISTINCT i."userId") FROM public.fact_inscription i
-         WHERE i."courseId" IN (80,79,352,351,305,100156,100326,175,54,41,202,98,203,204,36,114)
-           AND i.advance = 100
-           AND i."certificationDate" >= '2026-01-01' AND i."certificationDate" < '2026-08-01') AS "sep2026",
-        0 AS "dic2026"
-    caveats:
-      - "Ventanas FIJAS (ignoran period_start/period_end): tabla comparativa del slide 4, ahora con el período 2025/sep2026/dic2026."
-      - "El acumulado histórico (< '2026-08-01') NO está acá: lo provee la métrica hermana slide4_aprende_seguridad_vial_acumulado (MySQL), que se fusiona en la misma fila de la hoja con fuente 'postgres + mysql'."
-      - "Vuelve a PostgreSQL (2026-08-14) con la query original de HEAD: las 3 ventanas fijas del período actual, sin acumulado."
-      - "db_source postgres: ejecuta contra analisis_cpe_db. Columnas camelCase requieren comillas dobles."
-      - "source fact_inscription documenta el modelo conceptual; el dispatch real lo hace db_source."
+    '
+  type: count_distinct
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  - aprende
+  db_source: mysql
+  db_mapping: "SELECT COUNT(DISTINCT i.userId) AS value,\n       'Acumulado' AS periodo_inicio,\n       '2026-08-01' AS periodo_fin,\n\
+    \       'inscription' AS source\nFROM capacitate_analisis.inscription i JOIN capacitate_analisis.course c ON i.courseId\
+    \ = c.id WHERE c.id IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,\n               41, 202, 98, 203, 204, 36, 114)\n\
+    \  AND i.advance = 100\n  AND i.certificationDate < '2026-08-01'\n"
+  caveats:
+  - Misma lista de 16 cursos que slide19_seguridad_vial_inscripciones.
+  - 'Migrada a MySQL (2026-08-13): coincide con la query CT del usuario (207,562).'
+- key: slide20_crecimiento_integral_inscripciones
+  name: Slide 20 — Inscripciones a cursos de crecimiento integral
+  description: 'Métrica de Slide 20 "Crecimiento integral" (última slide de la presentación del Consejo 2026): total acumulado
+    de inscripciones de **usuarios de Aprende** (`u.plataformaId = 2`) en los 78 cursos de la sección crecimiento integral,
+    con corte >= ''2025-04-03'' AND < ''2026-08-01''. Query del archivo Consultas_consejo_panel.sql (sección "Script para
+    consultar el numero de usuarios registrados e inscritos a los cursos de crecimiento integral" — segunda variante con corte
+    inicial ''2025-04-03'' declarada como "la buena" por el usuario 2026-08-19). Migrada a PostgreSQL `analisis_cpe_db` (schema
+    `public`).
 
-  - key: slide4_aprende_seguridad_vial_acumulado
-    name: Aprende de seguridad vial — acumulado histórico (Slide 4)
-    description: >
-      Acumulado histórico de personas únicas certificadas (advance = 100)
-      en los 16 cursos de seguridad vial, con corte < '2026-08-01'.
-      Métrica HERMANA de slide4_aprende_seguridad_vial: no genera fila
-      propia en la hoja, su valor se fusiona en la columna "Acumulado
-      sep2026" de la fila de seguridad vial (fuente "postgres + mysql").
-      Ejecuta contra MySQL `capacitate_analisis` (query CT que el usuario
-      validó, 207,562).
-    formula: >
-      COUNT(DISTINCT inscription.userId) de capacitate_analisis.inscription
-      JOIN course WHERE course.id IN (16 IDs) AND advance = 100 AND
-      certificationDate < '2026-08-01'.
-    type: count_distinct
-    source: fact_inscription
-    platform_scope: []
-    db_source: mysql
-    db_mapping: >
-      SELECT COUNT(DISTINCT i.userId) AS value,
-             'Acumulado' AS periodo_inicio,
-             '2026-08-01' AS periodo_fin,
-             'inscription' AS source
-      FROM capacitate_analisis.inscription i
-      JOIN capacitate_analisis.course c ON i.courseId = c.id
-      WHERE c.id IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,
-                     41, 202, 98, 203, 204, 36, 114)
-        AND i.advance = 100
-        AND i.certificationDate < '2026-08-01'
-    caveats:
-      - "Misma lista de 16 cursos que slide19_seguridad_vial_personas_certificadas_unicas."
-      - "Se fusiona con la métrica base slide4_aprende_seguridad_vial en la fila de la hoja; sin ella NO tiene fila propia."
-      - "MySQL: coincide con la query CT del usuario (207,562)."
+    '
+  formula: 'COUNT(fact_inscription.userId) de fact_inscription JOIN course JOIN dim_user WHERE course.id IN (78 cursos de
+    crecimiento integral) AND dim_user.plataformaId = 2 AND inscripcionDate >= ''2025-04-03'' AND < ''2026-08-01''.
 
-  - key: slide4_cultura_salud_aprende
-    name: Cultura y Salud Aprende (registros) — usuarios sin inscripción por ventana fija (Slide 4)
-    description: >
-      Usuarios de la plataforma Aprende (plataformaId = 2) registrados dentro
-      de cada ventana fija y SIN ninguna inscripción (NOT EXISTS
-      fact_inscription). Devuelve UNA fila con cuatro columnas: "2025"
-      ([2025-01-01, 2026-01-01)), "sep2026" ([2026-01-01, 2026-10-01)),
-      "dic2026" ([2026-01-01, 2027-01-01)) y "acumulado" (histórico <
-      2026-10-01).
-    formula: >
-      COUNT(DISTINCT dim_user.userId) con plataformaId = 2, registrationDate
-      en la ventana y NOT EXISTS fact_inscription del mismo usuario.
-    type: count_distinct
-    source: dim_user
-    platform_scope: []
-    db_source: postgres
-    db_mapping: >
-      SELECT
-        (SELECT COUNT(DISTINCT u."userId") FROM public.dim_user u
-         WHERE u."plataformaId" = 2
-           AND u."registrationDate" >= '2025-01-01' AND u."registrationDate" < '2026-01-01'
-           AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "2025",
-        (SELECT COUNT(DISTINCT u."userId") FROM public.dim_user u
-         WHERE u."plataformaId" = 2
-           AND u."registrationDate" >= '2026-01-01' AND u."registrationDate" < '2026-08-01'
-           AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "sep2026",
-        0 AS "dic2026",
-        (SELECT COUNT(DISTINCT u."userId") FROM public.dim_user u
-         WHERE u."plataformaId" = 2
-           AND u."registrationDate" < '2026-08-01'
-           AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi."userId" = u."userId")) AS "acumulado"
-    caveats:
-      - "Definición operativa del usuario: registrados Aprende SIN inscripción, NO iguala la lámina vieja (1,318,962/95,801/452,949/480,611)."
-      - "Ventanas FIJAS (ignoran period_start/period_end): tabla comparativa del slide 4."
-      - "acumulado es TODO el histórico con registrationDate < 2025-10-01 (desde 2014)."
-      - "db_source postgres: ejecuta contra analisis_cpe_db. Columnas camelCase requieren comillas dobles."
-      - "source dim_user documenta el modelo conceptual; el dispatch real lo hace db_source."
+    '
+  type: count
+  source: fact_inscription
+  platform_scope:
+  - aprende
+  db_source: postgres
+  db_mapping: "SELECT COUNT(fi.\"userId\") AS value,\n       'Acumulado' AS periodo_inicio,\n       '2026-08-01' AS periodo_fin,\n\
+    \       'fact_inscription' AS source\nFROM fact_inscription fi JOIN course c ON c.\"id\" = fi.\"courseId\" JOIN dim_user\
+    \ du ON du.\"userId\" = fi.\"userId\" WHERE c.\"id\" IN (100321, 408, 100220, 100312, 100839, 100338,\n              \
+    \ 100339, 100340, 100341, 100342, 100399, 100343,\n               100344, 100345, 100346, 100347, 100348, 100349,\n  \
+    \             100350, 100351, 100352, 100355, 100356, 100660,\n               100337, 100367, 100695, 100696, 100697,\
+    \ 100698,\n               100699, 100331, 100362, 100365, 100700, 100371,\n               100374, 100701, 100702, 100703,\
+    \ 100704, 100705,\n               100706, 100357, 100358, 100659, 100360, 100364,\n               100369, 100366, 100707,\
+    \ 100708, 100709, 100710,\n               100330, 100109, 100379, 100382, 100384, 100386,\n               100387, 100388,\
+    \ 100389, 100390, 100712, 100713,\n               100714, 100715, 100716, 100717, 100396, 100718,\n               100397,\
+    \ 100719, 100722, 100723, 100724, 100725)\n  AND du.\"plataformaId\" = 2\n  AND fi.\"inscripcionDate\" >= '2025-04-03'\n\
+    \  AND fi.\"inscripcionDate\" < '2026-08-01'\n"
+  caveats:
+  - La lista de 78 cursos viene de la sección 'Crecimiento integral' de Consultas_consejo_panel.sql (segunda variante de la
+    query 'usuarios registrados e inscritos', declarada como 'la buena' por el usuario).
+  - Filtro solo por plataformaId=2 (Aprende), sin filtro de platformId del curso. De los 78 cursos, 76 son CPE (`platformId=1`)
+    y 2 son Aprende (`platformId=2`) — quitar el filtro de curso apenas cambia MySQL (68,065 vs 68,236 con cross-pollination,
+    ~0.25% menos) pero PG queda más corto por el ETL incompleto.
+  - 'Resultado al corte >= ''2025-04-03'' AND < ''2026-08-01'': PG=58,185 vs MySQL=68,065 (diff -9,880 / -14.5%). PG queda
+    corto por el ETL incompleto (LOOKBACK_DAYS=3): la ventana 2025-04-03 en adelante es la más afectada porque el ETL sólo
+    trae 3 días de historial en cada corrida.'
+- key: slide20_crecimiento_integral_personas_unicas_inscritas
+  name: Slide 20 — Personas únicas inscritas en crecimiento integral
+  description: 'Métrica de Slide 20: cantidad de usuarios únicos (DISTINCT) de Aprende (`u.plataformaId = 2`) inscritos en
+    los 78 cursos de crecimiento integral, con corte >= ''2025-04-03'' AND < ''2026-08-01''. Misma query que slide20_crecimiento_integral_inscripciones
+    pero con COUNT(DISTINCT).
 
-# ── Notas técnicas ───────────────────────────────────────────────────────
+    '
+  formula: 'COUNT(DISTINCT fact_inscription.userId) de fact_inscription JOIN course JOIN dim_user WHERE course.id IN (78 cursos
+    de crecimiento integral) AND dim_user.plataformaId = 2 AND inscripcionDate >= ''2025-04-03'' AND < ''2026-08-01''.
 
+    '
+  type: count_distinct
+  source: fact_inscription
+  platform_scope:
+  - aprende
+  db_source: postgres
+  db_mapping: "SELECT COUNT(DISTINCT fi.\"userId\") AS value,\n       'Acumulado' AS periodo_inicio,\n       '2026-08-01'\
+    \ AS periodo_fin,\n       'fact_inscription' AS source\nFROM fact_inscription fi JOIN course c ON c.\"id\" = fi.\"courseId\"\
+    \ JOIN dim_user du ON du.\"userId\" = fi.\"userId\" WHERE c.\"id\" IN (100321, 408, 100220, 100312, 100839, 100338,\n\
+    \               100339, 100340, 100341, 100342, 100399, 100343,\n               100344, 100345, 100346, 100347, 100348,\
+    \ 100349,\n               100350, 100351, 100352, 100355, 100356, 100660,\n               100337, 100367, 100695, 100696,\
+    \ 100697, 100698,\n               100699, 100331, 100362, 100365, 100700, 100371,\n               100374, 100701, 100702,\
+    \ 100703, 100704, 100705,\n               100706, 100357, 100358, 100659, 100360, 100364,\n               100369, 100366,\
+    \ 100707, 100708, 100709, 100710,\n               100330, 100109, 100379, 100382, 100384, 100386,\n               100387,\
+    \ 100388, 100389, 100390, 100712, 100713,\n               100714, 100715, 100716, 100717, 100396, 100718,\n          \
+    \     100397, 100719, 100722, 100723, 100724, 100725)\n  AND du.\"plataformaId\" = 2\n  AND fi.\"inscripcionDate\" >=\
+    \ '2025-04-03'\n  AND fi.\"inscripcionDate\" < '2026-08-01'\n"
+  caveats:
+  - Misma lista de 78 cursos y mismo filtro (solo plataformaId=2) que slide20_crecimiento_integral_inscripciones.
+  - 'Resultado al corte >= ''2025-04-03'' AND < ''2026-08-01'': PG=34,246 vs MySQL=40,532 (diff -6,286 / -15.5%). Mismo gap
+    del ETL incompleto que la métrica de inscripciones.'
+- key: slide15_mario_molina_vistas
+  name: Slide 15 — Vistas/consultas a la sección Mario Molina
+  description: 'Métrica de Slide 15 "Mario Molina Premio Nobel": total acumulado de vistas/consultas a los 33 recursos de
+    la sección Mario Molina (vía `capacitate_analisis.userresource.count` agregado por recurso y sumado), con corte < ''2026-08-01''.
+    Query del archivo Consultas_consejo_panel.sql (sección "Script para consultar el total de vistas de los recursos seccion
+    Mario Molina").
+
+    '
+  formula: 'SUM(userresource.count) de capacitate_analisis.user JOIN userresource JOIN resource WHERE resource.id IN (33 IDs
+    de la lista del panel) AND userresource.lastUpdate < ''2026-08-01''.
+
+    '
+  type: count
+  source: dim_user
+  platform_scope: []
+  db_source: mysql
+  db_mapping: "SELECT SUM(ur.count) AS value,\n       'Acumulado' AS periodo_inicio,\n       '2026-08-01' AS periodo_fin,\n\
+    \       'userresource' AS source\nFROM capacitate_analisis.user u JOIN capacitate_analisis.userresource ur ON ur.userId\
+    \ = u.id JOIN capacitate_analisis.resource r ON ur.resourceId = r.id WHERE r.id IN (\n    13069, 13070, 13071, 13072,\
+    \ 13073, 13074, 13075, 13076, 13077, 13078, 13079, 13080,\n    13081, 13083, 13084, 13085, 13086, 13087, 13088, 13089,\
+    \ 13094, 13095, 13096, 13097,\n    13098, 13099, 13100, 13101, 13102, 13103, 13104, 13105, 13106\n  )\n  AND ur.lastUpdate\
+    \ < '2026-08-01'\n"
+  caveats:
+  - Los 33 IDs de recursos vienen del archivo Consultas_consejo_panel.sql (listas 13069-13089 + 13094-13106, sin 13082).
+  - El slide 15 original mostraba '7.056' vistas (al corte del snapshot histórico); al corte < '2026-08-01' mi query da ~8.4k
+    porque la BD actual tiene vistas con fecha anterior que se agregaron al sistema después de generar el slide.
+- key: slide2_empleo_incluyente_por_sector
+  name: Certificados por sector — empleo incluyente (Slide 2)
+  description: 'Personas certificadas en los 6 sectores de empleo incluyente (construcción y mantenimiento, limpieza y mantenimiento,
+    transporte, alimentos y atención, agropecuarias, educación financiera). Grano por curso: una persona certificada en dos
+    cursos del mismo sector cuenta en ambos. Fuente original: PerfilesFemeninos.sql (período certificación septiembre a septiembre).
+    Regla: advance = 100, único, plataforma 1 o 2.
+
+    '
+  formula: 'COUNT(DISTINCT fact_inscription.userId) POR CURSO en los 6 sectores, WHERE advance = 100 AND certificationDate
+    en período AND plataformaId IN (1,2) AND Mexico.
+
+    '
+  type: count_distinct
+  source: fact_inscription
+  platform_scope:
+  - cpe
+  - aprende
+  db_mapping: "SELECT grupo, curso, COUNT(DISTINCT \"userId\") AS value,\n       %(period_start)s AS periodo_inicio,\n   \
+    \    %(period_end)s AS periodo_fin,\n       'fact_inscription' AS source\nFROM (\n  SELECT fi.\"userId\", c.name AS curso,\n\
+    \    CASE\n      WHEN fi.\"courseId\" IN (9,187,4,367,205,206,11,30,23,29,24,12) THEN 'Construcción y mantenimiento'\n\
+    \      WHEN fi.\"courseId\" IN (6,57,8,100214,128) THEN 'Limpieza y mantenimiento'\n      WHEN fi.\"courseId\" IN (77,100310,41)\
+    \ THEN 'Servicios en transporte'\n      WHEN fi.\"courseId\" IN (39,5,38,58) THEN 'Alimentos y atención'\n      WHEN fi.\"\
+    courseId\" IN (52,33) THEN 'Actividades agropecuarias'\n      WHEN fi.\"courseId\" IN (100322,100128,100325) THEN 'Educación\
+    \ financiera'\n      ELSE NULL\n    END AS grupo\n  FROM public.fact_inscription fi\n  JOIN public.dim_user u ON u.\"\
+    userId\" = fi.\"userId\"\n  JOIN public.dim_local l ON l.\"localId\" = u.\"localId\"\n  JOIN public.course c ON c.id =\
+    \ fi.\"courseId\"\n  WHERE fi.advance = 100\n    AND fi.\"certificationDate\" >= %(period_start)s\n    AND fi.\"certificationDate\"\
+    \ <= %(period_end)s\n    AND u.\"plataformaId\" IN (1,2)\n    AND l.\"countryName\" = 'México'\n) detalle WHERE grupo\
+    \ IS NOT NULL GROUP BY grupo, curso ORDER BY grupo, curso ASC\n"
+  caveats:
+  - 'Grano por curso: una persona en dos cursos del mismo sector cuenta en ambos.'
+  - 'Regla certificación: advance = 100 AND certificationDate IS NOT NULL.'
+  - 'Límite superior del período: INCLUSIVO (<=) para coincidir con Perfiles_Femeninos.sql original.'
+  - 'Fuente original: Perfiles_Femeninos.sql (IDs exactos por sector).'
+  - 'Orden de filas: alfabético por curso dentro de cada sector (no por valor DESC). El sheet repo emite un bloque con subtotales
+    por sector y TOTAL general.'
+- key: slide3_capacitate_carso
+  name: Capacítate Carso — usuarios registrados por ventana fija (Slide 3)
+  description: 'Usuarios únicos registrados en carso_analisis.user con registrationDate dentro de CUATRO ventanas de tiempo
+    fijas. Devuelve UNA fila con cuatro columnas: "2025" ([2025-01-01, 2026-01-01)), "sep2026" ([2026-01-01, 2026-08-01)),
+    "acumulado" ([2000-01-01, 2026-08-01), histórico completo desde 2000) y "base_dic2026" ([2026-08-01, 2027-01-01), solo
+    base para proyección futura). Las ventanas son fijas (NO usan period_start/period_end) porque alimentan la tabla comparativa
+    del slide 3, no una métrica del corte.
+
+    '
+  formula: 'COUNT(DISTINCT carso_analisis.user.id) por cada ventana fija de la tabla comparativa del slide 3.
+
+    '
+  type: count_distinct
+  source: dim_user
+  platform_scope: []
+  db_source: mysql
+  db_mapping: "SELECT\n  (SELECT COUNT(DISTINCT u.id) FROM carso_analisis.user u\n   WHERE u.registrationDate >= '2025-01-01'\
+    \ AND u.registrationDate < '2026-01-01') AS \"2025\",\n  (SELECT COUNT(DISTINCT u.id) FROM carso_analisis.user u\n   WHERE\
+    \ u.registrationDate >= '2026-01-01' AND u.registrationDate < '2026-08-01') AS \"sep2026\",\n  (SELECT COUNT(DISTINCT\
+    \ u.id) FROM carso_analisis.user u\n   WHERE u.registrationDate >= '2000-01-01' AND u.registrationDate < '2026-08-01')\
+    \ AS \"acumulado\",\n  (SELECT COUNT(DISTINCT u.id) FROM carso_analisis.user u\n   WHERE u.registrationDate >= '2026-08-01'\
+    \ AND u.registrationDate < '2027-01-01') AS \"base_dic2026\"\n"
+  caveats:
+  - 'Ventanas FIJAS (ignoran period_start/period_end): tabla comparativa del slide 3 (columna 2025 y sep2026).'
+  - La fila 'Capacitate Empleo' de la tabla es manual; esta métrica cubre solo Capacítate Carso.
+  - base_dic2026 es SOLO base de cálculo para una proyección futura de dic2026; NO se escribe en el snapshot.
+  - 'db_source mysql: ejecuta contra carso_analisis. MYSQL_DATABASE vacío → prefijo <db>.tabla requerido.'
+  - source dim_user documenta el modelo conceptual; el dispatch real lo hace db_source.
+- key: slide3_academica_labs
+  name: Académica Labs — usuarios inscritos por ventana fija (Slide 3)
+  description: 'Usuarios únicos que se inscribieron a al menos un curso en academica_analisis.userinscription con createdAt
+    dentro de CUATRO ventanas de tiempo fijas. Devuelve UNA fila con cuatro columnas: "2025" ([2025-01-01, 2026-01-01)), "sep2026"
+    ([2026-01-01, 2026-08-01)), "acumulado" ([2000-01-01, 2026-08-01), histórico completo desde 2000) y "base_dic2026" ([2026-08-01,
+    2027-01-01), solo base para proyección futura). Reemplaza la fila Académica.org. 2025 suele ser 0 porque la tabla arrancó
+    el 2026-01-15 (no es un error de extracción).
+
+    '
+  formula: 'COUNT(DISTINCT academica_analisis.userinscription.userId) por cada ventana fija de la tabla comparativa del slide
+    3.
+
+    '
+  type: count_distinct
+  source: dim_user
+  platform_scope: []
+  db_source: mysql
+  db_mapping: "SELECT\n  (SELECT COUNT(DISTINCT ui.userId) FROM academica_analisis.userinscription ui\n   WHERE ui.createdAt\
+    \ >= '2025-01-01' AND ui.createdAt < '2026-01-01') AS \"2025\",\n  (SELECT COUNT(DISTINCT ui.userId) FROM academica_analisis.userinscription\
+    \ ui\n   WHERE ui.createdAt >= '2026-01-01' AND ui.createdAt < '2026-08-01') AS \"sep2026\",\n  (SELECT COUNT(DISTINCT\
+    \ ui.userId) FROM academica_analisis.userinscription ui\n   WHERE ui.createdAt >= '2000-01-01' AND ui.createdAt < '2026-08-01')\
+    \ AS \"acumulado\",\n  (SELECT COUNT(DISTINCT ui.userId) FROM academica_analisis.userinscription ui\n   WHERE ui.createdAt\
+    \ >= '2026-08-01' AND ui.createdAt < '2027-01-01') AS \"base_dic2026\"\n"
+  caveats:
+  - No existía definición previa (ni SP ni query original); se define como usuarios únicos inscritos por createdAt, semejante
+    al conteo de Carso.
+  - 'Ventanas FIJAS (ignoran period_start/period_end): tabla comparativa del slide 3 (columna 2025 y sep2026).'
+  - '2025 = 0 es CORRECTO: academica_analisis.userinscription arrancó el 2026-01-15.'
+  - La fila 'Capacitate Empleo' de la tabla es manual; esta métrica cubre solo Académica Labs.
+  - base_dic2026 es SOLO base de cálculo para una proyección futura de dic2026; NO se escribe en el snapshot.
+  - 'db_source mysql: ejecuta contra academica_analisis. MYSQL_DATABASE vacío → prefijo <db>.tabla requerido.'
+  - source dim_user documenta el modelo conceptual; el dispatch real lo hace db_source.
+- key: slide4_aprende_seguridad_vial
+  name: Aprende de seguridad vial — personas únicas certificadas por ventana fija (Slide 4)
+  description: 'Personas únicas certificadas (advance = 100) en los 16 cursos de seguridad vial, por ventana fija: "2025"
+    ([2025-01-01, 2026-01-01)), "sep2026" ([2026-01-01, 2026-10-01)) y "dic2026" ([2026-01-01, 2027-01-01)). Ejecuta contra
+    PostgreSQL `public.fact_inscription` (query original de Consultas_consejo_panel.sql con las ventanas del período actual).
+    El acumulado histórico (< ''2026-08-01'') vive en la métrica hermana slide4_aprende_seguridad_vial_acumulado (MySQL);
+    esta métrica NO devuelve acumulado. Restaura la tabla comparativa de la hoja Datos con las ventanas del período actual
+    (2025/sep2026/dic2026), antes degradadas a un solo valor acumulado.
+
+    '
+  formula: 'COUNT(DISTINCT fact_inscription.userId) con advance = 100 y certificationDate en la ventana fija, para los 16
+    cursos de seguridad vial.
+
+    '
+  type: count_distinct
+  source: fact_inscription
+  platform_scope: []
+  db_source: postgres
+  db_mapping: "SELECT\n  (SELECT COUNT(DISTINCT i.\"userId\") FROM public.fact_inscription i\n   WHERE i.\"courseId\" IN (80,79,352,351,305,100156,100326,175,54,41,202,98,203,204,36,114)\n\
+    \     AND i.advance = 100\n     AND i.\"certificationDate\" >= '2025-01-01' AND i.\"certificationDate\" < '2026-01-01')\
+    \ AS \"2025\",\n  (SELECT COUNT(DISTINCT i.\"userId\") FROM public.fact_inscription i\n   WHERE i.\"courseId\" IN (80,79,352,351,305,100156,100326,175,54,41,202,98,203,204,36,114)\n\
+    \     AND i.advance = 100\n     AND i.\"certificationDate\" >= '2026-01-01' AND i.\"certificationDate\" < '2026-08-01')\
+    \ AS \"sep2026\",\n  0 AS \"dic2026\"\n"
+  caveats:
+  - 'Ventanas FIJAS (ignoran period_start/period_end): tabla comparativa del slide 4, ahora con el período 2025/sep2026/dic2026.'
+  - 'El acumulado histórico (< ''2026-08-01'') NO está acá: lo provee la métrica hermana slide4_aprende_seguridad_vial_acumulado
+    (MySQL), que se fusiona en la misma fila de la hoja con fuente ''postgres + mysql''.'
+  - 'Vuelve a PostgreSQL (2026-08-14) con la query original de HEAD: las 3 ventanas fijas del período actual, sin acumulado.'
+  - 'db_source postgres: ejecuta contra analisis_cpe_db. Columnas camelCase requieren comillas dobles.'
+  - source fact_inscription documenta el modelo conceptual; el dispatch real lo hace db_source.
+- key: slide4_aprende_seguridad_vial_acumulado
+  name: Aprende de seguridad vial — acumulado histórico (Slide 4)
+  description: 'Acumulado histórico de personas únicas certificadas (advance = 100) en los 16 cursos de seguridad vial, con
+    corte < ''2026-08-01''. Métrica HERMANA de slide4_aprende_seguridad_vial: no genera fila propia en la hoja, su valor se
+    fusiona en la columna "Acumulado sep2026" de la fila de seguridad vial (fuente "postgres + mysql"). Ejecuta contra MySQL
+    `capacitate_analisis` (query CT que el usuario validó, 207,562).
+
+    '
+  formula: 'COUNT(DISTINCT inscription.userId) de capacitate_analisis.inscription JOIN course WHERE course.id IN (16 IDs)
+    AND advance = 100 AND certificationDate < ''2026-08-01''.
+
+    '
+  type: count_distinct
+  source: fact_inscription
+  platform_scope: []
+  db_source: mysql
+  db_mapping: "SELECT COUNT(DISTINCT i.userId) AS value,\n       'Acumulado' AS periodo_inicio,\n       '2026-08-01' AS periodo_fin,\n\
+    \       'inscription' AS source\nFROM capacitate_analisis.inscription i JOIN capacitate_analisis.course c ON i.courseId\
+    \ = c.id WHERE c.id IN (80, 79, 352, 351, 305, 100156, 100326, 175, 54,\n               41, 202, 98, 203, 204, 36, 114)\n\
+    \  AND i.advance = 100\n  AND i.certificationDate < '2026-08-01'\n"
+  caveats:
+  - Misma lista de 16 cursos que slide19_seguridad_vial_personas_certificadas_unicas.
+  - Se fusiona con la métrica base slide4_aprende_seguridad_vial en la fila de la hoja; sin ella NO tiene fila propia.
+  - 'MySQL: coincide con la query CT del usuario (207,562).'
+- key: slide4_cultura_salud_aprende
+  name: Cultura y Salud Aprende (registros) — usuarios sin inscripción por ventana fija (Slide 4)
+  description: 'Usuarios de la plataforma Aprende (plataformaId = 2) registrados dentro de cada ventana fija y SIN ninguna
+    inscripción (NOT EXISTS fact_inscription). Devuelve UNA fila con cuatro columnas: "2025" ([2025-01-01, 2026-01-01)), "sep2026"
+    ([2026-01-01, 2026-10-01)), "dic2026" ([2026-01-01, 2027-01-01)) y "acumulado" (histórico < 2026-10-01).
+
+    '
+  formula: 'COUNT(DISTINCT dim_user.userId) con plataformaId = 2, registrationDate en la ventana y NOT EXISTS fact_inscription
+    del mismo usuario.
+
+    '
+  type: count_distinct
+  source: dim_user
+  platform_scope: []
+  db_source: postgres
+  db_mapping: "SELECT\n  (SELECT COUNT(DISTINCT u.\"userId\") FROM public.dim_user u\n   WHERE u.\"plataformaId\" = 2\n  \
+    \   AND u.\"registrationDate\" >= '2025-01-01' AND u.\"registrationDate\" < '2026-01-01'\n     AND NOT EXISTS (SELECT\
+    \ 1 FROM public.fact_inscription fi WHERE fi.\"userId\" = u.\"userId\")) AS \"2025\",\n  (SELECT COUNT(DISTINCT u.\"userId\"\
+    ) FROM public.dim_user u\n   WHERE u.\"plataformaId\" = 2\n     AND u.\"registrationDate\" >= '2026-01-01' AND u.\"registrationDate\"\
+    \ < '2026-08-01'\n     AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE fi.\"userId\" = u.\"userId\")) AS\
+    \ \"sep2026\",\n  0 AS \"dic2026\",\n  (SELECT COUNT(DISTINCT u.\"userId\") FROM public.dim_user u\n   WHERE u.\"plataformaId\"\
+    \ = 2\n     AND u.\"registrationDate\" < '2026-08-01'\n     AND NOT EXISTS (SELECT 1 FROM public.fact_inscription fi WHERE\
+    \ fi.\"userId\" = u.\"userId\")) AS \"acumulado\"\n"
+  caveats:
+  - 'Definición operativa del usuario: registrados Aprende SIN inscripción, NO iguala la lámina vieja (1,318,962/95,801/452,949/480,611).'
+  - 'Ventanas FIJAS (ignoran period_start/period_end): tabla comparativa del slide 4.'
+  - acumulado es TODO el histórico con registrationDate < 2025-10-01 (desde 2014).
+  - 'db_source postgres: ejecuta contra analisis_cpe_db. Columnas camelCase requieren comillas dobles.'
+  - source dim_user documenta el modelo conceptual; el dispatch real lo hace db_source.
 notes:
-  - key: certification_rule
-    description: >
-      Regla oficial de certificación:
-      certificationDate IS NOT NULL AND advance = 100.
-      Usar solo certificationDate sobrecuenta certificaciones.
-      Evidencia: en fact_inscription ~56M filas tienen certificationDate no nula,
-      pero solo ~12M tienen advance = 100.
+- key: certification_rule
+  description: 'Regla oficial de certificación: certificationDate IS NOT NULL AND advance = 100. Usar solo certificationDate
+    sobrecuenta certificaciones. Evidencia: en fact_inscription ~56M filas tienen certificationDate no nula, pero solo ~12M
+    tienen advance = 100.
 
-  - key: cumulative_warning
-    description: >
-      Los acumulados (agg_*_month_cum) suman totales mensuales,
-      NO cuentan únicos históricos reales.
-      Para obtener únicos históricos verdaderos, usar DISTINCT sobre
-      todo el período, no sumar agregados mensuales.
+    '
+- key: cumulative_warning
+  description: 'Los acumulados (agg_*_month_cum) suman totales mensuales, NO cuentan únicos históricos reales. Para obtener
+    únicos históricos verdaderos, usar DISTINCT sobre todo el período, no sumar agregados mensuales.
 
-  - key: manual_metrics
-    description: >
-      Las métricas marcadas como source: manual (Beneficiarios)
-      se calculan con DISTINCT directo sobre fact_inscription y se
-      ponen a mano en los reportes.
-      No usan tablas agregadas ni MV.
-      En las slides actuales, "Usuarios registrados" de Capacítate
-      equivale a Beneficiarios.
+    '
+- key: manual_metrics
+  description: 'Las métricas marcadas como source: manual (Beneficiarios) se calculan con DISTINCT directo sobre fact_inscription
+    y se ponen a mano en los reportes. No usan tablas agregadas ni MV. En las slides actuales, "Usuarios registrados" de Capacítate
+    equivale a Beneficiarios.
 
-  - key: source_model
-    description: >
-      Tres fuentes en el catálogo:
-      - dim_user: COUNT DISTINCT sobre dim_user (registrados). Automático.
-      - fact_inscription: consulta directa sobre fact_inscription,
-        sin pasar por agg_* ni MV. Incluye inscripciones,
-        inscritos únicos, certificados, certificados únicos y
-        beneficiarios únicos derivados.
-      - manual: DISTINCT directo sobre fact_inscription, se pone
-        a mano en reportes. Incluye beneficiarios.
-      Independiente de la fuente conceptual, `db_source` selecciona la
-      conexión: "postgres" (default, analisis_cpe_db) o "mysql"
-      (carso_analisis / academica_analisis). En MySQL las queries usan
-      prefijo <db>.tabla porque MYSQL_DATABASE suele estar vacío.
+    '
+- key: source_model
+  description: "Tres fuentes en el catálogo: - dim_user: COUNT DISTINCT sobre dim_user (registrados). Automático. - fact_inscription:\
+    \ consulta directa sobre fact_inscription,\n  sin pasar por agg_* ni MV. Incluye inscripciones,\n  inscritos únicos, certificados,\
+    \ certificados únicos y\n  beneficiarios únicos derivados.\n- manual: DISTINCT directo sobre fact_inscription, se pone\n\
+    \  a mano en reportes. Incluye beneficiarios.\nIndependiente de la fuente conceptual, `db_source` selecciona la conexión:\
+    \ \"postgres\" (default, analisis_cpe_db) o \"mysql\" (carso_analisis / academica_analisis). En MySQL las queries usan\
+    \ prefijo <db>.tabla porque MYSQL_DATABASE suele estar vacío.\n"
+- key: slide_naming
+  description: 'En las slides del reporte FCS, "Usuarios registrados" de Capacítate para el Empleo corresponde conceptualmente
+    a Beneficiarios (Registrados CPE + Inscritos únicos CPE desde Aprende). Se mantiene ese nombre en la presentación por
+    ahora, pero el concepto real es Beneficiarios. Lo mismo aplica a la fila de Capacítate en la tabla comparativa (Slide
+    3).
 
-  - key: slide_naming
-    description: >
-      En las slides del reporte FCS, "Usuarios registrados" de
-      Capacítate para el Empleo corresponde conceptualmente a
-      Beneficiarios (Registrados CPE + Inscritos únicos CPE
-      desde Aprende). Se mantiene ese nombre en la presentación
-      por ahora, pero el concepto real es Beneficiarios.
-      Lo mismo aplica a la fila de Capacítate en la tabla
-      comparativa (Slide 3).
+    '
+- key: snapshot_validation
+  description: 'Las tablas analytics_snapshot_course_metric y analytics_snapshot_user_metric existen desde abril 2026. Solo
+    para validar comportamiento de cifras, no para histórico completo.
 
-  - key: snapshot_validation
-    description: >
-      Las tablas analytics_snapshot_course_metric y
-      analytics_snapshot_user_metric existen desde abril 2026.
-      Solo para validar comportamiento de cifras, no para
-      histórico completo.
+    '
