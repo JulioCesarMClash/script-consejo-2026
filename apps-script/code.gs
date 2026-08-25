@@ -552,28 +552,64 @@ const MAPPING =
         "rol": "valor_columna_2025",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide3_*",
+          "columna": 2,
+          "modo": "lista_valores",
+          "filtro_orden": [
+            "slide3_capacitate_empleo",
+            "slide3_capacitate_carso",
+            "slide3_academica_labs"
+          ]
+        }
       },
       {
         "objectId": "g375ce6fdc96_0_265",
         "rol": "valor_columna_sep2026",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide3_*",
+          "columna": 3,
+          "modo": "lista_valores",
+          "filtro_orden": [
+            "slide3_capacitate_empleo",
+            "slide3_capacitate_carso",
+            "slide3_academica_labs"
+          ]
+        }
       },
       {
         "objectId": "g375ce6fdc96_0_266",
         "rol": "valor_columna_dic2026",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide3_*",
+          "columna": 4,
+          "modo": "lista_valores",
+          "filtro_orden": [
+            "slide3_capacitate_empleo",
+            "slide3_capacitate_carso",
+            "slide3_academica_labs"
+          ]
+        }
       },
       {
         "objectId": "g375ce6fdc96_0_267",
         "rol": "valor_columna_acumulado",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide3_*",
+          "columna": 5,
+          "modo": "lista_valores",
+          "filtro_orden": [
+            "slide3_capacitate_empleo",
+            "slide3_capacitate_carso",
+            "slide3_academica_labs"
+          ]
+        }
       }
     ]
   },
@@ -600,7 +636,13 @@ const MAPPING =
         "rol": "label_ruta",
         "metrica": null,
         "formato_texto": null,
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide12_rutas_aprendizaje",
+          "seccion": "Construcción",
+          "ruta": "Proyectos constructivos y mantenimiento",
+          "columna": 2,
+          "modo": "value"
+        }
       },
       {
         "objectId": "g3761cbcde11_9_71",
@@ -628,28 +670,52 @@ const MAPPING =
         "rol": "label_ruta",
         "metrica": null,
         "formato_texto": null,
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide12_rutas_aprendizaje",
+          "seccion": "Habilidades digitales",
+          "ruta": "¿Cómo utilizar un celular?",
+          "columna": 2,
+          "modo": "value"
+        }
       },
       {
         "objectId": "g3761cbcde11_9_73",
         "rol": "label_ruta",
         "metrica": null,
         "formato_texto": null,
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide12_rutas_aprendizaje",
+          "seccion": "Habilidades digitales",
+          "ruta": "¿Cómo utilizar la computadora?",
+          "columna": 2,
+          "modo": "value"
+        }
       },
       {
         "objectId": "g3761cbcde11_9_74",
         "rol": "label_ruta",
         "metrica": null,
         "formato_texto": null,
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide12_rutas_aprendizaje",
+          "seccion": "Habilidades digitales",
+          "ruta": "Preparación para usar internet",
+          "columna": 2,
+          "modo": "value"
+        }
       },
       {
         "objectId": "g3761cbcde11_9_76",
         "rol": "label_ruta",
         "metrica": null,
         "formato_texto": null,
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide12_rutas_aprendizaje",
+          "seccion": "Habilidades digitales",
+          "ruta": "Interacción con el mundo digital",
+          "columna": 2,
+          "modo": "value"
+        }
       },
       {
         "objectId": "g3761cbcde11_9_77",
@@ -677,77 +743,143 @@ const MAPPING =
         "rol": "label_ruta",
         "metrica": null,
         "formato_texto": null,
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide12_rutas_aprendizaje",
+          "seccion": "Capacitación básica",
+          "ruta": "Seguridad, higiene y cuidado de la salud",
+          "columna": 2,
+          "modo": "value"
+        }
       },
       {
         "objectId": "g3761cbcde11_9_112",
         "rol": "label_ruta",
         "metrica": null,
         "formato_texto": null,
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide12_rutas_aprendizaje",
+          "seccion": "Capacitación básica",
+          "ruta": "Uso eficiente de recursos",
+          "columna": 2,
+          "modo": "value"
+        }
       },
       {
         "objectId": "g3761cbcde11_9_113",
         "rol": "label_ruta",
         "metrica": null,
         "formato_texto": null,
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide12_rutas_aprendizaje",
+          "seccion": "Capacitación básica",
+          "ruta": "Entendiendo mi situación económica",
+          "columna": 2,
+          "modo": "value"
+        }
       },
       {
         "objectId": "g3761cbcde11_9_114",
         "rol": "label_ruta",
         "metrica": null,
         "formato_texto": null,
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide12_rutas_aprendizaje",
+          "seccion": "Capacitación básica",
+          "ruta": "¿Cómo mejorar mi entorno?",
+          "columna": 2,
+          "modo": "value"
+        }
       },
       {
         "objectId": "g3761cbcde11_9_115",
         "rol": "label_ruta",
         "metrica": null,
         "formato_texto": null,
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide12_rutas_aprendizaje",
+          "seccion": "Capacitación básica",
+          "ruta": "Alimentos desde casa",
+          "columna": 2,
+          "modo": "value"
+        }
       },
       {
         "objectId": "g3761cbcde11_9_91",
         "rol": "label_ruta",
         "metrica": null,
         "formato_texto": null,
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide12_rutas_aprendizaje",
+          "seccion": "Capacitación básica",
+          "ruta": "Actuar en caso de desastres naturales",
+          "columna": 2,
+          "modo": "value"
+        }
       },
       {
         "objectId": "g3761cbcde11_9_93",
         "rol": "label_ruta",
         "metrica": null,
         "formato_texto": null,
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide12_rutas_aprendizaje",
+          "seccion": "Emprendimiento",
+          "ruta": "Planea tu negocio",
+          "columna": 2,
+          "modo": "value"
+        }
       },
       {
         "objectId": "g3761cbcde11_9_94",
         "rol": "label_ruta",
         "metrica": null,
         "formato_texto": null,
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide12_rutas_aprendizaje",
+          "seccion": "Emprendimiento",
+          "ruta": "Planea los gastos y ganancias de tu negocio",
+          "columna": 2,
+          "modo": "value"
+        }
       },
       {
         "objectId": "g3761cbcde11_9_95",
         "rol": "label_ruta",
         "metrica": null,
         "formato_texto": null,
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide12_rutas_aprendizaje",
+          "seccion": "Emprendimiento",
+          "ruta": "¿Cómo preparar mis productos para venderlos?",
+          "columna": 2,
+          "modo": "value"
+        }
       },
       {
         "objectId": "g3761cbcde11_9_96",
         "rol": "label_ruta",
         "metrica": null,
         "formato_texto": null,
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide12_rutas_aprendizaje",
+          "seccion": "Emprendimiento",
+          "ruta": "Servicio y ventas de tu negocio",
+          "columna": 2,
+          "modo": "value"
+        }
       },
       {
         "objectId": "g3761cbcde11_9_97",
         "rol": "label_ruta",
         "metrica": null,
         "formato_texto": null,
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide12_rutas_aprendizaje",
+          "seccion": "Emprendimiento",
+          "ruta": "Mi negocio en internet",
+          "columna": 2,
+          "modo": "value"
+        }
       },
       {
         "objectId": "g3761cbcde11_9_98",
@@ -823,28 +955,64 @@ const MAPPING =
         "rol": "valor_columna_2024",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide4_*",
+          "columna": 2,
+          "modo": "lista_valores",
+          "filtro_orden": [
+            "slide4_pilotos_seguridad_vial",
+            "slide4_aprende_seguridad_vial",
+            "slide4_cultura_salud_aprende"
+          ]
+        }
       },
       {
         "objectId": "g375ce6fdc96_0_531",
         "rol": "valor_columna_sep2025",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide4_*",
+          "columna": 3,
+          "modo": "lista_valores",
+          "filtro_orden": [
+            "slide4_pilotos_seguridad_vial",
+            "slide4_aprende_seguridad_vial",
+            "slide4_cultura_salud_aprende"
+          ]
+        }
       },
       {
         "objectId": "g375ce6fdc96_0_532",
         "rol": "valor_columna_dic2025",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide4_*",
+          "columna": 4,
+          "modo": "lista_valores",
+          "filtro_orden": [
+            "slide4_pilotos_seguridad_vial",
+            "slide4_aprende_seguridad_vial",
+            "slide4_cultura_salud_aprende"
+          ]
+        }
       },
       {
         "objectId": "g375ce6fdc96_0_533",
         "rol": "valor_columna_acumulado",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide4_*",
+          "columna": 5,
+          "modo": "lista_valores",
+          "filtro_orden": [
+            "slide4_pilotos_seguridad_vial",
+            "slide4_aprende_seguridad_vial",
+            "slide4_cultura_salud_aprende"
+          ]
+        }
       }
     ]
   },
@@ -959,46 +1127,54 @@ const MAPPING =
         "rol": "valor_card",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide13_penitenciarios",
+          "sheet_orden": 6,
+          "columna": 2
+        }
       },
       {
         "objectId": "g3735641ff7a_1_137",
         "rol": "valor_card",
-        "metrica": "slide13_penitenciarios",
+        "metrica": null,
         "formato_texto": "{valor:,.0f}",
         "sheet_lookup": {
           "categoria": "slide13_penitenciarios",
+          "sheet_orden": 2,
           "columna": 2
         }
       },
       {
         "objectId": "g3735641ff7a_1_141",
         "rol": "valor_card",
-        "metrica": "slide13_penitenciarios",
+        "metrica": null,
         "formato_texto": "{valor:,.0f}",
         "sheet_lookup": {
           "categoria": "slide13_penitenciarios",
-          "columna": 3
+          "sheet_orden": 3,
+          "columna": 2
         }
       },
       {
         "objectId": "g3735641ff7a_1_145",
         "rol": "valor_card",
-        "metrica": "slide13_penitenciarios",
+        "metrica": null,
         "formato_texto": "{valor:,.0f}",
         "sheet_lookup": {
           "categoria": "slide13_penitenciarios",
-          "columna": 4
+          "sheet_orden": 5,
+          "columna": 2
         }
       },
       {
         "objectId": "g3735641ff7a_1_149",
         "rol": "valor_card",
-        "metrica": "slide13_penitenciarios",
+        "metrica": null,
         "formato_texto": "{valor:,.0f}",
         "sheet_lookup": {
           "categoria": "slide13_penitenciarios",
-          "columna": 1
+          "sheet_orden": 1,
+          "columna": 2
         }
       },
       {
@@ -1006,7 +1182,11 @@ const MAPPING =
         "rol": "valor_card",
         "metrica": null,
         "formato_texto": "{valor:.2f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide13_penitenciarios",
+          "sheet_orden": 4,
+          "columna": 2
+        }
       }
     ]
   },
@@ -1138,7 +1318,7 @@ function resolveValue(obj, sheetIndex, sheetRows) {
     const colIdx = lookup.columna;
     
     if (lookup.sector) {
-      // (slide2: lista de cursos por sector) — lógica de último sector visto
+      // slide2: sectores con "último sector visto"
       const lines = [];
       let lastSector = '';
       let inTarget = false;
@@ -1181,7 +1361,6 @@ function resolveValue(obj, sheetIndex, sheetRows) {
     }
     
     if (lookup.sheet_orden !== undefined) {
-      // N-ésima fila de esta categoría (1-indexed)
       let count = 0;
       for (let i = 0; i < sheetRows.length; i++) {
         if (sheetRows[i][0] === cat) {
@@ -1195,6 +1374,39 @@ function resolveValue(obj, sheetIndex, sheetRows) {
       return null;
     }
     
+    // slide12: Sección + Ruta
+    if (lookup.seccion && lookup.ruta) {
+      for (let i = 0; i < sheetRows.length; i++) {
+        const row = sheetRows[i];
+        if (row[0] === cat &&
+            (row[1] || '').trim() === lookup.seccion &&
+            (row[2] || '').trim() === lookup.ruta) {
+          return colIdx < row.length ? row[colIdx] : null;
+        }
+      }
+      return null;
+    }
+    
+    // slide3 / slide4: lista_valores con filtro_orden
+    if (lookup.modo === 'lista_valores' && lookup.filtro_orden) {
+      const lines = [];
+      for (const catName of lookup.filtro_orden) {
+        for (let i = 0; i < sheetRows.length; i++) {
+          if (sheetRows[i][0] === catName) {
+            const row = sheetRows[i];
+            if (colIdx < row.length) {
+              const v = String(row[colIdx]);
+              if (v.trim()) lines.push(v);
+            }
+            break;  // una fila por categoría
+          }
+        }
+      }
+      return lines.length ? lines.join('
+') : null;
+    }
+    
+    // slide1: sheet_lookup simple
     const row = sheetIndex[cat];
     if (!row) return null;
     return colIdx < row.length ? row[colIdx] : null;

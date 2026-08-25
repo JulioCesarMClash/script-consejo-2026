@@ -514,24 +514,56 @@ slides:
     descripcion: Columna Enero-Diciembre 2025 (ventana fija)
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide3_*
+      columna: 2
+      modo: lista_valores
+      filtro_orden:
+      - slide3_capacitate_empleo
+      - slide3_capacitate_carso
+      - slide3_academica_labs
   - id: g375ce6fdc96_0_265
     tipo: text_box
     rol: valor_columna_sep2026
     descripcion: Columna Enero-Septiembre 2026 (ventana fija)
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide3_*
+      columna: 3
+      modo: lista_valores
+      filtro_orden:
+      - slide3_capacitate_empleo
+      - slide3_capacitate_carso
+      - slide3_academica_labs
   - id: g375ce6fdc96_0_266
     tipo: text_box
     rol: valor_columna_dic2026
     descripcion: Columna Enero-Diciembre 2026 (proyección lineal)
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide3_*
+      columna: 4
+      modo: lista_valores
+      filtro_orden:
+      - slide3_capacitate_empleo
+      - slide3_capacitate_carso
+      - slide3_academica_labs
   - id: g375ce6fdc96_0_267
     tipo: text_box
     rol: valor_columna_acumulado
     descripcion: Columna Acumulado histórico (manual)
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide3_*
+      columna: 5
+      modo: lista_valores
+      filtro_orden:
+      - slide3_capacitate_empleo
+      - slide3_capacitate_carso
+      - slide3_academica_labs
 - numero: 12
   titulo: Rutas de aprendizaje (Educación y empleo)
   page_id: g3761cbcde11_9_59
@@ -563,6 +595,12 @@ slides:
       F76: ''Construcción''+''Proyectos constructivos y mantenimiento''). Apps Script mapea por Sección+Ruta.'
     metrica: null
     formato_texto: null
+    sheet_lookup:
+      categoria: slide12_rutas_aprendizaje
+      seccion: Construcción
+      ruta: Proyectos constructivos y mantenimiento
+      columna: 2
+      modo: value
   - id: g3761cbcde11_9_71
     tipo: text_box
     rol: label_seccion
@@ -587,24 +625,48 @@ slides:
     descripcion: 'Ruta Habilidades 1: ''¿Cómo utilizar un celular?'' (Sheet F78)'
     metrica: null
     formato_texto: null
+    sheet_lookup:
+      categoria: slide12_rutas_aprendizaje
+      seccion: Habilidades digitales
+      ruta: ¿Cómo utilizar un celular?
+      columna: 2
+      modo: value
   - id: g3761cbcde11_9_73
     tipo: text_box
     rol: label_ruta
     descripcion: 'Ruta Habilidades 2: ''¿Cómo utilizar la computadora?'' (Sheet F79)'
     metrica: null
     formato_texto: null
+    sheet_lookup:
+      categoria: slide12_rutas_aprendizaje
+      seccion: Habilidades digitales
+      ruta: ¿Cómo utilizar la computadora?
+      columna: 2
+      modo: value
   - id: g3761cbcde11_9_74
     tipo: text_box
     rol: label_ruta
     descripcion: 'Ruta Habilidades 3: ''Preparación para usar internet'' (Sheet F80)'
     metrica: null
     formato_texto: null
+    sheet_lookup:
+      categoria: slide12_rutas_aprendizaje
+      seccion: Habilidades digitales
+      ruta: Preparación para usar internet
+      columna: 2
+      modo: value
   - id: g3761cbcde11_9_76
     tipo: text_box
     rol: label_ruta
     descripcion: 'Ruta Habilidades 4: ''Interacción con el mundo digital'' (Sheet F81)'
     metrica: null
     formato_texto: null
+    sheet_lookup:
+      categoria: slide12_rutas_aprendizaje
+      seccion: Habilidades digitales
+      ruta: Interacción con el mundo digital
+      columna: 2
+      modo: value
   - id: g3761cbcde11_9_77
     tipo: text_box
     rol: label_seccion
@@ -629,66 +691,132 @@ slides:
     descripcion: 'Ruta Capacitación 1: ''Seguridad, higiene y cuidado de la salud'' (Sheet F83)'
     metrica: null
     formato_texto: null
+    sheet_lookup:
+      categoria: slide12_rutas_aprendizaje
+      seccion: Capacitación básica
+      ruta: Seguridad, higiene y cuidado de la salud
+      columna: 2
+      modo: value
   - id: g3761cbcde11_9_112
     tipo: text_box
     rol: label_ruta
     descripcion: 'Ruta Capacitación 2: ''Uso eficiente de recursos'' (Sheet F84)'
     metrica: null
     formato_texto: null
+    sheet_lookup:
+      categoria: slide12_rutas_aprendizaje
+      seccion: Capacitación básica
+      ruta: Uso eficiente de recursos
+      columna: 2
+      modo: value
   - id: g3761cbcde11_9_113
     tipo: text_box
     rol: label_ruta
     descripcion: 'Ruta Capacitación 3: ''Entendiendo mi situación económica'' (Sheet F85)'
     metrica: null
     formato_texto: null
+    sheet_lookup:
+      categoria: slide12_rutas_aprendizaje
+      seccion: Capacitación básica
+      ruta: Entendiendo mi situación económica
+      columna: 2
+      modo: value
   - id: g3761cbcde11_9_114
     tipo: text_box
     rol: label_ruta
     descripcion: 'Ruta Capacitación 4: ''¿Cómo puedo mejorar mi entorno?'' (Sheet F86)'
     metrica: null
     formato_texto: null
+    sheet_lookup:
+      categoria: slide12_rutas_aprendizaje
+      seccion: Capacitación básica
+      ruta: ¿Cómo mejorar mi entorno?
+      columna: 2
+      modo: value
   - id: g3761cbcde11_9_115
     tipo: text_box
     rol: label_ruta
     descripcion: 'Ruta Capacitación 5: ''Alimentos desde casa'' (Sheet F87)'
     metrica: null
     formato_texto: null
+    sheet_lookup:
+      categoria: slide12_rutas_aprendizaje
+      seccion: Capacitación básica
+      ruta: Alimentos desde casa
+      columna: 2
+      modo: value
   - id: g3761cbcde11_9_91
     tipo: text_box
     rol: label_ruta
     descripcion: 'Ruta Capacitación 6: ''Actuar en caso de desastres naturales'' (Sheet F88)'
     metrica: null
     formato_texto: null
+    sheet_lookup:
+      categoria: slide12_rutas_aprendizaje
+      seccion: Capacitación básica
+      ruta: Actuar en caso de desastres naturales
+      columna: 2
+      modo: value
   - id: g3761cbcde11_9_93
     tipo: text_box
     rol: label_ruta
     descripcion: 'Ruta Emprendimiento 1: ''Planea tu negocio'' (Sheet F90)'
     metrica: null
     formato_texto: null
+    sheet_lookup:
+      categoria: slide12_rutas_aprendizaje
+      seccion: Emprendimiento
+      ruta: Planea tu negocio
+      columna: 2
+      modo: value
   - id: g3761cbcde11_9_94
     tipo: text_box
     rol: label_ruta
     descripcion: 'Ruta Emprendimiento 2: ''Planea los gastos y ganancias de tu negocio'' (Sheet F91)'
     metrica: null
     formato_texto: null
+    sheet_lookup:
+      categoria: slide12_rutas_aprendizaje
+      seccion: Emprendimiento
+      ruta: Planea los gastos y ganancias de tu negocio
+      columna: 2
+      modo: value
   - id: g3761cbcde11_9_95
     tipo: text_box
     rol: label_ruta
     descripcion: 'Ruta Emprendimiento 3: ''¿Cómo preparar mis productos para venderlos?'' (Sheet F92)'
     metrica: null
     formato_texto: null
+    sheet_lookup:
+      categoria: slide12_rutas_aprendizaje
+      seccion: Emprendimiento
+      ruta: ¿Cómo preparar mis productos para venderlos?
+      columna: 2
+      modo: value
   - id: g3761cbcde11_9_96
     tipo: text_box
     rol: label_ruta
     descripcion: 'Ruta Emprendimiento 4: ''Servicio y ventas de tu negocio'' (Sheet F93)'
     metrica: null
     formato_texto: null
+    sheet_lookup:
+      categoria: slide12_rutas_aprendizaje
+      seccion: Emprendimiento
+      ruta: Servicio y ventas de tu negocio
+      columna: 2
+      modo: value
   - id: g3761cbcde11_9_97
     tipo: text_box
     rol: label_ruta
     descripcion: 'Ruta Emprendimiento 5: ''Mi negocio en internet'' (Sheet F94)'
     metrica: null
     formato_texto: null
+    sheet_lookup:
+      categoria: slide12_rutas_aprendizaje
+      seccion: Emprendimiento
+      ruta: Mi negocio en internet
+      columna: 2
+      modo: value
   - id: g3761cbcde11_9_98
     tipo: text_box
     rol: label_seccion
@@ -754,24 +882,56 @@ slides:
     descripcion: Columna 2024 acumulado
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide4_*
+      columna: 2
+      modo: lista_valores
+      filtro_orden:
+      - slide4_pilotos_seguridad_vial
+      - slide4_aprende_seguridad_vial
+      - slide4_cultura_salud_aprende
   - id: g375ce6fdc96_0_531
     tipo: text_box
     rol: valor_columna_sep2025
     descripcion: Columna sep 2025
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide4_*
+      columna: 3
+      modo: lista_valores
+      filtro_orden:
+      - slide4_pilotos_seguridad_vial
+      - slide4_aprende_seguridad_vial
+      - slide4_cultura_salud_aprende
   - id: g375ce6fdc96_0_532
     tipo: text_box
     rol: valor_columna_dic2025
     descripcion: Columna dic 2025
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide4_*
+      columna: 4
+      modo: lista_valores
+      filtro_orden:
+      - slide4_pilotos_seguridad_vial
+      - slide4_aprende_seguridad_vial
+      - slide4_cultura_salud_aprende
   - id: g375ce6fdc96_0_533
     tipo: text_box
     rol: valor_columna_acumulado
     descripcion: Columna acumulado histórico
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide4_*
+      columna: 5
+      modo: lista_valores
+      filtro_orden:
+      - slide4_pilotos_seguridad_vial
+      - slide4_aprende_seguridad_vial
+      - slide4_cultura_salud_aprende
 - numero: 7
   titulo: Educación y empleo — cards
   page_id: g375ce6fdc96_0_366
@@ -870,48 +1030,60 @@ slides:
     descripcion: 'Centros penitenciarios operando (texto visible: ''7'')'
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide13_penitenciarios
+      sheet_orden: 6
+      columna: 2
   - id: g3735641ff7a_1_137
     tipo: text_box
     rol: valor_card
     descripcion: 'Certificados (texto: ''641'')'
-    metrica: slide13_penitenciarios
+    metrica: null
     formato_texto: '{valor:,.0f}'
     sheet_lookup:
       categoria: slide13_penitenciarios
+      sheet_orden: 2
       columna: 2
   - id: g3735641ff7a_1_141
     tipo: text_box
     rol: valor_card
     descripcion: 'Usuarios únicos registrados (texto: ''335'')'
-    metrica: slide13_penitenciarios
+    metrica: null
     formato_texto: '{valor:,.0f}'
     sheet_lookup:
       categoria: slide13_penitenciarios
-      columna: 3
+      sheet_orden: 3
+      columna: 2
   - id: g3735641ff7a_1_145
     tipo: text_box
     rol: valor_card
     descripcion: 'Cursos ofertados únicos (texto: ''98'')'
-    metrica: slide13_penitenciarios
+    metrica: null
     formato_texto: '{valor:,.0f}'
     sheet_lookup:
       categoria: slide13_penitenciarios
-      columna: 4
+      sheet_orden: 5
+      columna: 2
   - id: g3735641ff7a_1_149
     tipo: text_box
     rol: valor_card
     descripcion: 'Inscripciones totales (texto: ''1,878'')'
-    metrica: slide13_penitenciarios
+    metrica: null
     formato_texto: '{valor:,.0f}'
     sheet_lookup:
       categoria: slide13_penitenciarios
-      columna: 1
+      sheet_orden: 1
+      columna: 2
   - id: g3735641ff7a_1_153
     tipo: text_box
     rol: valor_card
     descripcion: 'Cursos promedio por persona (texto: ''5.61'') — NO existe métrica en catálogo'
     metrica: null
     formato_texto: '{valor:.2f}'
+    sheet_lookup:
+      categoria: slide13_penitenciarios
+      sheet_orden: 4
+      columna: 2
 - numero: 15
   titulo: Mario Molina Premio Nobel
   page_id: g3735641ff7a_1_93
