@@ -527,7 +527,8 @@ slides:
   - id: g375ce6fdc96_0_265
     tipo: text_box
     rol: valor_columna_sep2026
-    descripcion: Columna sep2026. Academica Labs hardcoded a 1,868 (excluye duplicados CPE); los otros 2 vienen del Sheet.
+    descripcion: 'Columna sep2026. Capacitate Empleo hardcoded a 908,435 (cálculo usuario 2026-08-19: cierre julio 14,599,054
+      menos cierre 2025 13,690,619); los otros 2 valores vienen del Sheet.'
     metrica: null
     formato_texto: '{valor:,.0f}'
     sheet_lookup:
@@ -540,6 +541,7 @@ slides:
       - slide3_academica_labs
       valor_hardcoded:
         slide3_academica_labs: 1868
+        slide3_capacitate_empleo: 908435
   - id: g375ce6fdc96_0_266
     tipo: text_box
     rol: valor_columna_dic2026
