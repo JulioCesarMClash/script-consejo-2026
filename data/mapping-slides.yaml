@@ -511,7 +511,7 @@ slides:
   - id: g375ce6fdc96_0_264
     tipo: text_box
     rol: valor_columna_2025
-    descripcion: Columna Enero-Diciembre 2025 (ventana fija)
+    descripcion: Columna 2025. Academica Labs hardcoded a 0 (sin certificados en 2025); los otros 2 vienen del Sheet.
     metrica: null
     formato_texto: '{valor:,.0f}'
     sheet_lookup:
@@ -522,10 +522,12 @@ slides:
       - slide3_capacitate_empleo
       - slide3_capacitate_carso
       - slide3_academica_labs
+      valor_hardcoded:
+        slide3_academica_labs: 0
   - id: g375ce6fdc96_0_265
     tipo: text_box
     rol: valor_columna_sep2026
-    descripcion: Columna Enero-Septiembre 2026 (ventana fija)
+    descripcion: Columna sep2026. Academica Labs hardcoded a 1,868 (excluye duplicados CPE); los otros 2 vienen del Sheet.
     metrica: null
     formato_texto: '{valor:,.0f}'
     sheet_lookup:
@@ -536,6 +538,8 @@ slides:
       - slide3_capacitate_empleo
       - slide3_capacitate_carso
       - slide3_academica_labs
+      valor_hardcoded:
+        slide3_academica_labs: 1868
   - id: g375ce6fdc96_0_266
     tipo: text_box
     rol: valor_columna_dic2026
