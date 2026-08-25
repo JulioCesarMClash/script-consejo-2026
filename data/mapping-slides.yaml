@@ -923,7 +923,8 @@ slides:
   - id: g375ce6fdc96_0_532
     tipo: text_box
     rol: valor_columna_dic2025
-    descripcion: Columna dic 2025
+    descripcion: Columna dic2026. Aprende seguridad vial hardcoded a 14,378 y Cultura Salud a 80,213 (factor 1.025 sobre sep2026,
+      usuario 2026-08-19, época baja); Pilotos Seguridad Vial del Sheet (vacío).
     metrica: null
     formato_texto: '{valor:,.0f}'
     sheet_lookup:
@@ -934,6 +935,9 @@ slides:
       - slide4_pilotos_seguridad_vial
       - slide4_aprende_seguridad_vial
       - slide4_cultura_salud_aprende
+      valor_hardcoded:
+        slide4_aprende_seguridad_vial: 14378
+        slide4_cultura_salud_aprende: 80212
   - id: g375ce6fdc96_0_533
     tipo: text_box
     rol: valor_columna_acumulado
