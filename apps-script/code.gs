@@ -175,6 +175,18 @@ function findShapeByObjectId(slide, objectId) {
   return null;
 }
 
+
+// Construye un nuevo texto preservando el prefix del oldText (label)
+// y reemplazando el número (searchText) por newText.
+// Si oldText es "Total de beneficiarios\n         21,578" y searchText es "21,578",
+// devuelve "Total de beneficiarios\n         13,572".
+function constructReplace(oldText, searchText, newText) {
+  if (!searchText) return newText;
+  const idx = oldText.lastIndexOf(searchText);
+  if (idx === -1) return newText;
+  return oldText.substring(0, idx) + newText + oldText.substring(idx + searchText.length);
+}
+
 // Construye un mapa {objectId: texto_actual} para todos los shapes del slide.
 // Como Apps Script SlidesApp no expone pageElements directamente, usamos
 // getShapes() + iteramos para cada shape.
@@ -259,14 +271,14 @@ function paintSlide(slide, slideMap, sheetIndex, sheetRows) {
     // sobre el texto completo. Si es texto simple (un número/label), extraemos el número.
     if (oldText.indexOf(String.fromCharCode(10)) >= 0 || oldText.length > 50) {
       // Texto largo o multilínea: replaceText exacto
-      shape.getText().replaceText(oldText, newText);
+      shape.getText().setText(constructReplace(oldText, newText));
     } else {
       // Texto simple: extraer número al final y reemplazar solo ese número
       const numberMatch = oldText.match(/[\d,]+(?:\.\d+)?$/);
       if (numberMatch && obj.formato_texto && numberMatch[0] !== newText) {
-        shape.getText().replaceText(numberMatch[0], newText);
+        shape.getText().setText(constructReplace(numberMatch[0], newText));
       } else {
-        shape.getText().replaceText(oldText, newText);
+        shape.getText().setText(constructReplace(oldText, newText));
       }
     }
     painted++;
@@ -391,13 +403,13 @@ function paintSlide1Only() {
       continue;
     }
     if (oldText.indexOf(String.fromCharCode(10)) >= 0 || oldText.length > 50) {
-      shape.getText().replaceText(oldText, newText);
+      shape.getText().setText(constructReplace(oldText, newText));
     } else {
       const numberMatch = oldText.match(/[\d,]+(?:\.\d+)?$/);
       if (numberMatch && obj.formato_texto && numberMatch[0] !== newText) {
-        shape.getText().replaceText(numberMatch[0], newText);
+        shape.getText().setText(constructReplace(numberMatch[0], newText));
       } else {
-        shape.getText().replaceText(oldText, newText);
+        shape.getText().setText(constructReplace(oldText, newText));
       }
     }
     painted++;
