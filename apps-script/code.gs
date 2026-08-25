@@ -1025,42 +1025,60 @@ const MAPPING =
         "rol": "valor_card",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide7_capacitate_empleo",
+          "columna": 2
+        }
       },
       {
         "objectId": "g3735641ff7a_1_66",
         "rol": "valor_card",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide7_pruebat",
+          "columna": 2
+        }
       },
       {
         "objectId": "g3735641ff7a_1_69",
         "rol": "valor_card",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide7_khan",
+          "columna": 2
+        }
       },
       {
         "objectId": "g3735641ff7a_1_72",
         "rol": "valor_card",
-        "metrica": "academica_usuarios",
+        "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide7_academica_labs",
+          "columna": 2
+        }
       },
       {
         "objectId": "g3735641ff7a_1_76",
         "rol": "valor_card",
-        "metrica": "capacitarte_carso_usuarios",
+        "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide7_capacitate_carso",
+          "columna": 2
+        }
       },
       {
         "objectId": "g3735641ff7a_1_79",
         "rol": "valor_card",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide7_capacitate_empleo",
+          "columna": 2
+        }
       }
     ]
   },
@@ -1080,28 +1098,40 @@ const MAPPING =
         "rol": "valor_card",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide8_biblioteca_digital",
+          "columna": 2
+        }
       },
       {
         "objectId": "g375d3d93919_0_110",
         "rol": "valor_card",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide8_la_merced",
+          "columna": 2
+        }
       },
       {
         "objectId": "g375d3d93919_0_120",
         "rol": "valor_card",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide8_centro_estudios",
+          "columna": 2
+        }
       },
       {
         "objectId": "g375d3d93919_0_125",
         "rol": "valor_card",
         "metrica": null,
         "formato_texto": "{valor:,.0f}",
-        "sheet_lookup": null
+        "sheet_lookup": {
+          "categoria": "slide8_cultura_salud_aprende",
+          "columna": 2
+        }
       }
     ]
   },

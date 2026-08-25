@@ -943,36 +943,54 @@ slides:
     descripcion: Educación Inicial — total de beneficiados
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide7_capacitate_empleo
+      columna: 2
   - id: g3735641ff7a_1_66
     tipo: text_box
     rol: valor_card
     descripcion: PruébaT — usuarios
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide7_pruebat
+      columna: 2
   - id: g3735641ff7a_1_69
     tipo: text_box
     rol: valor_card
     descripcion: Khan Academy — usuarios
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide7_khan
+      columna: 2
   - id: g3735641ff7a_1_72
     tipo: text_box
     rol: valor_card
     descripcion: Académica — usuarios
-    metrica: academica_usuarios
+    metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide7_academica_labs
+      columna: 2
   - id: g3735641ff7a_1_76
     tipo: text_box
     rol: valor_card
     descripcion: Capacítate Carso — usuarios
-    metrica: capacitarte_carso_usuarios
+    metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide7_capacitate_carso
+      columna: 2
   - id: g3735641ff7a_1_79
     tipo: text_box
     rol: valor_card
     descripcion: Capacítate para el Empleo — usuarios
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide7_capacitate_empleo
+      columna: 2
 - numero: 8
   titulo: Educación y divulgación — cards
   page_id: g375ce6fdc96_0_371
@@ -990,24 +1008,36 @@ slides:
     descripcion: Biblioteca Digital — descargas
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide8_biblioteca_digital
+      columna: 2
   - id: g375d3d93919_0_110
     tipo: text_box
     rol: valor_card
     descripcion: Acciones La Merced — estudiantes
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide8_la_merced
+      columna: 2
   - id: g375d3d93919_0_120
     tipo: text_box
     rol: valor_card
     descripcion: Centro Estudios Historia — participantes
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide8_centro_estudios
+      columna: 2
   - id: g375d3d93919_0_125
     tipo: text_box
     rol: valor_card
     descripcion: Cultura y Salud Aprende — registros
     metrica: null
     formato_texto: '{valor:,.0f}'
+    sheet_lookup:
+      categoria: slide8_cultura_salud_aprende
+      columna: 2
 - numero: 11
   titulo: Redes sociales
   page_id: g375ce6fdc96_0_381
