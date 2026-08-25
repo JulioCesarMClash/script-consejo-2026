@@ -178,7 +178,7 @@ function buildShapeTextMap(slide) {
       const shape = shapes[i];
       shapeCount++;
       let id = null;
-      try { id = shape.getId(); } catch(e) { Logger.log('  [debug] shape[' + i + '].getId() failed: ' + e.message); }
+      try { id = shape.getObjectId(); } catch(e) { Logger.log('  [debug] shape[' + i + '].getId() failed: ' + e.message); }
       let txt = '';
       try {
         txt = shape.getText().asString();
@@ -229,7 +229,7 @@ function paintSlide(slide, slideMap, sheetIndex, sheetRows) {
         // Shape vacío — usar setText
         try {
           for (const shape of slide.getShapes()) {
-            if (shape.getId() === obj.objectId) {
+            if (shape.getObjectId() === obj.objectId) {
               shape.getText().setText(newText);
               break;
             }
@@ -342,7 +342,7 @@ function paintSlide1Only() {
   Logger.log('slide.getShapes() retorna: ' + allShapes.length + ' shapes');
   if (allShapes.length > 0 && allShapes.length < 5) {
     for (let s of allShapes) {
-      try { Logger.log('  shape id=' + s.getId() + ' tipo=' + (s.getShapeType ? s.getShapeType() : '?')); } catch(e) {}
+      try { Logger.log('  shape id=' + s.getObjectId() + ' tipo=' + (s.getShapeType ? s.getShapeType() : '?')); } catch(e) {}
     }
   }
 
@@ -367,7 +367,7 @@ function paintSlide1Only() {
     if (!oldText || oldText === newText) {
       if (!oldText) {
         for (const shape of slide.getShapes()) {
-          if (shape.getId() === obj.objectId) {
+          if (shape.getObjectId() === obj.objectId) {
             shape.getText().setText(newText);
             break;
           }
