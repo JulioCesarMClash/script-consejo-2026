@@ -1,11 +1,12 @@
 /**
- * Apps Script — Slide Painter (slide.replaceAllText)
+ * Apps Script — Slide Painter (Slide-by-slide)
  * Script Consejo 2026: pinta los KPIs del Sheet "Datos" sobre la copia
  * temporal de la presentación de Google Slides.
  *
- * Implementación: usa SlidesApp.openById() + slide.replaceAllText()
- * directamente (sin REST API). El scope 'presentations' en appsscript.json
- * autoriza estas operaciones automáticamente.
+ * Estrategia: por cada slide del MAPPING, lee el texto actual de CADA shape
+ * del slide y construye un mapa (shape_id → texto_actual). Para cada objeto
+ * del MAPPING, busca el shape por ID y hace replaceAllText sobre el número
+ * (extraído del oldText con regex).
  *
  * Configuración: SPREADSHEET_ID + PRESENTATION_ID abajo.
  * Para correr: seleccionar función y ▶ Run.
@@ -162,7 +163,85 @@ function buildSheetIndex(rows) {
   return idx;
 }
 
+// Construye un mapa {objectId: texto_actual} para todos los shapes del slide.
+// Como Apps Script SlidesApp no expone pageElements directamente, usamos
+// getShapes() + iteramos para cada shape.
+// Si un ID no está entre los shapes, se ignora (será 'shape no encontrado').
+function buildShapeTextMap(slide) {
+  const map = {};
+  try {
+    for (const shape of slide.getShapes()) {
+      try {
+        const txt = shape.getText().asString();
+        if (shape.getId()) map[shape.getId()] = txt;
+      } catch (e) {}
+    }
+  } catch (e) {}
+  return map;
+}
+
 // === Entry point ===========================================================
+
+function paintSlide(slide, slideMap, sheetIndex, sheetRows) {
+  let painted = 0;
+  let skipped = 0;
+  const skippedIds = [];
+
+  const shapeMap = buildShapeTextMap(slide);
+
+  for (const obj of slideMap.objetos) {
+    const value = resolveValue(obj, sheetIndex, sheetRows);
+    if (value === null || value === '') {
+      skipped++;
+      continue;
+    }
+
+    const newText = formatValue(value, obj.formato_texto);
+    const oldText = shapeMap[obj.objectId];
+
+    if (oldText === undefined) {
+      // Shape no encontrado — el ID no corresponde a un shape de este slide.
+      // Puede ser una imagen, línea, tabla, o ID incorrecto. Skip.
+      skippedIds.push(obj.objectId + ' (shape no encontrado)');
+      skipped++;
+      continue;
+    }
+
+    if (!oldText || oldText === newText) {
+      if (!oldText) {
+        // Shape vacío — usar setText
+        try {
+          for (const shape of slide.getShapes()) {
+            if (shape.getId() === obj.objectId) {
+              shape.getText().setText(newText);
+              break;
+            }
+          }
+        } catch (e) {}
+      }
+      painted++;
+      continue;
+    }
+
+    // Si oldText es multilínea (lista de cursos/valores), replaceAllText exacto
+    // sobre el texto completo. Si es texto simple (un número/label), extraemos el número.
+    if (oldText.indexOf(String.fromCharCode(10)) >= 0 || oldText.length > 50) {
+      // Texto largo o multilínea: replaceAllText exacto
+      slide.replaceAllText(oldText, newText);
+    } else {
+      // Texto simple: extraer número al final y reemplazar solo ese número
+      const numberMatch = oldText.match(/[\d,]+(?:\.\d+)?$/);
+      if (numberMatch && obj.formato_texto && numberMatch[0] !== newText) {
+        slide.replaceAllText(numberMatch[0], newText);
+      } else {
+        slide.replaceAllText(oldText, newText);
+      }
+    }
+    painted++;
+  }
+
+  return { painted, skipped, skippedIds };
+}
 
 function paintSlides() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -177,82 +256,36 @@ function paintSlides() {
   Logger.log('Sheet index: ' + Object.keys(sheetIndex).length + ' categorias');
 
   const presentation = SlidesApp.openById(PRESENTATION_ID);
-  const slides = presentation.getSlides();
 
-  const slideByPageId = {};
-  for (const slide of slides) {
-    slideByPageId[slide.getId()] = slide;
-  }
-
-  let paintedCount = 0;
-  let skippedCount = 0;
-  const skippedIds = [];
+  let totalPainted = 0;
+  let totalSkipped = 0;
+  const allSkippedIds = [];
 
   for (const slideMap of MAPPING) {
-    const pageId = slideMap.page_id;
-    const slide = slideByPageId[pageId];
+    const slide = presentation.getSlideById(slideMap.page_id);
     if (!slide) {
-      Logger.log('SKIP slide ' + slideMap.numero + ': page no encontrada (' + pageId + ')');
-      skippedCount += slideMap.objetos.length;
+      Logger.log('SKIP slide ' + slideMap.numero + ': page no encontrada');
+      totalSkipped += slideMap.objetos.length;
       continue;
     }
 
-    for (const obj of slideMap.objetos) {
-      const value = resolveValue(obj, sheetIndex, allRows);
-      if (value === null || value === '') {
-        skippedCount++;
-        skippedIds.push('slide' + slideMap.numero + ' / ' + obj.objectId + ' / rol=' + obj.rol);
-        continue;
-      }
-
-      const newText = formatValue(value, obj.formato_texto);
-
-      try {
-        const shape = findShapeById(slide, obj.objectId);
-        if (!shape) {
-          skippedCount++;
-          skippedIds.push('slide' + slideMap.numero + ' / ' + obj.objectId + ' (shape no encontrado)');
-          continue;
-        }
-
-        const oldText = shape.getText().asString();
-
-        if (!oldText || oldText === newText) {
-          if (!oldText) shape.getText().setText(newText);
-          paintedCount++;
-          continue;
-        }
-
-        const numberMatch = oldText.match(/[\d,]+(?:\.\d+)?$/);
-        if (numberMatch && obj.formato_texto && numberMatch[0] !== newText) {
-          slide.replaceAllText(numberMatch[0], newText);
-        } else {
-          slide.replaceAllText(oldText, newText);
-        }
-        paintedCount++;
-      } catch (e) {
-        Logger.log('ERROR pintando ' + obj.objectId + ': ' + e.message);
-        skippedCount++;
-      }
+    const result = paintSlide(slide, slideMap, sheetIndex, allRows);
+    totalPainted += result.painted;
+    totalSkipped += result.skipped;
+    for (const id of result.skippedIds) {
+      allSkippedIds.push('slide' + slideMap.numero + ' / ' + id);
     }
+
+    Logger.log('Slide ' + slideMap.numero + ': pintados=' + result.painted + ' saltados=' + result.skipped);
   }
 
-  Logger.log('Pintados: ' + paintedCount + ' | Saltados: ' + skippedCount);
-  if (skippedIds.length > 0) {
+  Logger.log('TOTAL: Pintados=' + totalPainted + ' | Saltados=' + totalSkipped);
+  if (allSkippedIds.length > 0) {
     Logger.log('IDs saltados:');
-    for (const id of skippedIds) Logger.log('  - ' + id);
+    for (const id of allSkippedIds) Logger.log('  - ' + id);
   }
 
-  return { painted: paintedCount, skipped: skippedCount };
-}
-
-function findShapeById(slide, objectId) {
-  try {
-    for (const shape of slide.getShapes()) {
-      if (shape.getId() === objectId) return shape;
-    }
-  } catch (e) {}
-  return null;
+  return { painted: totalPainted, skipped: totalSkipped };
 }
 
 function onOpen() {
@@ -281,27 +314,53 @@ function paintSlide1Only() {
     return;
   }
 
+  const shapeMap = buildShapeTextMap(slide);
+  Logger.log('Shapes en slide 1: ' + Object.keys(shapeMap).length);
+  Logger.log('Shape IDs encontrados: ' + JSON.stringify(Object.keys(shapeMap)));
+  Logger.log('Mapping IDs esperados: ' + JSON.stringify(slideMap.objetos.map(o => o.objectId)));
+
+  // Verificar si getShapes() funciona diferente
+  let allShapes = [];
+  try { allShapes = slide.getShapes(); } catch(e) {}
+  Logger.log('slide.getShapes() retorna: ' + allShapes.length + ' shapes');
+  if (allShapes.length > 0 && allShapes.length < 5) {
+    for (let s of allShapes) {
+      try { Logger.log('  shape id=' + s.getId() + ' tipo=' + (s.getShapeType ? s.getShapeType() : '?')); } catch(e) {}
+    }
+  }
+
   let painted = 0;
   let skipped = 0;
   for (const obj of slideMap.objetos) {
     const value = resolveValue(obj, sheetIndex, allRows);
     if (value === null || value === '') {
-      Logger.log('SKIP ' + obj.objectId + ' rol=' + obj.rol);
+      Logger.log('SKIP (no value) ' + obj.objectId + ' rol=' + obj.rol);
       skipped++;
       continue;
     }
     const newText = formatValue(value, obj.formato_texto);
-    const shape = findShapeById(slide, obj.objectId);
-    if (!shape) {
-      Logger.log('SKIP ' + obj.objectId + ' (shape no encontrado)');
+    const oldText = shapeMap[obj.objectId];
+    Logger.log('Intentando ' + obj.objectId + ' rol=' + obj.rol + ' value=' + value + ' newText="' + newText + '" oldText=' + (oldText !== undefined ? '"' + oldText.substring(0, 50) + '"' : 'UNDEFINED'));
+
+    if (oldText === undefined) {
+      Logger.log('  SKIP (shape no encontrado)');
       skipped++;
       continue;
     }
-    const oldText = shape.getText().asString();
-    Logger.log('OK   ' + obj.objectId + ' rol=' + obj.rol + ' ("' + oldText.substring(0, 40) + '") → "' + newText + '"');
-
     if (!oldText || oldText === newText) {
-      if (!oldText) shape.getText().setText(newText);
+      if (!oldText) {
+        for (const shape of slide.getShapes()) {
+          if (shape.getId() === obj.objectId) {
+            shape.getText().setText(newText);
+            break;
+          }
+        }
+      }
+      painted++;
+      continue;
+    }
+    if (oldText.indexOf(String.fromCharCode(10)) >= 0 || oldText.length > 50) {
+      slide.replaceAllText(oldText, newText);
     } else {
       const numberMatch = oldText.match(/[\d,]+(?:\.\d+)?$/);
       if (numberMatch && obj.formato_texto && numberMatch[0] !== newText) {
