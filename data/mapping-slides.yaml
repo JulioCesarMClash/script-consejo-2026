@@ -543,7 +543,8 @@ slides:
   - id: g375ce6fdc96_0_266
     tipo: text_box
     rol: valor_columna_dic2026
-    descripcion: Columna Enero-Diciembre 2026 (proyección lineal)
+    descripcion: Columna dic2026. Academica Labs hardcoded a 3,204 (factor 0.433 aplicado al Sheet para excluir duplicados
+      CPE); los otros 2 vienen del Sheet.
     metrica: null
     formato_texto: '{valor:,.0f}'
     sheet_lookup:
@@ -554,6 +555,8 @@ slides:
       - slide3_capacitate_empleo
       - slide3_capacitate_carso
       - slide3_academica_labs
+      valor_hardcoded:
+        slide3_academica_labs: 3204
   - id: g375ce6fdc96_0_267
     tipo: text_box
     rol: valor_columna_acumulado
