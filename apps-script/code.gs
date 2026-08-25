@@ -163,6 +163,18 @@ function buildSheetIndex(rows) {
   return idx;
 }
 
+// Busca un shape por objectId iterando slide.getShapes(). Equivalente a
+// slide.getShapeById(objectId) que no existe en Apps Script.
+function findShapeByObjectId(slide, objectId) {
+  try {
+    const shapes = slide.getShapes();
+    for (let i = 0; i < shapes.length; i++) {
+      if (shapes[i].getObjectId() === objectId) return shapes[i];
+    }
+  } catch (e) {}
+  return null;
+}
+
 // Construye un mapa {objectId: texto_actual} para todos los shapes del slide.
 // Como Apps Script SlidesApp no expone pageElements directamente, usamos
 // getShapes() + iteramos para cada shape.
@@ -227,31 +239,34 @@ function paintSlide(slide, slideMap, sheetIndex, sheetRows) {
     if (!oldText || oldText === newText) {
       if (!oldText) {
         // Shape vacío — usar setText
-        try {
-          for (const shape of slide.getShapes()) {
-            if (shape.getObjectId() === obj.objectId) {
-              shape.getText().setText(newText);
-              break;
-            }
-          }
-        } catch (e) {}
+        const shape = findShapeByObjectId(slide, obj.objectId);
+        if (shape) shape.getText().setText(newText);
       }
       painted++;
       continue;
     }
 
-    // Si oldText es multilínea (lista de cursos/valores), replaceAllText exacto
+    // Buscar el shape específico por objectId (NO usar slide.replaceAllText
+    // porque afecta todo el slide).
+    const shape = findShapeByObjectId(slide, obj.objectId);
+    if (!shape) {
+      skippedIds.push(obj.objectId + ' (shape no encontrado)');
+      skipped++;
+      continue;
+    }
+
+    // Si oldText es multilínea (lista de cursos/valores), replaceText exacto
     // sobre el texto completo. Si es texto simple (un número/label), extraemos el número.
     if (oldText.indexOf(String.fromCharCode(10)) >= 0 || oldText.length > 50) {
-      // Texto largo o multilínea: replaceAllText exacto
-      slide.replaceAllText(oldText, newText);
+      // Texto largo o multilínea: replaceText exacto
+      shape.getText().replaceText(oldText, newText);
     } else {
       // Texto simple: extraer número al final y reemplazar solo ese número
       const numberMatch = oldText.match(/[\d,]+(?:\.\d+)?$/);
       if (numberMatch && obj.formato_texto && numberMatch[0] !== newText) {
-        slide.replaceAllText(numberMatch[0], newText);
+        shape.getText().replaceText(numberMatch[0], newText);
       } else {
-        slide.replaceAllText(oldText, newText);
+        shape.getText().replaceText(oldText, newText);
       }
     }
     painted++;
@@ -366,24 +381,20 @@ function paintSlide1Only() {
     }
     if (!oldText || oldText === newText) {
       if (!oldText) {
-        for (const shape of slide.getShapes()) {
-          if (shape.getObjectId() === obj.objectId) {
-            shape.getText().setText(newText);
-            break;
-          }
-        }
+        const shape = findShapeByObjectId(slide, obj.objectId);
+        if (shape) shape.getText().setText(newText);
       }
       painted++;
       continue;
     }
     if (oldText.indexOf(String.fromCharCode(10)) >= 0 || oldText.length > 50) {
-      slide.replaceAllText(oldText, newText);
+      shape.getText().replaceText(oldText, newText);
     } else {
       const numberMatch = oldText.match(/[\d,]+(?:\.\d+)?$/);
       if (numberMatch && obj.formato_texto && numberMatch[0] !== newText) {
-        slide.replaceAllText(numberMatch[0], newText);
+        shape.getText().replaceText(numberMatch[0], newText);
       } else {
-        slide.replaceAllText(oldText, newText);
+        shape.getText().replaceText(oldText, newText);
       }
     }
     painted++;
