@@ -921,7 +921,8 @@ slides:
   - id: g375ce6fdc96_0_533
     tipo: text_box
     rol: valor_columna_acumulado
-    descripcion: Columna acumulado histórico
+    descripcion: Columna acumulado histórico. Cultura y Salud Aprende hardcoded a 1,419,361 (usuario 2026-08-19); los otros
+      2 valores vienen del Sheet.
     metrica: null
     formato_texto: '{valor:,.0f}'
     sheet_lookup:
@@ -932,6 +933,8 @@ slides:
       - slide4_pilotos_seguridad_vial
       - slide4_aprende_seguridad_vial
       - slide4_cultura_salud_aprende
+      valor_hardcoded:
+        slide4_cultura_salud_aprende: 1419361
 - numero: 7
   titulo: Educación y empleo — cards
   page_id: g375ce6fdc96_0_366
