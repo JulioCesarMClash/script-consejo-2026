@@ -384,9 +384,9 @@ metrics:
     spreadsheet.'
 - key: slide13_penitenciarios_inscripciones
   name: Slide 13 — Inscripciones totales (Centros Penitenciarios)
-  description: 'Métrica de Slide 13 ''Formación en Centros Penitenciarios'': consulta sobre 99 course IDs (36 CEFERESOS brand
-    18 + 65 DETPCDMX brand 16) actualizado 2026-08-19. Sin filtro de plataforma. JOIN con userbrand + brand para filtrar brand
-    IN (16, 18).'
+  description: 'Métrica de Slide 13 ''Formación en Centros Penitenciarios'': total acumulado de inscripciones a los 99 cursos
+    penitenciarios (36 brand 18 CEFERESOS + 65 brand 16 DETPCDMX) con corte < ''2026-08-01''. Sin filtro previo de inscripción
+    (se cuentan TODAS las inscripciones de los cursos penitenciarios, independiente del brand del usuario).'
   formula: 'COUNT(*) de capacitate_analisis.inscription JOIN userbrand JOIN brand (brandId IN 16, 18) WHERE courseId IN (lista
     100 cursos del panel) AND inscripcionDate < ''2026-08-01''.
 
@@ -397,52 +397,20 @@ metrics:
   db_source: mysql
   db_mapping: "      SELECT COUNT(i.userId) AS value,\n             'Acumulado' AS periodo_inicio,\n             '2026-08-01'\
     \ AS periodo_fin,\n             'inscription' AS source\n      FROM capacitate_analisis.inscription i\n      INNER JOIN\
-    \ capacitate_analisis.course c ON c.id = i.courseId\n      INNER JOIN capacitate_analisis.userbrand ub ON i.userId = ub.userId\n\
-    \      INNER JOIN capacitate_analisis.brand b ON ub.brandId = b.id\n      INNER JOIN (\n          SELECT 1 AS id\n   \
-    \       UNION ALL SELECT 2 AS id\n          UNION ALL SELECT 3 AS id\n          UNION ALL SELECT 4 AS id\n          UNION\
-    \ ALL SELECT 5 AS id\n          UNION ALL SELECT 6 AS id\n          UNION ALL SELECT 8 AS id\n          UNION ALL SELECT\
-    \ 9 AS id\n          UNION ALL SELECT 11 AS id\n          UNION ALL SELECT 12 AS id\n          UNION ALL SELECT 14 AS\
-    \ id\n          UNION ALL SELECT 15 AS id\n          UNION ALL SELECT 16 AS id\n          UNION ALL SELECT 18 AS id\n\
-    \          UNION ALL SELECT 20 AS id\n          UNION ALL SELECT 21 AS id\n          UNION ALL SELECT 23 AS id\n     \
-    \     UNION ALL SELECT 24 AS id\n          UNION ALL SELECT 25 AS id\n          UNION ALL SELECT 26 AS id\n          UNION\
-    \ ALL SELECT 27 AS id\n          UNION ALL SELECT 28 AS id\n          UNION ALL SELECT 30 AS id\n          UNION ALL SELECT\
-    \ 31 AS id\n          UNION ALL SELECT 32 AS id\n          UNION ALL SELECT 33 AS id\n          UNION ALL SELECT 35 AS\
-    \ id\n          UNION ALL SELECT 36 AS id\n          UNION ALL SELECT 37 AS id\n          UNION ALL SELECT 40 AS id\n\
-    \          UNION ALL SELECT 41 AS id\n          UNION ALL SELECT 42 AS id\n          UNION ALL SELECT 50 AS id\n     \
-    \     UNION ALL SELECT 51 AS id\n          UNION ALL SELECT 52 AS id\n          UNION ALL SELECT 57 AS id\n          UNION\
-    \ ALL SELECT 58 AS id\n          UNION ALL SELECT 66 AS id\n          UNION ALL SELECT 77 AS id\n          UNION ALL SELECT\
-    \ 78 AS id\n          UNION ALL SELECT 86 AS id\n          UNION ALL SELECT 95 AS id\n          UNION ALL SELECT 98 AS\
-    \ id\n          UNION ALL SELECT 99 AS id\n          UNION ALL SELECT 100 AS id\n          UNION ALL SELECT 101 AS id\n\
-    \          UNION ALL SELECT 107 AS id\n          UNION ALL SELECT 109 AS id\n          UNION ALL SELECT 114 AS id\n  \
-    \        UNION ALL SELECT 118 AS id\n          UNION ALL SELECT 120 AS id\n          UNION ALL SELECT 131 AS id\n    \
-    \      UNION ALL SELECT 137 AS id\n          UNION ALL SELECT 138 AS id\n          UNION ALL SELECT 140 AS id\n      \
-    \    UNION ALL SELECT 141 AS id\n          UNION ALL SELECT 142 AS id\n          UNION ALL SELECT 143 AS id\n        \
-    \  UNION ALL SELECT 144 AS id\n          UNION ALL SELECT 151 AS id\n          UNION ALL SELECT 152 AS id\n          UNION\
-    \ ALL SELECT 155 AS id\n          UNION ALL SELECT 156 AS id\n          UNION ALL SELECT 157 AS id\n          UNION ALL\
-    \ SELECT 159 AS id\n          UNION ALL SELECT 170 AS id\n          UNION ALL SELECT 177 AS id\n          UNION ALL SELECT\
-    \ 178 AS id\n          UNION ALL SELECT 201 AS id\n          UNION ALL SELECT 211 AS id\n          UNION ALL SELECT 212\
-    \ AS id\n          UNION ALL SELECT 213 AS id\n          UNION ALL SELECT 228 AS id\n          UNION ALL SELECT 232 AS\
-    \ id\n          UNION ALL SELECT 241 AS id\n          UNION ALL SELECT 244 AS id\n          UNION ALL SELECT 246 AS id\n\
-    \          UNION ALL SELECT 258 AS id\n          UNION ALL SELECT 263 AS id\n          UNION ALL SELECT 272 AS id\n  \
-    \        UNION ALL SELECT 275 AS id\n          UNION ALL SELECT 280 AS id\n          UNION ALL SELECT 282 AS id\n    \
-    \      UNION ALL SELECT 285 AS id\n          UNION ALL SELECT 291 AS id\n          UNION ALL SELECT 293 AS id\n      \
-    \    UNION ALL SELECT 297 AS id\n          UNION ALL SELECT 298 AS id\n          UNION ALL SELECT 301 AS id\n        \
-    \  UNION ALL SELECT 312 AS id\n          UNION ALL SELECT 354 AS id\n          UNION ALL SELECT 376 AS id\n          UNION\
-    \ ALL SELECT 387 AS id\n          UNION ALL SELECT 408 AS id\n          UNION ALL SELECT 100064 AS id\n          UNION\
-    \ ALL SELECT 100092 AS id\n          UNION ALL SELECT 100157 AS id\n          UNION ALL SELECT 100214 AS id\n        \
-    \  UNION ALL SELECT 100320 AS id\n      ) AS pen_cursos ON pen_cursos.id = c.id\n      WHERE b.id IN (16, 18)\n      \
-    \  AND i.inscripcionDate < '2026-08-01'"
+    \ capacitate_analisis.userbrand ub ON i.userId = ub.userId\n      INNER JOIN capacitate_analisis.brand b ON ub.brandId\
+    \ = b.id\n      WHERE b.id IN (16, 18)\n        AND i.courseId IN (1, 2, 3, 4, 5, 6, 8, 9, 11, 12, 14, 15, 16, 18, 20,\
+    \ 21, 23, 24, 25, 26, 27, 28, 30, 31, 32, 33, 35, 36, 37, 40, 41, 42, 50, 51, 52, 57, 58, 66, 77, 78, 86, 95, 98, 99,\
+    \ 100, 101, 107, 109, 114, 118, 120, 131, 137, 138, 140, 141, 142, 143, 144, 151, 152, 155, 156, 157, 159, 170, 177, 178,\
+    \ 201, 211, 212, 213, 228, 232, 241, 244, 246, 258, 263, 272, 275, 280, 282, 285, 291, 293, 297, 298, 301, 312, 354, 376,\
+    \ 387, 408, 100064, 100092, 100157, 100214, 100320)\n        AND i.inscripcionDate < '2026-08-01'"
   caveats:
-  - 'Lista de 99 course IDs: 36 CEFERESOS (brand 18) + 65 DETPCDMX/Reclusorio norte (brand 16) — actualizado 2026-08-19 con
-    el catálogo actual de cursos penitenciarios.'
-  - Filtro por brand (brandId IN 16, 18 = DETPCDMX, CEFERESOS), NO por plataformaId — los usuarios de penitenciarías pueden
-    tener plataformaId 1 (CPE) o 2 (Aprende).
+  - 'Lista de 99 course IDs: 36 CEFERESOS (brand 18) + 65 DETPCDMX/Reclusorio norte (brand 16).'
+  - Sin filtro previo de inscripción — se cuentan todas las inscripciones de los cursos penitenciarios.
   - Corte duro a '2026-08-01'.
 - key: slide13_penitenciarios_certificados
   name: Slide 13 — Certificados (Centros Penitenciarios)
-  description: 'Métrica de Slide 13 ''Formación en Centros Penitenciarios'': consulta sobre 99 course IDs (36 CEFERESOS brand
-    18 + 65 DETPCDMX brand 16) actualizado 2026-08-19. Sin filtro de plataforma. JOIN con userbrand + brand para filtrar brand
-    IN (16, 18).'
+  description: 'Métrica de Slide 13 ''Formación en Centros Penitenciarios'': total acumulado de certificados (99 cursos penitenciarios)
+    con corte < ''2026-08-01''.'
   formula: 'COUNT(*) de capacitate_analisis.inscription JOIN userbrand JOIN brand WHERE brandId IN (16, 18), courseId IN (lista
     100 cursos), advance = 100 AND certificationDate < ''2026-08-01''.
 
@@ -453,52 +421,22 @@ metrics:
   db_source: mysql
   db_mapping: "      SELECT COUNT(i.userId) AS value,\n             'Acumulado' AS periodo_inicio,\n             '2026-08-01'\
     \ AS periodo_fin,\n             'inscription' AS source\n      FROM capacitate_analisis.inscription i\n      INNER JOIN\
-    \ capacitate_analisis.course c ON c.id = i.courseId\n      INNER JOIN capacitate_analisis.userbrand ub ON i.userId = ub.userId\n\
-    \      INNER JOIN capacitate_analisis.brand b ON ub.brandId = b.id\n      INNER JOIN (\n          SELECT 1 AS id\n   \
-    \       UNION ALL SELECT 2 AS id\n          UNION ALL SELECT 3 AS id\n          UNION ALL SELECT 4 AS id\n          UNION\
-    \ ALL SELECT 5 AS id\n          UNION ALL SELECT 6 AS id\n          UNION ALL SELECT 8 AS id\n          UNION ALL SELECT\
-    \ 9 AS id\n          UNION ALL SELECT 11 AS id\n          UNION ALL SELECT 12 AS id\n          UNION ALL SELECT 14 AS\
-    \ id\n          UNION ALL SELECT 15 AS id\n          UNION ALL SELECT 16 AS id\n          UNION ALL SELECT 18 AS id\n\
-    \          UNION ALL SELECT 20 AS id\n          UNION ALL SELECT 21 AS id\n          UNION ALL SELECT 23 AS id\n     \
-    \     UNION ALL SELECT 24 AS id\n          UNION ALL SELECT 25 AS id\n          UNION ALL SELECT 26 AS id\n          UNION\
-    \ ALL SELECT 27 AS id\n          UNION ALL SELECT 28 AS id\n          UNION ALL SELECT 30 AS id\n          UNION ALL SELECT\
-    \ 31 AS id\n          UNION ALL SELECT 32 AS id\n          UNION ALL SELECT 33 AS id\n          UNION ALL SELECT 35 AS\
-    \ id\n          UNION ALL SELECT 36 AS id\n          UNION ALL SELECT 37 AS id\n          UNION ALL SELECT 40 AS id\n\
-    \          UNION ALL SELECT 41 AS id\n          UNION ALL SELECT 42 AS id\n          UNION ALL SELECT 50 AS id\n     \
-    \     UNION ALL SELECT 51 AS id\n          UNION ALL SELECT 52 AS id\n          UNION ALL SELECT 57 AS id\n          UNION\
-    \ ALL SELECT 58 AS id\n          UNION ALL SELECT 66 AS id\n          UNION ALL SELECT 77 AS id\n          UNION ALL SELECT\
-    \ 78 AS id\n          UNION ALL SELECT 86 AS id\n          UNION ALL SELECT 95 AS id\n          UNION ALL SELECT 98 AS\
-    \ id\n          UNION ALL SELECT 99 AS id\n          UNION ALL SELECT 100 AS id\n          UNION ALL SELECT 101 AS id\n\
-    \          UNION ALL SELECT 107 AS id\n          UNION ALL SELECT 109 AS id\n          UNION ALL SELECT 114 AS id\n  \
-    \        UNION ALL SELECT 118 AS id\n          UNION ALL SELECT 120 AS id\n          UNION ALL SELECT 131 AS id\n    \
-    \      UNION ALL SELECT 137 AS id\n          UNION ALL SELECT 138 AS id\n          UNION ALL SELECT 140 AS id\n      \
-    \    UNION ALL SELECT 141 AS id\n          UNION ALL SELECT 142 AS id\n          UNION ALL SELECT 143 AS id\n        \
-    \  UNION ALL SELECT 144 AS id\n          UNION ALL SELECT 151 AS id\n          UNION ALL SELECT 152 AS id\n          UNION\
-    \ ALL SELECT 155 AS id\n          UNION ALL SELECT 156 AS id\n          UNION ALL SELECT 157 AS id\n          UNION ALL\
-    \ SELECT 159 AS id\n          UNION ALL SELECT 170 AS id\n          UNION ALL SELECT 177 AS id\n          UNION ALL SELECT\
-    \ 178 AS id\n          UNION ALL SELECT 201 AS id\n          UNION ALL SELECT 211 AS id\n          UNION ALL SELECT 212\
-    \ AS id\n          UNION ALL SELECT 213 AS id\n          UNION ALL SELECT 228 AS id\n          UNION ALL SELECT 232 AS\
-    \ id\n          UNION ALL SELECT 241 AS id\n          UNION ALL SELECT 244 AS id\n          UNION ALL SELECT 246 AS id\n\
-    \          UNION ALL SELECT 258 AS id\n          UNION ALL SELECT 263 AS id\n          UNION ALL SELECT 272 AS id\n  \
-    \        UNION ALL SELECT 275 AS id\n          UNION ALL SELECT 280 AS id\n          UNION ALL SELECT 282 AS id\n    \
-    \      UNION ALL SELECT 285 AS id\n          UNION ALL SELECT 291 AS id\n          UNION ALL SELECT 293 AS id\n      \
-    \    UNION ALL SELECT 297 AS id\n          UNION ALL SELECT 298 AS id\n          UNION ALL SELECT 301 AS id\n        \
-    \  UNION ALL SELECT 312 AS id\n          UNION ALL SELECT 354 AS id\n          UNION ALL SELECT 376 AS id\n          UNION\
-    \ ALL SELECT 387 AS id\n          UNION ALL SELECT 408 AS id\n          UNION ALL SELECT 100064 AS id\n          UNION\
-    \ ALL SELECT 100092 AS id\n          UNION ALL SELECT 100157 AS id\n          UNION ALL SELECT 100214 AS id\n        \
-    \  UNION ALL SELECT 100320 AS id\n      ) AS pen_cursos ON pen_cursos.id = c.id\n      WHERE b.id IN (16, 18)\n      \
-    \  AND i.certificationDate IS NOT NULL\n        AND i.advance = 100\n        AND i.certificationDate < '2026-08-01'"
+    \ capacitate_analisis.userbrand ub ON i.userId = ub.userId\n      INNER JOIN capacitate_analisis.brand b ON ub.brandId\
+    \ = b.id\n      WHERE b.id IN (16, 18)\n        AND i.courseId IN (1, 2, 3, 4, 5, 6, 8, 9, 11, 12, 14, 15, 16, 18, 20,\
+    \ 21, 23, 24, 25, 26, 27, 28, 30, 31, 32, 33, 35, 36, 37, 40, 41, 42, 50, 51, 52, 57, 58, 66, 77, 78, 86, 95, 98, 99,\
+    \ 100, 101, 107, 109, 114, 118, 120, 131, 137, 138, 140, 141, 142, 143, 144, 151, 152, 155, 156, 157, 159, 170, 177, 178,\
+    \ 201, 211, 212, 213, 228, 232, 241, 244, 246, 258, 263, 272, 275, 280, 282, 285, 291, 293, 297, 298, 301, 312, 354, 376,\
+    \ 387, 408, 100064, 100092, 100157, 100214, 100320)\n        AND i.certificationDate IS NOT NULL\n        AND i.advance\
+    \ = 100\n        AND i.certificationDate < '2026-08-01'"
   caveats:
-  - 'Lista de 99 course IDs: 36 CEFERESOS (brand 18) + 65 DETPCDMX/Reclusorio norte (brand 16) — actualizado 2026-08-19 con
-    el catálogo actual de cursos penitenciarios.'
-  - Filtro por brand (brandId IN 16, 18 = DETPCDMX, CEFERESOS), NO por plataformaId — los usuarios de penitenciarías pueden
-    tener plataformaId 1 (CPE) o 2 (Aprende).
-  - Corte duro a '2026-08-01'.
+  - Lista de 99 course IDs.
+  - Sin filtro de inscripción previa — se cuentan los certificados de los cursos penitenciarios.
+  - 'Certificación: advance = 100, certificationDate IS NOT NULL.'
 - key: slide13_penitenciarios_usuarios_registrados
   name: Slide 13 — Usuarios únicos registrados (Centros Penitenciarios)
-  description: 'Métrica de Slide 13 ''Formación en Centros Penitenciarios'': consulta sobre 99 course IDs (36 CEFERESOS brand
-    18 + 65 DETPCDMX brand 16) actualizado 2026-08-19. Sin filtro de plataforma. JOIN con userbrand + brand para filtrar brand
-    IN (16, 18).'
+  description: 'Métrica de Slide 13 ''Formación en Centros Penitenciarios'': total acumulado de usuarios registrados con gender
+    1 (Mujer) o 2 (Hombre) y brand 16 (DETPCDMX) o 18 (CEFERESOS), con registrationDate < ''2026-08-01''. Replica el SP `SP_Capacitate_count_users_by_brand_age_gender`
+    con la suma de los subqueries por género.'
   formula: 'COUNT(DISTINCT u.id) de capacitate_analisis.user JOIN userbrand JOIN brand WHERE brandId IN (16, 18) AND registrationDate
     < ''2026-08-01''.
 
@@ -507,54 +445,24 @@ metrics:
   source: dim_user
   platform_scope: []
   db_source: mysql
-  db_mapping: "      SELECT COUNT(DISTINCT u.id) AS value,\n             'Acumulado' AS periodo_inicio,\n             '2026-08-01'\
-    \ AS periodo_fin,\n             'dim_user' AS source\n      FROM capacitate_analisis.user u\n      INNER JOIN capacitate_analisis.userbrand\
-    \ ub ON u.id = ub.userId\n      INNER JOIN capacitate_analisis.brand b ON ub.brandId = b.id\n      INNER JOIN (\n    \
-    \      SELECT 1 AS id\n          UNION ALL SELECT 2 AS id\n          UNION ALL SELECT 3 AS id\n          UNION ALL SELECT\
-    \ 4 AS id\n          UNION ALL SELECT 5 AS id\n          UNION ALL SELECT 6 AS id\n          UNION ALL SELECT 8 AS id\n\
-    \          UNION ALL SELECT 9 AS id\n          UNION ALL SELECT 11 AS id\n          UNION ALL SELECT 12 AS id\n      \
-    \    UNION ALL SELECT 14 AS id\n          UNION ALL SELECT 15 AS id\n          UNION ALL SELECT 16 AS id\n          UNION\
-    \ ALL SELECT 18 AS id\n          UNION ALL SELECT 20 AS id\n          UNION ALL SELECT 21 AS id\n          UNION ALL SELECT\
-    \ 23 AS id\n          UNION ALL SELECT 24 AS id\n          UNION ALL SELECT 25 AS id\n          UNION ALL SELECT 26 AS\
-    \ id\n          UNION ALL SELECT 27 AS id\n          UNION ALL SELECT 28 AS id\n          UNION ALL SELECT 30 AS id\n\
-    \          UNION ALL SELECT 31 AS id\n          UNION ALL SELECT 32 AS id\n          UNION ALL SELECT 33 AS id\n     \
-    \     UNION ALL SELECT 35 AS id\n          UNION ALL SELECT 36 AS id\n          UNION ALL SELECT 37 AS id\n          UNION\
-    \ ALL SELECT 40 AS id\n          UNION ALL SELECT 41 AS id\n          UNION ALL SELECT 42 AS id\n          UNION ALL SELECT\
-    \ 50 AS id\n          UNION ALL SELECT 51 AS id\n          UNION ALL SELECT 52 AS id\n          UNION ALL SELECT 57 AS\
-    \ id\n          UNION ALL SELECT 58 AS id\n          UNION ALL SELECT 66 AS id\n          UNION ALL SELECT 77 AS id\n\
-    \          UNION ALL SELECT 78 AS id\n          UNION ALL SELECT 86 AS id\n          UNION ALL SELECT 95 AS id\n     \
-    \     UNION ALL SELECT 98 AS id\n          UNION ALL SELECT 99 AS id\n          UNION ALL SELECT 100 AS id\n         \
-    \ UNION ALL SELECT 101 AS id\n          UNION ALL SELECT 107 AS id\n          UNION ALL SELECT 109 AS id\n          UNION\
-    \ ALL SELECT 114 AS id\n          UNION ALL SELECT 118 AS id\n          UNION ALL SELECT 120 AS id\n          UNION ALL\
-    \ SELECT 131 AS id\n          UNION ALL SELECT 137 AS id\n          UNION ALL SELECT 138 AS id\n          UNION ALL SELECT\
-    \ 140 AS id\n          UNION ALL SELECT 141 AS id\n          UNION ALL SELECT 142 AS id\n          UNION ALL SELECT 143\
-    \ AS id\n          UNION ALL SELECT 144 AS id\n          UNION ALL SELECT 151 AS id\n          UNION ALL SELECT 152 AS\
-    \ id\n          UNION ALL SELECT 155 AS id\n          UNION ALL SELECT 156 AS id\n          UNION ALL SELECT 157 AS id\n\
-    \          UNION ALL SELECT 159 AS id\n          UNION ALL SELECT 170 AS id\n          UNION ALL SELECT 177 AS id\n  \
-    \        UNION ALL SELECT 178 AS id\n          UNION ALL SELECT 201 AS id\n          UNION ALL SELECT 211 AS id\n    \
-    \      UNION ALL SELECT 212 AS id\n          UNION ALL SELECT 213 AS id\n          UNION ALL SELECT 228 AS id\n      \
-    \    UNION ALL SELECT 232 AS id\n          UNION ALL SELECT 241 AS id\n          UNION ALL SELECT 244 AS id\n        \
-    \  UNION ALL SELECT 246 AS id\n          UNION ALL SELECT 258 AS id\n          UNION ALL SELECT 263 AS id\n          UNION\
-    \ ALL SELECT 272 AS id\n          UNION ALL SELECT 275 AS id\n          UNION ALL SELECT 280 AS id\n          UNION ALL\
-    \ SELECT 282 AS id\n          UNION ALL SELECT 285 AS id\n          UNION ALL SELECT 291 AS id\n          UNION ALL SELECT\
-    \ 293 AS id\n          UNION ALL SELECT 297 AS id\n          UNION ALL SELECT 298 AS id\n          UNION ALL SELECT 301\
-    \ AS id\n          UNION ALL SELECT 312 AS id\n          UNION ALL SELECT 354 AS id\n          UNION ALL SELECT 376 AS\
-    \ id\n          UNION ALL SELECT 387 AS id\n          UNION ALL SELECT 408 AS id\n          UNION ALL SELECT 100064 AS\
-    \ id\n          UNION ALL SELECT 100092 AS id\n          UNION ALL SELECT 100157 AS id\n          UNION ALL SELECT 100214\
-    \ AS id\n          UNION ALL SELECT 100320 AS id\n      ) AS pen_cursos ON pen_cursos.id IN (\n          SELECT i.courseId\
-    \ FROM capacitate_analisis.inscription i\n          WHERE i.userId = u.id\n          AND i.inscripcionDate < '2026-08-01'\n\
-    \      )\n      WHERE b.id IN (16, 18)\n        AND u.registrationDate < '2026-08-01'"
+  db_mapping: "      SELECT\n        (SELECT COUNT(DISTINCT u.id)\n         FROM capacitate_analisis.user u\n         INNER\
+    \ JOIN capacitate_analisis.userbrand ub ON u.id = ub.userId\n         INNER JOIN capacitate_analisis.brand b ON ub.brandId\
+    \ = b.id\n         INNER JOIN capacitate_analisis.person p ON p.userId = ub.userId\n         WHERE b.id IN (16, 18)\n\
+    \           AND p.genderId = 1\n           AND u.registrationDate < '2026-08-01'\n        ) + (SELECT COUNT(DISTINCT u.id)\n\
+    \         FROM capacitate_analisis.user u\n         INNER JOIN capacitate_analisis.userbrand ub ON u.id = ub.userId\n\
+    \         INNER JOIN capacitate_analisis.brand b ON ub.brandId = b.id\n         INNER JOIN capacitate_analisis.person\
+    \ p ON p.userId = ub.userId\n         WHERE b.id IN (16, 18)\n           AND p.genderId = 2\n           AND u.registrationDate\
+    \ < '2026-08-01') AS value,\n             'Acumulado' AS periodo_inicio,\n             '2026-08-01' AS periodo_fin,\n\
+    \             'dim_user' AS source"
   caveats:
-  - 'Lista de 99 course IDs: 36 CEFERESOS (brand 18) + 65 DETPCDMX/Reclusorio norte (brand 16) — actualizado 2026-08-19 con
-    el catálogo actual de cursos penitenciarios.'
-  - Filtro por brand (brandId IN 16, 18 = DETPCDMX, CEFERESOS), NO por plataformaId — los usuarios de penitenciarías pueden
-    tener plataformaId 1 (CPE) o 2 (Aprende).
+  - Replica SP_Capacitate_count_users_by_brand_age_gender (excluye gender_id=3 'Otro' por defecto).
+  - JOIN a person + gender para filtrar por género (1=Mujer, 2=Hombre).
+  - Filtro por brand (brandId IN 16, 18).
   - Corte duro a '2026-08-01'.
 - key: slide13_penitenciarios_cursos_ofertados
   name: Slide 13 — Cursos ofertados únicos (Centros Penitenciarios)
-  description: 'Métrica de Slide 13 ''Formación en Centros Penitenciarios'': consulta sobre 99 course IDs (36 CEFERESOS brand
-    18 + 65 DETPCDMX brand 16) actualizado 2026-08-19. Sin filtro de plataforma. JOIN con userbrand + brand para filtrar brand
-    IN (16, 18).'
+  description: 'Métrica de Slide 13: total de cursos distintos (courseId únicos) que recibieron al menos una inscripción de
+    usuarios con brand 16 o 18, dentro de los 99 cursos penitenciarios.'
   formula: 'COUNT(DISTINCT i.courseId) de capacitate_analisis.inscription JOIN userbrand JOIN brand WHERE brandId IN (16,
     18), courseId IN (lista 100 cursos) AND inscripcionDate < ''2026-08-01''.
 
@@ -565,47 +473,15 @@ metrics:
   db_source: mysql
   db_mapping: "      SELECT COUNT(DISTINCT i.courseId) AS value,\n             'Acumulado' AS periodo_inicio,\n          \
     \   '2026-08-01' AS periodo_fin,\n             'inscription' AS source\n      FROM capacitate_analisis.inscription i\n\
-    \      INNER JOIN capacitate_analisis.course c ON c.id = i.courseId\n      INNER JOIN capacitate_analisis.userbrand ub\
-    \ ON i.userId = ub.userId\n      INNER JOIN capacitate_analisis.brand b ON ub.brandId = b.id\n      INNER JOIN (\n   \
-    \       SELECT 1 AS id\n          UNION ALL SELECT 2 AS id\n          UNION ALL SELECT 3 AS id\n          UNION ALL SELECT\
-    \ 4 AS id\n          UNION ALL SELECT 5 AS id\n          UNION ALL SELECT 6 AS id\n          UNION ALL SELECT 8 AS id\n\
-    \          UNION ALL SELECT 9 AS id\n          UNION ALL SELECT 11 AS id\n          UNION ALL SELECT 12 AS id\n      \
-    \    UNION ALL SELECT 14 AS id\n          UNION ALL SELECT 15 AS id\n          UNION ALL SELECT 16 AS id\n          UNION\
-    \ ALL SELECT 18 AS id\n          UNION ALL SELECT 20 AS id\n          UNION ALL SELECT 21 AS id\n          UNION ALL SELECT\
-    \ 23 AS id\n          UNION ALL SELECT 24 AS id\n          UNION ALL SELECT 25 AS id\n          UNION ALL SELECT 26 AS\
-    \ id\n          UNION ALL SELECT 27 AS id\n          UNION ALL SELECT 28 AS id\n          UNION ALL SELECT 30 AS id\n\
-    \          UNION ALL SELECT 31 AS id\n          UNION ALL SELECT 32 AS id\n          UNION ALL SELECT 33 AS id\n     \
-    \     UNION ALL SELECT 35 AS id\n          UNION ALL SELECT 36 AS id\n          UNION ALL SELECT 37 AS id\n          UNION\
-    \ ALL SELECT 40 AS id\n          UNION ALL SELECT 41 AS id\n          UNION ALL SELECT 42 AS id\n          UNION ALL SELECT\
-    \ 50 AS id\n          UNION ALL SELECT 51 AS id\n          UNION ALL SELECT 52 AS id\n          UNION ALL SELECT 57 AS\
-    \ id\n          UNION ALL SELECT 58 AS id\n          UNION ALL SELECT 66 AS id\n          UNION ALL SELECT 77 AS id\n\
-    \          UNION ALL SELECT 78 AS id\n          UNION ALL SELECT 86 AS id\n          UNION ALL SELECT 95 AS id\n     \
-    \     UNION ALL SELECT 98 AS id\n          UNION ALL SELECT 99 AS id\n          UNION ALL SELECT 100 AS id\n         \
-    \ UNION ALL SELECT 101 AS id\n          UNION ALL SELECT 107 AS id\n          UNION ALL SELECT 109 AS id\n          UNION\
-    \ ALL SELECT 114 AS id\n          UNION ALL SELECT 118 AS id\n          UNION ALL SELECT 120 AS id\n          UNION ALL\
-    \ SELECT 131 AS id\n          UNION ALL SELECT 137 AS id\n          UNION ALL SELECT 138 AS id\n          UNION ALL SELECT\
-    \ 140 AS id\n          UNION ALL SELECT 141 AS id\n          UNION ALL SELECT 142 AS id\n          UNION ALL SELECT 143\
-    \ AS id\n          UNION ALL SELECT 144 AS id\n          UNION ALL SELECT 151 AS id\n          UNION ALL SELECT 152 AS\
-    \ id\n          UNION ALL SELECT 155 AS id\n          UNION ALL SELECT 156 AS id\n          UNION ALL SELECT 157 AS id\n\
-    \          UNION ALL SELECT 159 AS id\n          UNION ALL SELECT 170 AS id\n          UNION ALL SELECT 177 AS id\n  \
-    \        UNION ALL SELECT 178 AS id\n          UNION ALL SELECT 201 AS id\n          UNION ALL SELECT 211 AS id\n    \
-    \      UNION ALL SELECT 212 AS id\n          UNION ALL SELECT 213 AS id\n          UNION ALL SELECT 228 AS id\n      \
-    \    UNION ALL SELECT 232 AS id\n          UNION ALL SELECT 241 AS id\n          UNION ALL SELECT 244 AS id\n        \
-    \  UNION ALL SELECT 246 AS id\n          UNION ALL SELECT 258 AS id\n          UNION ALL SELECT 263 AS id\n          UNION\
-    \ ALL SELECT 272 AS id\n          UNION ALL SELECT 275 AS id\n          UNION ALL SELECT 280 AS id\n          UNION ALL\
-    \ SELECT 282 AS id\n          UNION ALL SELECT 285 AS id\n          UNION ALL SELECT 291 AS id\n          UNION ALL SELECT\
-    \ 293 AS id\n          UNION ALL SELECT 297 AS id\n          UNION ALL SELECT 298 AS id\n          UNION ALL SELECT 301\
-    \ AS id\n          UNION ALL SELECT 312 AS id\n          UNION ALL SELECT 354 AS id\n          UNION ALL SELECT 376 AS\
-    \ id\n          UNION ALL SELECT 387 AS id\n          UNION ALL SELECT 408 AS id\n          UNION ALL SELECT 100064 AS\
-    \ id\n          UNION ALL SELECT 100092 AS id\n          UNION ALL SELECT 100157 AS id\n          UNION ALL SELECT 100214\
-    \ AS id\n          UNION ALL SELECT 100320 AS id\n      ) AS pen_cursos ON pen_cursos.id = c.id\n      WHERE b.id IN (16,\
-    \ 18)\n        AND i.inscripcionDate < '2026-08-01'"
+    \      WHERE i.courseId IN (1, 2, 3, 4, 5, 6, 8, 9, 11, 12, 14, 15, 16, 18, 20, 21, 23, 24, 25, 26, 27, 28, 30, 31, 32,\
+    \ 33, 35, 36, 37, 40, 41, 42, 50, 51, 52, 57, 58, 66, 77, 78, 86, 95, 98, 99, 100, 101, 107, 109, 114, 118, 120, 131,\
+    \ 137, 138, 140, 141, 142, 143, 144, 151, 152, 155, 156, 157, 159, 170, 177, 178, 201, 211, 212, 213, 228, 232, 241, 244,\
+    \ 246, 258, 263, 272, 275, 280, 282, 285, 291, 293, 297, 298, 301, 312, 354, 376, 387, 408, 100064, 100092, 100157, 100214,\
+    \ 100320)\n        AND EXISTS (SELECT 1 FROM capacitate_analisis.userbrand ub WHERE ub.userId = i.userId AND ub.brandId\
+    \ IN (16, 18))\n        AND i.inscripcionDate < '2026-08-01'"
   caveats:
-  - 'Lista de 99 course IDs: 36 CEFERESOS (brand 18) + 65 DETPCDMX/Reclusorio norte (brand 16) — actualizado 2026-08-19 con
-    el catálogo actual de cursos penitenciarios.'
-  - Filtro por brand (brandId IN 16, 18 = DETPCDMX, CEFERESOS), NO por plataformaId — los usuarios de penitenciarías pueden
-    tener plataformaId 1 (CPE) o 2 (Aprende).
-  - Corte duro a '2026-08-01'.
+  - Lista de 99 course IDs.
+  - Filtra por inscripciones con brand 16 o 18.
 - key: slide15_mario_molina_inscripciones
   name: Slide 15 — Inscripciones a cursos de Mario Molina
   description: 'Métrica de Slide 15 "Mario Molina Premio Nobel": total acumulado de inscripciones a los 3 cursos del programa
