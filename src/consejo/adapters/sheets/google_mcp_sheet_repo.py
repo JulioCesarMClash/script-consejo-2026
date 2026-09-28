@@ -771,13 +771,13 @@ SLIDE19_TABLE_HEADERS = [
 # columnas que las otras slides (Período inicio / Período fin / Fuente
 # al final).
 SLIDE20_METRIC_ID = "slide20_crecimiento_integral"
-SLIDE20_PERIODO_INICIO = "Acumulado"
+SLIDE20_PERIODO_INICIO = "2025-04-03"
 SLIDE20_PERIODO_FIN = "2026-08-01"
 SLIDE20_FUENTE_INSCRIPCION = "fact_inscription"
 # KPI hardcoded de la Slide física (corte: 'Contenido' publicado en la
-# iniciativa de crecimiento integral). Sin fuente automatizable en este
-# pipeline — Apps Script usa este valor directamente al actualizar la Slide.
-SLIDE20_CONTENIDO = 89
+# iniciativa de crecimiento integral). 73 cursos totales sector 76
+# (46 mantenidos + 27 quitados). Ventana 2025-04-03 a 2026-08-01, fuente mysql.
+SLIDE20_CONTENIDO = 73
 SLIDE20_TABLE_HEADERS = [
     "Categoría",
     "Métrica",
@@ -1991,9 +1991,9 @@ def _build_slide20_block(
         (
             "Contenido",
             SLIDE20_CONTENIDO,
-            SLIDE20_PERIODO_FIN,  # hardcoded — sin query
+            SLIDE20_PERIODO_INICIO,
             SLIDE20_PERIODO_FIN,
-            "manual",
+            "mysql",
         ),
     ]
     for metrica, valor, periodo_inicio, periodo_fin, fuente in plan:

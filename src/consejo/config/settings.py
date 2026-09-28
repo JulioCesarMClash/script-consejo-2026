@@ -125,7 +125,7 @@ class Settings:
     )
     certificate_period_start: date = field(
         default_factory=lambda: _date_env(
-            "CERTIFICATE_PERIOD_START", "2025-09-01"
+            "CERTIFICATE_PERIOD_START", "2025-07-01"
         )
     )
     certificate_period_end: date = field(
