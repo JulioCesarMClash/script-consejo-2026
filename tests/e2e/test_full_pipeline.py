@@ -176,17 +176,18 @@ class TestFullPipelineE2E:
         self, catalog_path: Path, fake_conn: E2EFakeSourceConn,
         fake_sheets: E2EFakeSheetRepo,
     ) -> None:
-        """El pipeline completo produce exactamente 36 manifiestos."""
+        """El pipeline completo produce exactamente 37 manifiestos."""
         result = _run_full_pipeline(catalog_path, fake_conn, fake_sheets)
-        assert result["manifests_len"] == 36
+        assert result["manifests_len"] == 37
         # 10 SQL-fetched EXTRACTED + 6 derived sums built on their parts = 16;
         # slide1, slide12_rutas_aprendizaje, slide2_empleo_incluyente_por_sector,
         # las 2 de Slide 3 (MySQL, sin mysql_conn en el fake), las 3 de
         # Slide 4 (aprende PG + hermana acumulado MySQL + cultura PG, sin filas
         # en la secuencia del fake), las 4 de Slide 13 (postgres, sin filas en
         # la secuencia del fake), las 2 de Slide 15 (MySQL, sin filas en la
-        # secuencia del fake) y las 4 de Slide 19 (postgres, sin filas en la
-        # secuencia del fake) vuelven EMPTY (sin fila)
+        # secuencia del fake), las 4 de Slide 19 (postgres, sin filas en la
+        # secuencia del fake) y slide20_crecimiento_integral_cursos_ofertados
+        # (postgres, métrica nueva sin fila en el fake) vuelven EMPTY (sin fila)
         assert result["rows_len"] == 16
 
     # ── 5.1.b: Traceability run_id / attempt_id ──────────────────────────

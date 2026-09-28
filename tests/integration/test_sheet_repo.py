@@ -819,9 +819,9 @@ class TestGoogleMcpSheetRepo:
         assert len(datos_updates) >= 1
         datos_rows = datos_updates[0]["updateCells"]["rows"]
         # sin slides dinámicos: solo bloques fijos slide 7 (header + 3)
-        # + blank + slide 8 (header + 3) = 9. Slide 13 NO se escribe sin
+        # + blank + slide 8 (header + 4) = 10. Slide 13 NO se escribe sin
         # manifests slide13_* en el bundle.
-        assert len(datos_rows) == 9
+        assert len(datos_rows) == 10
 
     def test_snapshot_populates_datos_sheet_with_slide_tables(
         self, bundle_with_slide1: Bundle, sample_catalog: list[Metric]
@@ -859,9 +859,9 @@ class TestGoogleMcpSheetRepo:
         assert len(datos_updates) >= 1
         datos_rows = datos_updates[0]["updateCells"]["rows"]
         # header + 5 categorías + TOTAL (7) + blank (1) + slide7 (4)
-        # + blank (1) + slide8 (4) = 17. Slide 13 NO se escribe sin
+        # + blank (1) + slide8 (5) = 18. Slide 13 NO se escribe sin
         # manifests slide13_* en el bundle.
-        assert len(datos_rows) == 17
+        assert len(datos_rows) == 18
 
         header = datos_rows[0]["values"]
         assert len(header) == 8
@@ -890,8 +890,9 @@ class TestGoogleMcpSheetRepo:
     ) -> None:
         """Datos debe contener DOS tablas contiguas separadas por blank:
         slide1 (8 cols) y slide2 (7 cols Categoría/Sector/Curso/
-        Certificados/Período inicio/Período fin/Fuente) con TOTAL
-        =SUM(Dfirst:last) en Certificados.
+        Certificados/Período inicio/Período fin/Fuente) con header +
+        subtotal por sector y TOTAL GENERAL con suma aditiva de
+        subtotales en Certificados (ver _build_slide2_block).
         """
         with patch.object(
             GoogleMcpSheetRepo, "_start_proxy"
@@ -926,10 +927,12 @@ class TestGoogleMcpSheetRepo:
         datos_rows = datos_updates[0]["updateCells"]["rows"]
 
         # slide1 (header + 5 data + TOTAL = 7) + blank (1) + slide2
-        # (header + 3 data + TOTAL = 5) = 13 + blank (1) + slide7 (4)
-        # + blank (1) + slide8 (4) = 23. Slide 13 NO se escribe sin
-        # manifests slide13_* en el bundle.
-        assert len(datos_rows) == 23
+        # (header + sector Construcción [header+2 cursos+subtotal] +
+        # sector Limpieza [header+1 curso+subtotal] + blank + TOTAL
+        # = 10) = 18 + blank (1) + slide7 (4) + blank (1) + slide8 (5)
+        # = 29. Slide 13 NO se escribe sin manifests slide13_* en el
+        # bundle.
+        assert len(datos_rows) == 29
 
         # ── Slide 1 (índice 0..6) ──
         slide1_header = datos_rows[0]["values"]
@@ -952,7 +955,11 @@ class TestGoogleMcpSheetRepo:
                 f"Blank row debe tener celdas vacías, got {cell}"
             )
 
-        # ── Slide 2 (índice 8..12) ──
+        # ── Slide 2 (índice 8..17): header + sector Construcción
+        # (header + 2 cursos + subtotal) + sector Limpieza (header +
+        # 1 curso + subtotal) + blank + TOTAL. Categoría es SIEMPRE el
+        # metric_id de la slide (no varía por sector).
+        categoria_slide2 = "slide2_empleo_incluyente_por_sector"
         slide2_header = datos_rows[8]["values"]
         assert len(slide2_header) == 7
         assert [c["userEnteredValue"]["stringValue"] for c in slide2_header] == [
@@ -960,35 +967,76 @@ class TestGoogleMcpSheetRepo:
             "Período inicio", "Período fin", "Fuente",
         ]
 
-        slide2_first = datos_rows[9]["values"]
-        assert len(slide2_first) == 7
-        # col A: Categoría con nomenclatura slide2_<sector>
+        # Fila header de sector "Construcción y mantenimiento" (índice 9).
+        construccion_header = datos_rows[9]["values"]
         assert (
-            slide2_first[0]["userEnteredValue"]["stringValue"]
-            == "slide2_construccion_y_mantenimiento"
+            construccion_header[0]["userEnteredValue"]["stringValue"]
+            == categoria_slide2
         )
-        # col B: Sector ← grupo
         assert (
-            slide2_first[1]["userEnteredValue"]["stringValue"]
+            construccion_header[1]["userEnteredValue"]["stringValue"]
             == "Construcción y mantenimiento"
         )
-        # col C: Curso
+        for c in construccion_header[2:7]:
+            assert c == {"userEnteredValue": {}}
+
+        # Primer curso del sector (índice 10): Sector vacío, Curso +
+        # Certificados poblados.
+        slide2_first = datos_rows[10]["values"]
+        assert len(slide2_first) == 7
+        assert (
+            slide2_first[0]["userEnteredValue"]["stringValue"]
+            == categoria_slide2
+        )
+        assert slide2_first[1] == {"userEnteredValue": {}}
         assert slide2_first[2]["userEnteredValue"]["stringValue"] == "Albañilería básica"
-        # col D: Certificados ← value
         assert slide2_first[3]["userEnteredValue"]["numberValue"] == 1234
         # Período inicio / Período fin / Fuente vacías en datos (mock no las tiene)
         for c in slide2_first[4:7]:
             assert c == {"userEnteredValue": {}}
 
-        slide2_total = datos_rows[12]["values"]
+        # Subtotal del sector Construcción (índice 12): =SUM(D11:D12)
+        # (filas de curso 1-indexadas 11 y 12).
+        construccion_subtotal = datos_rows[12]["values"]
+        assert (
+            construccion_subtotal[1]["userEnteredValue"]["stringValue"]
+            == "Subtotal Construcción y mantenimiento"
+        )
+        assert (
+            construccion_subtotal[3]["userEnteredValue"]["formulaValue"]
+            == "=SUM(D11:D12)"
+        )
+
+        # Subtotal del sector Limpieza (índice 15): =SUM(D15:D15)
+        # (un solo curso, fila 1-indexada 15).
+        limpieza_subtotal = datos_rows[15]["values"]
+        assert (
+            limpieza_subtotal[1]["userEnteredValue"]["stringValue"]
+            == "Subtotal Limpieza y mantenimiento"
+        )
+        assert (
+            limpieza_subtotal[3]["userEnteredValue"]["formulaValue"]
+            == "=SUM(D15:D15)"
+        )
+
+        # Blank row antes del TOTAL (índice 16).
+        for c in datos_rows[16]["values"]:
+            assert c == {"userEnteredValue": {}}
+
+        # TOTAL GENERAL (índice 17): suma aditiva de los 2 subtotales
+        # (filas 1-indexadas 13 y 16).
+        slide2_total = datos_rows[17]["values"]
         assert len(slide2_total) == 7
-        assert slide2_total[0]["userEnteredValue"]["stringValue"] == "TOTAL"
-        # col B vacía (Sector)
-        assert slide2_total[1] == {"userEnteredValue": {}}
+        assert (
+            slide2_total[0]["userEnteredValue"]["stringValue"]
+            == categoria_slide2
+        )
+        assert slide2_total[1]["userEnteredValue"]["stringValue"] == "TOTAL"
         # col C vacía (Curso)
         assert slide2_total[2] == {"userEnteredValue": {}}
-        # col D con =SUM(D10:D12) (header 1-based 9, data 10-12)
-        assert slide2_total[3]["userEnteredValue"]["formulaValue"] == "=SUM(D10:D12)"
+        assert (
+            slide2_total[3]["userEnteredValue"]["formulaValue"] == "=D13+D16"
+        )
         # Período inicio / Período fin / Fuente vacías en TOTAL
         for c in slide2_total[4:7]:
             assert c == {"userEnteredValue": {}}
@@ -1070,19 +1118,20 @@ class TestGoogleMcpSheetRepo:
         assert len(datos_updates) >= 1
         datos_rows = datos_updates[0]["updateCells"]["rows"]
 
-        # slide1 (7) + blank (1) + slide2 (5) + blank (1) + slide3 (4) = 18
-        # + blank (1) + slide7 (4) + blank (1) + slide8 (4) = 28. Slide
+        # slide1 (7) + blank (1) + slide2 (10, con headers/subtotales por
+        # sector — ver _build_slide2_block) + blank (1) + slide3 (4) = 23
+        # + blank (1) + slide7 (4) + blank (1) + slide8 (5) = 34. Slide
         # 13 NO se escribe sin manifests slide13_* en el bundle.
-        assert len(datos_rows) == 28
+        assert len(datos_rows) == 34
 
-        # ── Slide 3 (índice 14..17) ──
-        slide3_header = datos_rows[14]["values"]
+        # ── Slide 3 (índice 19..22) ──
+        slide3_header = datos_rows[19]["values"]
         assert len(slide3_header) == 9
         assert [
             c["userEnteredValue"]["stringValue"] for c in slide3_header
         ] == list(SLIDE3_TABLE_HEADERS)
 
-        cap_empleo = datos_rows[15]["values"]
+        cap_empleo = datos_rows[20]["values"]
         assert len(cap_empleo) == 9
         assert (
             cap_empleo[0]["userEnteredValue"]["stringValue"]
@@ -1098,7 +1147,7 @@ class TestGoogleMcpSheetRepo:
             cap_empleo[8]["userEnteredValue"]["stringValue"] == "manual"
         )
 
-        carso = datos_rows[16]["values"]
+        carso = datos_rows[21]["values"]
         assert len(carso) == 9
         assert (
             carso[0]["userEnteredValue"]["stringValue"]
@@ -1120,7 +1169,7 @@ class TestGoogleMcpSheetRepo:
         )
         assert carso[8]["userEnteredValue"]["stringValue"] == "mysql"
 
-        academica = datos_rows[17]["values"]
+        academica = datos_rows[22]["values"]
         assert len(academica) == 9
         assert (
             academica[0]["userEnteredValue"]["stringValue"]
@@ -1144,7 +1193,7 @@ class TestGoogleMcpSheetRepo:
         assert academica[8]["userEnteredValue"]["stringValue"] == "mysql"
 
         # Sin fila TOTAL: el bloque termina en la fila Academica Labs.
-        assert len(datos_rows) == 28
+        assert len(datos_rows) == 34
 
     def test_build_slide_block_does_not_raise_for_slide3(self) -> None:
         """_build_slide_block NO debe lanzar ValueError para keys slide3_*."""
@@ -1290,20 +1339,21 @@ class TestGoogleMcpSheetRepo:
         assert len(datos_updates) >= 1
         datos_rows = datos_updates[0]["updateCells"]["rows"]
 
-        # slide1 (7) + blank (1) + slide2 (5) + blank (1) + slide3 (4)
-        # + blank (1) + slide4 (4) = 23 + blank (1) + slide7 (4)
-        # + blank (1) + slide8 (4) = 33. Slide 13 NO se escribe sin
+        # slide1 (7) + blank (1) + slide2 (10, con headers/subtotales por
+        # sector — ver _build_slide2_block) + blank (1) + slide3 (4) = 23
+        # + blank (1) + slide4 (4) = 28 + blank (1) + slide7 (4)
+        # + blank (1) + slide8 (5) = 39. Slide 13 NO se escribe sin
         # manifests slide13_* en el bundle.
-        assert len(datos_rows) == 33
+        assert len(datos_rows) == 39
 
-        # ── Slide 4 (índice 19..22) ──
-        slide4_header = datos_rows[19]["values"]
+        # ── Slide 4 (índice 24..27) ──
+        slide4_header = datos_rows[24]["values"]
         assert len(slide4_header) == 9
         assert [
             c["userEnteredValue"]["stringValue"] for c in slide4_header
         ] == list(SLIDE4_TABLE_HEADERS)
 
-        pilotos = datos_rows[20]["values"]
+        pilotos = datos_rows[25]["values"]
         assert len(pilotos) == 9
         assert (
             pilotos[0]["userEnteredValue"]["stringValue"]
@@ -1313,13 +1363,16 @@ class TestGoogleMcpSheetRepo:
             pilotos[1]["userEnteredValue"]["stringValue"]
             == "Pilotos por la Seguridad Vial"
         )
-        for c in pilotos[2:8]:
+        # 2025/sep2026/períodos vacíos; Acumulado sep2026 (col 5) es el
+        # valor hardcoded de la presentación (146132).
+        for c in (pilotos[2], pilotos[3], pilotos[6], pilotos[7]):
             assert c == {"userEnteredValue": {}}
+        assert pilotos[5]["userEnteredValue"]["numberValue"] == 146132
         assert (
             pilotos[8]["userEnteredValue"]["stringValue"] == "manual"
         )
 
-        seguridad = datos_rows[21]["values"]
+        seguridad = datos_rows[26]["values"]
         assert len(seguridad) == 9
         assert (
             seguridad[0]["userEnteredValue"]["stringValue"]
@@ -1331,20 +1384,21 @@ class TestGoogleMcpSheetRepo:
         )
         assert seguridad[2]["userEnteredValue"]["numberValue"] == 25254
         assert seguridad[3]["userEnteredValue"]["numberValue"] == 18578
-        assert seguridad[4]["userEnteredValue"]["numberValue"] == 27129
+        # dic2026 se recalcula con _project_dic2026: round(18578*12/7)=31848.
+        assert seguridad[4]["userEnteredValue"]["numberValue"] == 31848
         assert seguridad[5]["userEnteredValue"]["numberValue"] == 184288
         assert (
             seguridad[6]["userEnteredValue"]["stringValue"] == "2025-01-01"
         )
         assert (
-            seguridad[7]["userEnteredValue"]["stringValue"] == "2026-09-30"
+            seguridad[7]["userEnteredValue"]["stringValue"] == "2026-08-01"
         )
         assert (
             seguridad[8]["userEnteredValue"]["stringValue"]
             == "postgres + mysql"
         )
 
-        cultura = datos_rows[22]["values"]
+        cultura = datos_rows[27]["values"]
         assert len(cultura) == 9
         assert (
             cultura[0]["userEnteredValue"]["stringValue"]
@@ -1356,18 +1410,19 @@ class TestGoogleMcpSheetRepo:
         )
         assert cultura[2]["userEnteredValue"]["numberValue"] == 104736
         assert cultura[3]["userEnteredValue"]["numberValue"] == 102916
-        assert cultura[4]["userEnteredValue"]["numberValue"] == 134327
+        # dic2026 se recalcula con _project_dic2026: round(102916*12/7)=176427.
+        assert cultura[4]["userEnteredValue"]["numberValue"] == 176427
         assert cultura[5]["userEnteredValue"]["numberValue"] == 1413528
         assert (
             cultura[6]["userEnteredValue"]["stringValue"] == "2025-01-01"
         )
         assert (
-            cultura[7]["userEnteredValue"]["stringValue"] == "2026-09-30"
+            cultura[7]["userEnteredValue"]["stringValue"] == "2026-08-01"
         )
         assert cultura[8]["userEnteredValue"]["stringValue"] == "postgres"
 
         # Sin fila TOTAL: el bloque termina en la fila Cultura y Salud.
-        assert len(datos_rows) == 33
+        assert len(datos_rows) == 39
 
     def test_build_slide_block_does_not_raise_for_slide4(self) -> None:
         """_build_slide_block NO debe lanzar ValueError para keys slide4_*."""
@@ -1411,7 +1466,9 @@ class TestGoogleMcpSheetRepo:
         )
         assert rows[2]["values"][2]["userEnteredValue"]["numberValue"] == 100
         assert rows[2]["values"][3]["userEnteredValue"]["numberValue"] == 50
-        assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 70
+        # dic2026 se recalcula con _project_dic2026, no toma el valor crudo
+        # del manifest: round(50 * (1 + 5/7)) = 86.
+        assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 86
         assert rows[2]["values"][5]["userEnteredValue"]["numberValue"] == 999
         assert (
             rows[2]["values"][6]["userEnteredValue"]["stringValue"]
@@ -1419,7 +1476,7 @@ class TestGoogleMcpSheetRepo:
         )
         assert (
             rows[2]["values"][7]["userEnteredValue"]["stringValue"]
-            == "2026-09-30"
+            == "2026-08-01"
         )
         assert (
             rows[2]["values"][8]["userEnteredValue"]["stringValue"]
@@ -1427,7 +1484,9 @@ class TestGoogleMcpSheetRepo:
         )
 
     def test_build_slide4_block_keeps_pilotos_manual(self) -> None:
-        """La fila Pilotos queda toda manual (valores y acumulado vacíos)."""
+        """La fila Pilotos queda 'manual': sin ventanas 2025/sep2026/dic2026
+        ni períodos, pero con el acumulado hardcoded de la presentación
+        (146132, SLIDE4_PILOTOS_ACUMULADO) en la columna Acumulado sep2026."""
         seguridad = SourceManifest(
             metric_id=MetricId("slide4_aprende_seguridad_vial"),
             source=MetricSource.FACT_INSCRIPTION,
@@ -1442,14 +1501,21 @@ class TestGoogleMcpSheetRepo:
 
         assert next_row == 3
         assert len(rows) == 3
-        # Pilotos: todas las celdas de valor (cols 2..7) vacías.
-        for col in range(2, 8):
+        # Pilotos: 2025/sep2026/períodos vacíos.
+        for col in (2, 3, 6, 7):
             assert rows[1]["values"][col] == {"userEnteredValue": {}}
+        # Acumulado sep2026 (col 5) es el valor hardcoded de la
+        # presentación (146132), no viene de ningún manifest.
+        assert (
+            rows[1]["values"][5]["userEnteredValue"]["numberValue"] == 146132
+        )
         assert rows[1]["values"][8]["userEnteredValue"]["stringValue"] == "manual"
-        # Seguridad vial: todos los valores reales presentes.
+        # Seguridad vial: todos los valores reales presentes. dic2026 se
+        # recalcula con _project_dic2026, no toma el valor crudo del
+        # manifest: round(18578 * (1 + 5/7)) = 31848.
         assert rows[2]["values"][2]["userEnteredValue"]["numberValue"] == 25254
         assert rows[2]["values"][3]["userEnteredValue"]["numberValue"] == 18578
-        assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 27129
+        assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 31848
         assert rows[2]["values"][5]["userEnteredValue"]["numberValue"] == 184288
 
     def test_build_slide4_block_mysql_single_value_writes_acumulado(
@@ -1481,9 +1547,13 @@ class TestGoogleMcpSheetRepo:
 
         assert next_row == 3
         assert len(rows) == 3
-        # Pilotos: fila manual sin valores.
-        for col in range(2, 8):
+        # Pilotos: fila manual sin ventanas/períodos, pero con el
+        # acumulado hardcoded (146132) en la columna Acumulado sep2026.
+        for col in (2, 3, 6, 7):
             assert rows[1]["values"][col] == {"userEnteredValue": {}}
+        assert (
+            rows[1]["values"][5]["userEnteredValue"]["numberValue"] == 146132
+        )
         assert rows[1]["values"][8]["userEnteredValue"]["stringValue"] == "manual"
         # Seguridad vial: ventanas fijas vacías.
         for col in (2, 3, 4):
@@ -1773,8 +1843,9 @@ class TestGoogleMcpSheetRepo:
 
     def test_build_slide7_block_fixed_rows(self) -> None:
         """El bloque slide 7 es fijo: header de 6 cols + las 3 plataformas
-        aprobadas con Categoría slide7_* y fuente 'manual'. Devuelve 4 filas
-        y next_row = 4."""
+        aprobadas con Categoría slide7_* y fuente 'slide3' (ya no 'manual':
+        la definición replica la columna acumulada de slide 3). Devuelve
+        4 filas y next_row = 4."""
         rows, next_row = _build_slide7_block(0)
 
         assert next_row == 4
@@ -1788,7 +1859,7 @@ class TestGoogleMcpSheetRepo:
 
         categorias = [
             "slide7_capacitate_empleo",
-            "slide7_academica",
+            "slide7_academica_labs",
             "slide7_capacitate_carso",
         ]
         for i, (fila, expected_categoria) in enumerate(
@@ -1803,7 +1874,7 @@ class TestGoogleMcpSheetRepo:
             assert values[3] == {"userEnteredValue": {}}
             assert values[4] == {"userEnteredValue": {}}
             assert (
-                values[5]["userEnteredValue"]["stringValue"] == "manual"
+                values[5]["userEnteredValue"]["stringValue"] == "slide3"
             )
 
     def test_snapshot_datos_includes_slide7_fixed_table(
@@ -1813,8 +1884,8 @@ class TestGoogleMcpSheetRepo:
     ) -> None:
         """Datos debe contener el bloque FIJO slide 7: header de 6 cols
         y las 3 plataformas aprobadas (Categoría slide7_*, Programa legible,
-        Usuarios numérico y fuente manual). Se busca por contenido del
-        header (no por índice) porque el orden relativo de los bloques
+        Usuarios numérico o vacío y fuente 'slide3'). Se busca por contenido
+        del header (no por índice) porque el orden relativo de los bloques
         fijos puede cambiar cuando se agregan más slides."""
         with patch.object(
             GoogleMcpSheetRepo, "_start_proxy"
@@ -1884,9 +1955,9 @@ class TestGoogleMcpSheetRepo:
         ] == list(SLIDE7_TABLE_HEADERS)
 
         expect = [
-            ("slide7_capacitate_empleo", "Capacítate para el Empleo", 13364056),
-            ("slide7_academica", "Académica.org", 1477363),
-            ("slide7_capacitate_carso", "Capacítate Carso", 558774),
+            ("slide7_capacitate_empleo", "Capacítate para el Empleo", ""),
+            ("slide7_academica_labs", "Académica Labs", 4317),
+            ("slide7_capacitate_carso", "Capacítate Carso", 593490),
         ]
         for fila, (categoria, programa, usuarios) in zip(
             datos_rows[slide7_header_idx + 1 : slide7_header_idx + 4],
@@ -1900,23 +1971,29 @@ class TestGoogleMcpSheetRepo:
             assert (
                 values[1]["userEnteredValue"]["stringValue"] == programa
             )
-            assert (
-                values[2]["userEnteredValue"]["numberValue"] == usuarios
-            )
+            if usuarios == "":
+                # Capacítate para el Empleo aún no tiene valor aprobado:
+                # la celda queda vacía en vez de numérica.
+                assert values[2] == {"userEnteredValue": {}}
+            else:
+                assert (
+                    values[2]["userEnteredValue"]["numberValue"] == usuarios
+                )
             assert values[3] == {"userEnteredValue": {}}
             assert values[4] == {"userEnteredValue": {}}
             assert (
-                values[5]["userEnteredValue"]["stringValue"] == "manual"
+                values[5]["userEnteredValue"]["stringValue"] == "slide3"
             )
 
     def test_build_slide8_block_fixed_rows(self) -> None:
-        """El bloque slide 8 es fijo: header de 6 cols + las 3 plataformas
-        aprobadas con Categoría slide8_* y fuente 'manual'. Devuelve 4 filas
-        y next_row = 4."""
+        """El bloque slide 8 es fijo: header de 6 cols + las 4 plataformas
+        aprobadas con Categoría slide8_* y fuente slide4/slide13 (ya no
+        'manual': los valores replican los acumulados de slide3/slide4/
+        slide13). Devuelve 5 filas y next_row = 5."""
         rows, next_row = _build_slide8_block(0)
 
-        assert next_row == 4
-        assert len(rows) == 4
+        assert next_row == 5
+        assert len(rows) == 5
 
         header = rows[0]["values"]
         assert len(header) == 6
@@ -1924,13 +2001,14 @@ class TestGoogleMcpSheetRepo:
             c["userEnteredValue"]["stringValue"] for c in header
         ] == list(SLIDE8_TABLE_HEADERS)
 
-        categorias = [
-            "slide8_pilotos_seguridad_vial",
-            "slide8_formacion_penitenciarios",
-            "slide8_aprende_seguridad_vial",
+        categorias_fuentes = [
+            ("slide8_pilotos_seguridad_vial", "slide4"),
+            ("slide8_formacion_penitenciarios", "slide13"),
+            ("slide8_aprende_seguridad_vial", "slide4"),
+            ("slide8_cultura_salud_aprende", "slide4"),
         ]
-        for i, (fila, expected_categoria) in enumerate(
-            zip(rows[1:], categorias)
+        for i, (fila, (expected_categoria, expected_fuente)) in enumerate(
+            zip(rows[1:], categorias_fuentes)
         ):
             values = fila["values"]
             assert len(values) == 6
@@ -1941,16 +2019,18 @@ class TestGoogleMcpSheetRepo:
             assert values[3] == {"userEnteredValue": {}}
             assert values[4] == {"userEnteredValue": {}}
             assert (
-                values[5]["userEnteredValue"]["stringValue"] == "manual"
+                values[5]["userEnteredValue"]["stringValue"]
+                == expected_fuente
             )
 
     def test_build_slide13_block_fixed_rows(self) -> None:
         """El bloque slide 13 arma la tarjeta de KPIs de "Formación en
         Centros Penitenciarios" desde manifests del pipeline (4 KPIs) +
-        1 hardcoded (Centros). Header de 6 cols (Categoría | Métrica |
-        Valor | Período inicio | Período fin | Fuente) + 5 filas
-        (Inscripciones totales, Certificados, Usuarios registrados,
-        Cursos ofertados, Centros). Devuelve 6 filas y next_row = 6."""
+        1 derivado (Cursos por persona) + 1 hardcoded (Centros). Header de
+        6 cols (Categoría | Métrica | Valor | Período inicio | Período fin
+        | Fuente) + 6 filas (Inscripciones totales, Certificados, Usuarios
+        registrados, Cursos por persona, Cursos ofertados, Centros).
+        Devuelve 7 filas y next_row = 7."""
         manifests = [
             SourceManifest(
                 metric_id=MetricId(
@@ -2016,8 +2096,8 @@ class TestGoogleMcpSheetRepo:
 
         rows, next_row = _build_slide13_block(manifests, 0)
 
-        assert next_row == 6
-        assert len(rows) == 6
+        assert next_row == 7
+        assert len(rows) == 7
 
         header = rows[0]["values"]
         assert len(header) == 6
@@ -2025,11 +2105,16 @@ class TestGoogleMcpSheetRepo:
             c["userEnteredValue"]["stringValue"] for c in header
         ] == list(SLIDE13_TABLE_HEADERS)
 
-        # Plan: (metrica, valor, periodo_inicio, periodo_fin, fuente)
+        # Plan: (metrica, valor, periodo_inicio, periodo_fin, fuente).
+        # Usuarios registrados ahora viene de dim_user (no de
+        # fact_inscription): replica SP_Capacitate_count_users_by_brand_
+        # age_gender. Cursos por persona es derivado: round(inscripciones
+        # / usuarios_registrados, 2) = round(2753 / 276, 2) = 9.97.
         expected = [
             ("Inscripciones totales", 2753, "Acumulado", "2026-08-01", "inscription"),
             ("Certificados", 806, "Acumulado", "2026-08-01", "inscription"),
-            ("Usuarios registrados", 276, "Acumulado", "2026-08-01", "inscription"),
+            ("Usuarios registrados", 276, "Acumulado", "2026-08-01", "dim_user"),
+            ("Cursos por persona", 9.97, "Acumulado", "2026-08-01", "calculado"),
             ("Cursos ofertados", 98, "Acumulado", "2026-08-01", "inscription"),
             ("Centros", SLIDE13_CENTROS, "2026-08-01", "2026-08-01", "manual"),
         ]
@@ -2092,10 +2177,10 @@ class TestGoogleMcpSheetRepo:
         catalog_with_both_slides: list[Metric],
     ) -> None:
         """Datos debe incluir el bloque FIJO slide 8: header de 6 cols y
-        las 3 plataformas aprobadas (Categoría slide8_*, Programa legible,
-        Usuarios numérico y fuente manual). Se busca por contenido del
-        header (no por índice) porque el bloque ya no es necesariamente
-        el último (slide 13 va después)."""
+        las 4 plataformas aprobadas (Categoría slide8_*, Programa legible,
+        Usuarios numérico y fuente slide4/slide13 — ya no 'manual'). Se
+        busca por contenido del header (no por índice) porque el bloque
+        ya no es necesariamente el último (slide 13 va después)."""
         with patch.object(
             GoogleMcpSheetRepo, "_start_proxy"
         ), patch.object(
@@ -2164,12 +2249,13 @@ class TestGoogleMcpSheetRepo:
         ] == list(SLIDE8_TABLE_HEADERS)
 
         expect = [
-            ("slide8_pilotos_seguridad_vial", "Pilotos por la Seguridad Vial", 146132),
-            ("slide8_formacion_penitenciarios", "Formación en Centros Penitenciarios", 1878),
-            ("slide8_aprende_seguridad_vial", "Aprende de Seguridad Vial", 183846),
+            ("slide8_pilotos_seguridad_vial", "Pilotos por la Seguridad Vial", 146132, "slide4"),
+            ("slide8_formacion_penitenciarios", "Formación en Centros Penitenciarios", 2757, "slide13"),
+            ("slide8_aprende_seguridad_vial", "Aprende de Seguridad Vial", 207559, "slide4"),
+            ("slide8_cultura_salud_aprende", "Cultura y Salud Aprende", 1523219, "slide4"),
         ]
-        for fila, (categoria, programa, usuarios) in zip(
-            datos_rows[slide8_header_idx + 1 : slide8_header_idx + 4],
+        for fila, (categoria, programa, usuarios, fuente) in zip(
+            datos_rows[slide8_header_idx + 1 : slide8_header_idx + 5],
             expect,
         ):
             values = fila["values"]
@@ -2186,7 +2272,7 @@ class TestGoogleMcpSheetRepo:
             assert values[3] == {"userEnteredValue": {}}
             assert values[4] == {"userEnteredValue": {}}
             assert (
-                values[5]["userEnteredValue"]["stringValue"] == "manual"
+                values[5]["userEnteredValue"]["stringValue"] == fuente
             )
 
     def test_snapshot_datos_includes_slide13_from_pipeline(
@@ -2196,11 +2282,12 @@ class TestGoogleMcpSheetRepo:
     ) -> None:
         """Datos debe incluir el bloque slide 13 al final (después del
         bloque fijo slide 8 + blank row de separación): header de 3
-        cols (Categoría | Métrica | Valor) y 5 filas (Inscripciones
-        totales, Certificados, Usuarios registrados, Cursos ofertados
-        desde manifests del pipeline, + Centros hardcoded). Se busca
-        el header por contenido (no por índice) para que el test sea
-        robusto a cambios en el orden de los bloques."""
+        cols (Categoría | Métrica | Valor) y 6 filas (Inscripciones
+        totales, Certificados, Usuarios registrados desde dim_user,
+        Cursos por persona derivado, Cursos ofertados desde manifests
+        del pipeline, + Centros hardcoded). Se busca el header por
+        contenido (no por índice) para que el test sea robusto a
+        cambios en el orden de los bloques."""
         with patch.object(
             GoogleMcpSheetRepo, "_start_proxy"
         ), patch.object(
@@ -2265,12 +2352,15 @@ class TestGoogleMcpSheetRepo:
             c["userEnteredValue"]["stringValue"] for c in slide13_header
         ] == list(SLIDE13_TABLE_HEADERS)
 
-        # Las 5 filas de datos de slide 13 (4 desde manifests + 1
-        # Centros hardcoded) vienen inmediatamente después del header.
+        # Las 6 filas de datos de slide 13 (4 desde manifests + 1
+        # derivada + 1 Centros hardcoded) vienen inmediatamente después
+        # del header. Usuarios registrados viene de dim_user; Cursos por
+        # persona = round(2753 / 276, 2) = 9.97.
         expected_plan = [
             ("Inscripciones totales", 2753, "Acumulado", "2026-08-01", "inscription"),
             ("Certificados", 806, "Acumulado", "2026-08-01", "inscription"),
-            ("Usuarios registrados", 276, "Acumulado", "2026-08-01", "inscription"),
+            ("Usuarios registrados", 276, "Acumulado", "2026-08-01", "dim_user"),
+            ("Cursos por persona", 9.97, "Acumulado", "2026-08-01", "calculado"),
             ("Cursos ofertados", 98, "Acumulado", "2026-08-01", "inscription"),
             ("Centros", SLIDE13_CENTROS, "2026-08-01", "2026-08-01", "manual"),
         ]

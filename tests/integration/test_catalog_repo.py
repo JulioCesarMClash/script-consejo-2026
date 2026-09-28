@@ -4,6 +4,7 @@ Verifica que el catálogo YAML se lea correctamente, exponga 16 métricas,
 identifique correctamente las plataformas y fuentes manuales.
 """
 
+import re
 from pathlib import Path
 
 import pytest
@@ -23,7 +24,7 @@ class TestCatalogRepo:
 
     def test_returns_20_metrics(self, catalog_repo: YamlMetricRepo) -> None:
         metrics = list(catalog_repo.list_metrics())
-        assert len(metrics) == 36
+        assert len(metrics) == 37
 
     def test_metrics_have_unique_keys(
         self, catalog_repo: YamlMetricRepo
@@ -127,7 +128,7 @@ class TestCatalogRepo:
             for m in metrics
             if m.source == MetricSource.FACT_INSCRIPTION
         ]
-        assert len(fact) == 28  # 17 + slide12 + 3 slide13 (insc,cert,cursos; usuarios ahora dim_user) + 1 slide15 + 4 slide19 + 2 slide20 + 1 slide4_aprende(PG)
+        assert len(fact) == 29  # 17 + slide12 + 3 slide13 (insc,cert,cursos; usuarios ahora dim_user) + 1 slide15 + 4 slide19 + 3 slide20 (insc, personas, cursos_ofertados) + 1 slide4_aprende(PG)
 
     def test_platform_scope_cpe(
         self, catalog_repo: YamlMetricRepo
@@ -206,3 +207,39 @@ class TestCatalogRepo:
         a = catalog_repo.list_metrics()
         b = catalog_repo.list_metrics()
         assert a is b  # misma instancia cacheada
+
+    def test_slide12_compras_y_pagos_counts_only_standalone_course(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Slide 12 — ruta "Compras y pagos digitales".
+
+        Declara 6 cursos (columna Cursos), pero 5 de ellos ya pertenecen a
+        otras rutas (373, 100006, 380, 345 en "Interacción con el mundo
+        digital"; 320 en "Mi negocio en internet"). Para no duplicar
+        inscripciones ni certificados en el TOTAL de la slide, la ruta
+        cuenta SOLO el curso que no se repite: 100129.
+        """
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "slide12_rutas_aprendizaje"
+        )
+        sql = metric.db_mapping
+
+        rutas = re.findall(
+            r"\(\d+, '[^']+', '([^']+)', ARRAY\[([\d,\s]+)\]::bigint\[\], "
+            r"(?:NULL|ARRAY\[([\d,\s]+)\])::bigint\[\]\)",
+            sql,
+        )
+        assert len(rutas) == 17
+
+        nombre, declarados, conteo = next(
+            r for r in rutas if r[0] == "Compras y pagos digitales"
+        )
+        assert [int(i) for i in declarados.split(",")] == [
+            373, 100006, 380, 345, 100129, 320,
+        ]
+        assert [int(i) for i in conteo.split(",")] == [100129]
+
+        # Las otras 16 rutas cuentan todos sus cursos (sin array de conteo).
+        assert [r[0] for r in rutas if r[2]] == ["Compras y pagos digitales"]
+        assert "COALESCE(r.curso_ids_conteo, r.curso_ids)" in sql

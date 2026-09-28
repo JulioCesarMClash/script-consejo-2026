@@ -185,7 +185,7 @@ class TestPipelineDry:
             cut=cut,
         )
 
-        assert len(manifests) == 36
+        assert len(manifests) == 37
 
     def test_extract_beneficiaries_is_derived_not_manual(
         self, catalog_path: Path, fake_conn: FakeSourceConn
@@ -298,7 +298,7 @@ class TestPipelineDry:
         assert bundle.run_id == run_id
         assert bundle.attempt_id == attempt_id
         assert bundle.catalog_hash == catalog_hash
-        assert len(bundle.manifests) == 36
+        assert len(bundle.manifests) == 37
         assert str(bundle.hash) != "0" * 64
 
     def test_validate_blocks_with_empty_manifests(
@@ -450,7 +450,7 @@ class TestPipelineDry:
             cut=cut,
             fetched_at=fetched_at,
         )
-        assert len(manifests) == 36
+        assert len(manifests) == 37
 
         # Validate
         bundle = validate_bundle(
@@ -528,7 +528,7 @@ class TestPipelineDry:
             mode=PipelineMode.PRODUCTION,
         )
 
-        assert len(bundle.manifests) == len(catalog) == 36
+        assert len(bundle.manifests) == len(catalog) == 37
         assert bundle.dqs == ()
         assert create_snapshot(bundle, fake_sheets, "fake-spreadsheet-id", catalogo=catalog) == "fake-spreadsheet-id"
         assert len(fake_sheets._snapshots) == 1
