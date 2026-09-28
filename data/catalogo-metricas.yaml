@@ -303,9 +303,9 @@ metrics:
   platform_scope:
   - cpe
   - aprende
-  db_mapping: "WITH categorias AS (\n  SELECT * FROM (VALUES\n  ('slide1_vivienda',\n   ARRAY[9,187,4,389,390,367,11,30,140,23,29,24,12,100157,244,240]::bigint[],\
-    \ 0),\n  ('slide1_digital',\n   ARRAY[254,399,213,258,285,379,43,321,374,375,100002,\n          100006,394,380,100003,345,368,372,373,100212,366]::bigint[],\
-    \ 2),\n  ('slide1_alimentos',\n   ARRAY[33,241,282,410,103,145,242,362,382,128,129,130,141,347,\n          89,291,100147,100322,142,299,348,364]::bigint[],\
+  db_mapping: "WITH categorias AS (\n  SELECT * FROM (VALUES\n  ('slide1_vivienda',\n   ARRAY[9,187,4,389,390,367,11,30,140,23,29,24,12,100157,244,240,27]::bigint[],\
+    \ 0),\n  ('slide1_digital',\n   ARRAY[254,399,213,258,285,379,43,321,374,375,100002,\n          100006,394,380,100003,345,368,372,373,100897,100212,366]::bigint[],\
+    \ 2),\n  ('slide1_alimentos',\n   ARRAY[33,241,282,410,103,145,242,362,382,128,129,130,141,347,\n          89,291,100147,100322,142,299,348,364,100900,100861,100918]::bigint[],\
     \ 7),\n  ('slide1_desastres',\n   ARRAY[57,95,120,276,281,314,342,354,387,393,100098]::bigint[], 0),\n  ('slide1_empleo',\n\
     \   ARRAY[93,156,157,158,100092,100149,159,167,169,100105,106,107,117,\n          153,100074,118,234,301,100101,100310,100320,143,170,320,343,\n\
     \          358]::bigint[], 3)\n) AS RECORDS(metric_id, categoria_ids, compartidos) ) SELECT c.metric_id,\n       'fact_inscription'\
@@ -330,7 +330,7 @@ metrics:
     / desastres=74,569 / empleo=81,258 / TOTAL=352,206 personas únicas certificadas.'
 - key: slide12_rutas_aprendizaje
   name: Rutas de aprendizaje (Slide 12)
-  description: 'Tabla slide 12: 16 rutas de aprendizaje en 4 secciones (Construcción, Habilidades digitales, Capacitación
+  description: 'Tabla slide 12: 17 rutas de aprendizaje en 4 secciones (Construcción, Habilidades digitales, Capacitación
     básica, Emprendimiento) con las columnas Cursos | Inscripciones | Certificados. value = cursos por ruta (count de IDs,
     derivado del array); inscripciones = COUNT (sin DISTINCT) de fact_inscription con inscripcionDate < ''2026-08-01'' y plataforma
     1 (CPE) o 2 (Aprende); certificados = COUNT (sin DISTINCT) con advance = 100 AND certificationDate < ''2026-08-01'' y
@@ -349,26 +349,30 @@ metrics:
   - cpe
   - aprende
   db_mapping: "WITH rutas AS (\n  SELECT * FROM (VALUES\n  (1, 'Construcción', 'Proyectos constructivos y mantenimiento',\
-    \ ARRAY[9,187,4,389,390,367,11,30,140,23,29,24,12,100157,244,240]::bigint[]),\n  (2, 'Habilidades digitales', '¿Cómo utilizar\
-    \ un celular?', ARRAY[254,399]::bigint[]),\n  (3, 'Habilidades digitales', '¿Cómo utilizar la computadora?', ARRAY[213,379,285,258]::bigint[]),\n\
-    \  (4, 'Habilidades digitales', 'Preparación para usar internet', ARRAY[43,100002,375,321,374]::bigint[]),\n  (5, 'Habilidades\
-    \ digitales', 'Interacción con el mundo digital', ARRAY[100006,394,380,373,100003,345,368,372]::bigint[]),\n  (6, 'Capacitación\
-    \ básica', 'Seguridad, higiene y cuidado de la salud', ARRAY[362,342,382,242,145,103]::bigint[]),\n  (7, 'Capacitación\
-    \ básica', 'Uso eficiente de recursos', ARRAY[129,141,347,128,130]::bigint[]),\n  (8, 'Capacitación básica', 'Entendiendo\
-    \ mi situación económica', ARRAY[100147,291,100322,89]::bigint[]),\n  (9, 'Capacitación básica', '¿Cómo mejorar mi entorno?',\
-    \ ARRAY[142,299,364,348]::bigint[]),\n  (10, 'Capacitación básica', 'Alimentos desde casa', ARRAY[410,282,241,33]::bigint[]),\n\
-    \  (11, 'Capacitación básica', 'Actuar en caso de desastres naturales', ARRAY[387,95,100098,120,314,354,281,57,393,276]::bigint[]),\n\
-    \  (12, 'Emprendimiento', 'Planea tu negocio', ARRAY[93,100092,100149,157,156,158,100327]::bigint[]),\n  (13, 'Emprendimiento',\
-    \ 'Planea los gastos y ganancias de tu negocio', ARRAY[169,159,167,100105]::bigint[]),\n  (14, 'Emprendimiento', '¿Cómo\
-    \ preparar mis productos para venderlos?', ARRAY[100074,106,107,117,153]::bigint[]),\n  (15, 'Emprendimiento', 'Servicio\
-    \ y ventas de tu negocio', ARRAY[100320,118,301,234,100310,100101]::bigint[]),\n  (16, 'Emprendimiento', 'Mi negocio en\
-    \ internet', ARRAY[170,320,143,358,343]::bigint[])\n) AS RECORDS(orden, seccion, ruta, curso_ids) ) SELECT r.seccion,\
-    \ r.ruta, array_length(r.curso_ids, 1) AS value,\n       COUNT(fi.\"userId\") FILTER (WHERE fi.\"inscripcionDate\" < '2026-08-01')\
-    \ AS inscripciones,\n       COUNT(fi.\"userId\") FILTER (WHERE fi.advance = 100 AND fi.\"certificationDate\" < '2026-08-01')\
-    \ AS certificados,\n       'Acumulado' AS periodo_inicio,\n       '2026-08-01' AS periodo_fin,\n       'fact_inscription'\
-    \ AS source\nFROM rutas r JOIN fact_inscription fi ON fi.\"courseId\" = ANY(r.curso_ids) JOIN dim_user u ON u.\"userId\"\
-    \ = fi.\"userId\" JOIN dim_local l ON l.\"localId\" = u.\"localId\" WHERE u.\"plataformaId\" IN (1,2)\n  AND l.\"countryName\"\
-    \ = 'México'\nGROUP BY r.orden, r.seccion, r.ruta, r.curso_ids ORDER BY r.orden\n"
+    \ ARRAY[9,187,4,389,390,367,11,30,140,23,29,24,12,100157,244,240,27]::bigint[], NULL::bigint[]),\n  (2, 'Habilidades digitales',\
+    \ '¿Cómo utilizar un celular?', ARRAY[254,399]::bigint[], NULL::bigint[]),\n  (3, 'Habilidades digitales', '¿Cómo utilizar\
+    \ la computadora?', ARRAY[213,379,285,258]::bigint[], NULL::bigint[]),\n  (4, 'Habilidades digitales', 'Preparación para\
+    \ usar internet', ARRAY[43,100002,375,321,374]::bigint[], NULL::bigint[]),\n  (5, 'Habilidades digitales', 'Interacción\
+    \ con el mundo digital', ARRAY[100006,394,380,373,100003,345,368,372,100897]::bigint[], NULL::bigint[]),\n  (6, 'Habilidades\
+    \ digitales', 'Compras y pagos digitales', ARRAY[373,100006,380,345,100129,320]::bigint[], ARRAY[100129]::bigint[]),\n\
+    \  (7, 'Capacitación básica', 'Seguridad, higiene y cuidado de la salud', ARRAY[362,342,382,242,145,103,100900]::bigint[],\
+    \ NULL::bigint[]),\n  (8, 'Capacitación básica', 'Uso eficiente de recursos', ARRAY[129,141,347,128,130]::bigint[], NULL::bigint[]),\n\
+    \  (9, 'Capacitación básica', 'Entendiendo mi situación económica', ARRAY[100147,291,100322,89,100861]::bigint[], NULL::bigint[]),\n\
+    \  (10, 'Capacitación básica', '¿Cómo mejorar mi entorno?', ARRAY[142,299,364,348,100918]::bigint[], NULL::bigint[]),\n\
+    \  (11, 'Capacitación básica', 'Alimentos desde casa', ARRAY[410,282,241,33]::bigint[], NULL::bigint[]),\n  (12, 'Capacitación\
+    \ básica', 'Actuar en caso de desastres naturales', ARRAY[387,95,100098,120,314,354,281,57,393,276]::bigint[], NULL::bigint[]),\n\
+    \  (13, 'Emprendimiento', 'Planea tu negocio', ARRAY[93,100092,100149,157,156,158,100327]::bigint[], NULL::bigint[]),\n\
+    \  (14, 'Emprendimiento', 'Planea los gastos y ganancias de tu negocio', ARRAY[169,159,167,100105]::bigint[], NULL::bigint[]),\n\
+    \  (15, 'Emprendimiento', '¿Cómo preparar mis productos para venderlos?', ARRAY[100074,106,107,117,153]::bigint[], NULL::bigint[]),\n\
+    \  (16, 'Emprendimiento', 'Servicio y ventas de tu negocio', ARRAY[100320,118,301,234,100310,100101]::bigint[], NULL::bigint[]),\n\
+    \  (17, 'Emprendimiento', 'Mi negocio en internet', ARRAY[170,320,143,358,343]::bigint[], NULL::bigint[])\n) AS RECORDS(orden,\
+    \ seccion, ruta, curso_ids, curso_ids_conteo) ) SELECT r.seccion, r.ruta, array_length(r.curso_ids, 1) AS value,\n   \
+    \    COUNT(fi.\"userId\") FILTER (WHERE fi.\"inscripcionDate\" < '2026-08-01') AS inscripciones,\n       COUNT(fi.\"userId\"\
+    ) FILTER (WHERE fi.advance = 100 AND fi.\"certificationDate\" < '2026-08-01') AS certificados,\n       'Acumulado' AS\
+    \ periodo_inicio,\n       '2026-08-01' AS periodo_fin,\n       'fact_inscription' AS source\nFROM rutas r JOIN fact_inscription\
+    \ fi ON fi.\"courseId\" = ANY(COALESCE(r.curso_ids_conteo, r.curso_ids)) JOIN dim_user u ON u.\"userId\" = fi.\"userId\"\
+    \ JOIN dim_local l ON l.\"localId\" = u.\"localId\" WHERE u.\"plataformaId\" IN (1,2)\n  AND l.\"countryName\" = 'México'\n\
+    GROUP BY r.orden, r.seccion, r.ruta, r.curso_ids, r.curso_ids_conteo ORDER BY r.orden\n"
   caveats:
   - 'Métrica ACUMULADA: sin límite inferior, corte < ''2026-08-01'' (decisión de negocio 2026-08-11). El resto del script
     usa ventana 2025-09-01..2026-07-31 vía .env.'
@@ -382,6 +386,11 @@ metrics:
     alimentos no lo incluye).
   - '''Planea tu negocio'' incluye el curso 100327 ''Plan de negocios'' (confirmado en tabla course) que no aparece en el
     spreadsheet.'
+  - 'Ruta ''Compras y pagos digitales'' (alta 2026-09-18): declara 6 cursos (373, 100006, 380, 345, 100129, 320) en la columna
+    Cursos, pero 5 ya pertenecen a otras rutas (373/100006/380/345 a ''Interacción con el mundo digital'', 320 a ''Mi negocio
+    en internet''). Para no duplicar inscripciones ni certificados en el TOTAL de la slide, sus conteos usan SOLO el curso
+    que no se repite: 100129 ''Manejo correcto de las tarjetas de crédito'' (columna curso_ids_conteo). Las otras 16 rutas
+    llevan curso_ids_conteo = NULL y cuentan todos sus cursos.'
 - key: slide13_penitenciarios_inscripciones
   name: Slide 13 — Inscripciones totales (Centros Penitenciarios)
   description: 'Métrica de Slide 13 ''Formación en Centros Penitenciarios'': total acumulado de inscripciones a los 99 cursos
@@ -620,74 +629,50 @@ metrics:
   - 'Migrada a MySQL (2026-08-13): coincide con la query CT del usuario (207,562).'
 - key: slide20_crecimiento_integral_inscripciones
   name: Slide 20 — Inscripciones a cursos de crecimiento integral
-  description: 'Métrica de Slide 20 "Crecimiento integral" (última slide de la presentación del Consejo 2026): total acumulado
-    de inscripciones de **usuarios de Aprende** (`u.plataformaId = 2`) en los 78 cursos de la sección crecimiento integral,
-    con corte >= ''2025-04-03'' AND < ''2026-08-01''. Query del archivo Consultas_consejo_panel.sql (sección "Script para
-    consultar el numero de usuarios registrados e inscritos a los cursos de crecimiento integral" — segunda variante con corte
-    inicial ''2025-04-03'' declarada como "la buena" por el usuario 2026-08-19). Migrada a PostgreSQL `analisis_cpe_db` (schema
-    `public`).
-
-    '
-  formula: 'COUNT(fact_inscription.userId) de fact_inscription JOIN course JOIN dim_user WHERE course.id IN (78 cursos de
-    crecimiento integral) AND dim_user.plataformaId = 2 AND inscripcionDate >= ''2025-04-03'' AND < ''2026-08-01''.
-
-    '
+  description: 'Slide 20 Crecimiento integral (73 cursos sector 76, PG): inscripciones usuarios Aprende (du.plataformaId=2).
+    46 mantenidos >=2025-04-03 <2026-08-01 + 27 quitados >=2025-04-03 <2026-06-01 OR dedup.'
+  formula: COUNT(inscription.userId) WHERE (46 mantenidos AND <'2026-08-01') OR (27 quitados AND <'2026-06-01'), u.plataformaId=2.
   type: count
   source: fact_inscription
   platform_scope:
   - aprende
   db_source: postgres
-  db_mapping: "SELECT COUNT(fi.\"userId\") AS value,\n       'Acumulado' AS periodo_inicio,\n       '2026-08-01' AS periodo_fin,\n\
-    \       'fact_inscription' AS source\nFROM fact_inscription fi JOIN course c ON c.\"id\" = fi.\"courseId\" JOIN dim_user\
-    \ du ON du.\"userId\" = fi.\"userId\" WHERE c.\"id\" IN (100321, 408, 100220, 100312, 100839, 100338,\n              \
-    \ 100339, 100340, 100341, 100342, 100399, 100343,\n               100344, 100345, 100346, 100347, 100348, 100349,\n  \
-    \             100350, 100351, 100352, 100355, 100356, 100660,\n               100337, 100367, 100695, 100696, 100697,\
-    \ 100698,\n               100699, 100331, 100362, 100365, 100700, 100371,\n               100374, 100701, 100702, 100703,\
-    \ 100704, 100705,\n               100706, 100357, 100358, 100659, 100360, 100364,\n               100369, 100366, 100707,\
-    \ 100708, 100709, 100710,\n               100330, 100109, 100379, 100382, 100384, 100386,\n               100387, 100388,\
-    \ 100389, 100390, 100712, 100713,\n               100714, 100715, 100716, 100717, 100396, 100718,\n               100397,\
-    \ 100719, 100722, 100723, 100724, 100725)\n  AND du.\"plataformaId\" = 2\n  AND fi.\"inscripcionDate\" >= '2025-04-03'\n\
-    \  AND fi.\"inscripcionDate\" < '2026-08-01'\n"
+  db_mapping: "      SELECT COUNT(fi.\"userId\") AS value,\n             'Acumulado' AS periodo_inicio,\n             '2026-08-01'\
+    \ AS periodo_fin,\n             'fact_inscription' AS source\n      FROM fact_inscription fi\n      JOIN dim_user du ON\
+    \ du.\"userId\" = fi.\"userId\"\n      WHERE du.\"plataformaId\" = 2\n        AND ((fi.\"courseId\" IN (291,100066,100147,100330,100331,100337,100338,100339,100340,100341,100342,100343,100345,100346,100347,100348,100349,100350,100351,100352,100355,100356,100357,100358,100359,100361,100363,100366,100367,100368,100369,100373,100374,100379,100382,100384,100386,100387,100388,100389,100390,100396,100397,100659,100660,100864)\
+    \ AND fi.\"inscripcionDate\" >= '2025-04-03' AND fi.\"inscripcionDate\" < '2026-08-01')\n          OR (fi.\"courseId\"\
+    \ IN (100109,100695,100696,100697,100698,100699,100700,100701,100702,100703,100704,100705,100706,100707,100708,100709,100710,100712,100713,100714,100715,100716,100717,100722,100723,100724,100725)\
+    \ AND fi.\"inscripcionDate\" >= '2025-04-03' AND fi.\"inscripcionDate\" < '2026-06-01'))"
   caveats:
-  - La lista de 78 cursos viene de la sección 'Crecimiento integral' de Consultas_consejo_panel.sql (segunda variante de la
-    query 'usuarios registrados e inscritos', declarada como 'la buena' por el usuario).
-  - Filtro solo por plataformaId=2 (Aprende), sin filtro de platformId del curso. De los 78 cursos, 76 son CPE (`platformId=1`)
-    y 2 son Aprende (`platformId=2`) — quitar el filtro de curso apenas cambia MySQL (68,065 vs 68,236 con cross-pollination,
-    ~0.25% menos) pero PG queda más corto por el ETL incompleto.
-  - 'Resultado al corte >= ''2025-04-03'' AND < ''2026-08-01'': PG=58,185 vs MySQL=68,065 (diff -9,880 / -14.5%). PG queda
-    corto por el ETL incompleto (LOOKBACK_DAYS=3): la ventana 2025-04-03 en adelante es la más afectada porque el ETL sólo
-    trae 3 días de historial en cada corrida.'
+  - '73 cursos totales sector 76 (Crecimiento integral): 46 mantenidos + 27 quitados en mayo 2026.'
+  - 'Mantenidos (46): inscripciones < ''2026-08-01'' (incluye junio+julio).'
+  - 'Quitados (27): inscripciones < ''2026-06-01'' (excluye junio+julio porque ya no estaban).'
+  - Filtro usuarios plataformaId=2 (solo Aprende). Dedup no aplica a COUNT(*).
+  - Corte base >= '2024-08-31'. Duplicados por nombre resueltos con id<100000 y platformId=1.
 - key: slide20_crecimiento_integral_personas_unicas_inscritas
   name: Slide 20 — Personas únicas inscritas en crecimiento integral
-  description: 'Métrica de Slide 20: cantidad de usuarios únicos (DISTINCT) de Aprende (`u.plataformaId = 2`) inscritos en
-    los 78 cursos de crecimiento integral, con corte >= ''2025-04-03'' AND < ''2026-08-01''. Misma query que slide20_crecimiento_integral_inscripciones
-    pero con COUNT(DISTINCT).
-
-    '
-  formula: 'COUNT(DISTINCT fact_inscription.userId) de fact_inscription JOIN course JOIN dim_user WHERE course.id IN (78 cursos
-    de crecimiento integral) AND dim_user.plataformaId = 2 AND inscripcionDate >= ''2025-04-03'' AND < ''2026-08-01''.
-
-    '
+  description: 'Slide 20 Crecimiento integral (73 cursos PG): personas únicas Aprende, 46 mantenidos +27 quitados OR dedup
+    >=2025-04-03.'
+  formula: COUNT(DISTINCT inscription.userId) WHERE (46 mantenidos <2026-08-01 OR 27 quitados <2026-06-01), u.plataformaId=2,
+    dedup cross-cohorte.
   type: count_distinct
   source: fact_inscription
   platform_scope:
   - aprende
   db_source: postgres
-  db_mapping: "SELECT COUNT(DISTINCT fi.\"userId\") AS value,\n       'Acumulado' AS periodo_inicio,\n       '2026-08-01'\
-    \ AS periodo_fin,\n       'fact_inscription' AS source\nFROM fact_inscription fi JOIN course c ON c.\"id\" = fi.\"courseId\"\
-    \ JOIN dim_user du ON du.\"userId\" = fi.\"userId\" WHERE c.\"id\" IN (100321, 408, 100220, 100312, 100839, 100338,\n\
-    \               100339, 100340, 100341, 100342, 100399, 100343,\n               100344, 100345, 100346, 100347, 100348,\
-    \ 100349,\n               100350, 100351, 100352, 100355, 100356, 100660,\n               100337, 100367, 100695, 100696,\
-    \ 100697, 100698,\n               100699, 100331, 100362, 100365, 100700, 100371,\n               100374, 100701, 100702,\
-    \ 100703, 100704, 100705,\n               100706, 100357, 100358, 100659, 100360, 100364,\n               100369, 100366,\
-    \ 100707, 100708, 100709, 100710,\n               100330, 100109, 100379, 100382, 100384, 100386,\n               100387,\
-    \ 100388, 100389, 100390, 100712, 100713,\n               100714, 100715, 100716, 100717, 100396, 100718,\n          \
-    \     100397, 100719, 100722, 100723, 100724, 100725)\n  AND du.\"plataformaId\" = 2\n  AND fi.\"inscripcionDate\" >=\
-    \ '2025-04-03'\n  AND fi.\"inscripcionDate\" < '2026-08-01'\n"
+  db_mapping: "      SELECT COUNT(DISTINCT fi.\"userId\") AS value,\n             'Acumulado' AS periodo_inicio,\n       \
+    \      '2026-08-01' AS periodo_fin,\n             'fact_inscription' AS source\n      FROM fact_inscription fi\n     \
+    \ JOIN dim_user du ON du.\"userId\" = fi.\"userId\"\n      WHERE du.\"plataformaId\" = 2\n        AND ((fi.\"courseId\"\
+    \ IN (291,100066,100147,100330,100331,100337,100338,100339,100340,100341,100342,100343,100345,100346,100347,100348,100349,100350,100351,100352,100355,100356,100357,100358,100359,100361,100363,100366,100367,100368,100369,100373,100374,100379,100382,100384,100386,100387,100388,100389,100390,100396,100397,100659,100660,100864)\
+    \ AND fi.\"inscripcionDate\" >= '2025-04-03' AND fi.\"inscripcionDate\" < '2026-08-01')\n          OR (fi.\"courseId\"\
+    \ IN (100109,100695,100696,100697,100698,100699,100700,100701,100702,100703,100704,100705,100706,100707,100708,100709,100710,100712,100713,100714,100715,100716,100717,100722,100723,100724,100725)\
+    \ AND fi.\"inscripcionDate\" >= '2025-04-03' AND fi.\"inscripcionDate\" < '2026-06-01'))"
   caveats:
-  - Misma lista de 78 cursos y mismo filtro (solo plataformaId=2) que slide20_crecimiento_integral_inscripciones.
-  - 'Resultado al corte >= ''2025-04-03'' AND < ''2026-08-01'': PG=34,246 vs MySQL=40,532 (diff -6,286 / -15.5%). Mismo gap
-    del ETL incompleto que la métrica de inscripciones.'
+  - '73 cursos totales sector 76: 46 mantenidos + 27 quitados.'
+  - Mantenidos (<2026-08-01) y quitados (<2026-06-01) con OR y COUNT DISTINCT para dedup (evita duplicar 1,218 personas en
+    ambas cohortes).
+  - Solo usuarios plataformaId=2.
+  - Rango base >= '2024-08-31'.
 - key: slide15_mario_molina_vistas
   name: Slide 15 — Vistas/consultas a la sección Mario Molina
   description: 'Métrica de Slide 15 "Mario Molina Premio Nobel": total acumulado de vistas/consultas a los 33 recursos de
@@ -733,7 +718,7 @@ metrics:
   - aprende
   db_mapping: "SELECT grupo, curso, COUNT(DISTINCT \"userId\") AS value,\n       %(period_start)s AS periodo_inicio,\n   \
     \    %(period_end)s AS periodo_fin,\n       'fact_inscription' AS source\nFROM (\n  SELECT fi.\"userId\", c.name AS curso,\n\
-    \    CASE\n      WHEN fi.\"courseId\" IN (9,187,4,367,205,206,11,30,23,29,24,12) THEN 'Construcción y mantenimiento'\n\
+    \    CASE\n      WHEN fi.\"courseId\" IN (9,187,4,367,205,206,11,30,23,29,24,12,27) THEN 'Construcción y mantenimiento'\n\
     \      WHEN fi.\"courseId\" IN (6,57,8,100214,128) THEN 'Limpieza y mantenimiento'\n      WHEN fi.\"courseId\" IN (77,100310,41)\
     \ THEN 'Servicios en transporte'\n      WHEN fi.\"courseId\" IN (39,5,38,58) THEN 'Alimentos y atención'\n      WHEN fi.\"\
     courseId\" IN (52,33) THEN 'Actividades agropecuarias'\n      WHEN fi.\"courseId\" IN (100322,100128,100325) THEN 'Educación\
@@ -892,6 +877,26 @@ metrics:
   - acumulado es TODO el histórico con registrationDate < 2025-10-01 (desde 2014).
   - 'db_source postgres: ejecuta contra analisis_cpe_db. Columnas camelCase requieren comillas dobles.'
   - source dim_user documenta el modelo conceptual; el dispatch real lo hace db_source.
+- key: slide20_crecimiento_integral_cursos_ofertados
+  name: Slide 20 — Cursos ofertados (crecimiento integral)
+  description: 'Métrica de Slide 20: cursos distintos con al menos una inscripción. 46 mantenidos (<2026-08-01) + 27 quitados
+    (<2026-06-01) = 73.'
+  formula: COUNT(DISTINCT courseId) WHERE (46 mantenidos <2026-08-01 OR 27 quitados <2026-06-01).
+  type: count_distinct
+  source: fact_inscription
+  platform_scope:
+  - aprende
+  db_source: postgres
+  db_mapping: "      SELECT COUNT(DISTINCT fi.\"courseId\") AS value,\n             'Acumulado' AS periodo_inicio,\n     \
+    \        '2026-08-01' AS periodo_fin,\n             'fact_inscription' AS source\n      FROM fact_inscription fi\n   \
+    \   JOIN dim_user du ON du.\"userId\" = fi.\"userId\"\n      WHERE du.\"plataformaId\" = 2\n        AND ((fi.\"courseId\"\
+    \ IN (291,100066,100147,100330,100331,100337,100338,100339,100340,100341,100342,100343,100345,100346,100347,100348,100349,100350,100351,100352,100355,100356,100357,100358,100359,100361,100363,100366,100367,100368,100369,100373,100374,100379,100382,100384,100386,100387,100388,100389,100390,100396,100397,100659,100660,100864)\
+    \ AND fi.\"inscripcionDate\" >= '2025-04-03' AND fi.\"inscripcionDate\" < '2026-08-01')\n          OR (fi.\"courseId\"\
+    \ IN (100109,100695,100696,100697,100698,100699,100700,100701,100702,100703,100704,100705,100706,100707,100708,100709,100710,100712,100713,100714,100715,100716,100717,100722,100723,100724,100725)\
+    \ AND fi.\"inscripcionDate\" >= '2025-04-03' AND fi.\"inscripcionDate\" < '2026-06-01'))"
+  caveats:
+  - '73 cursos sector 76: 46 mantenidos + 27 quitados.'
+  - Conteo distinto por curso (cohortes disjuntas, no hay dedup cruzado).
 notes:
 - key: certification_rule
   description: 'Regla oficial de certificación: certificationDate IS NOT NULL AND advance = 100. Usar solo certificationDate
