@@ -176,3 +176,27 @@ Alta de la ruta 6 en Slide 12, sección Habilidades digitales:
 **Deuda técnica pendiente:** 320, 345 y 380 quedan declarados en 3 rutas, y 373 y
 100006 en 2. Si más adelante se decide contarlos en todas, hay que revisar el TOTAL
 de la slide y la columna "Cursos compartidos" (hoy suma 15 contra 16 apariciones).
+
+## H9 — Rutas nuevas en Slide 12 (2026-09-28)
+
+| Ruta | Sección | Cursos | Inscripciones | Certificados |
+|---|---|---|---|---|
+| Preparación para buscar trabajo | Emprendimiento | 7 (67, 212, 216, 227, 228, 100059, 100853) | 634,008 | 324,377 |
+| Convive mejor con otros | Capacitación básica | 3 (100330, 100380, 100381) | 2,414 | 1,478 |
+
+Ninguno de los 10 cursos pertenece a otra ruta de Slide 12, así que ambas cuentan
+todos sus cursos (`curso_ids_conteo = NULL`). Las secciones son provisionales: las
+rutas pueden moverse.
+
+Cursos duplicados en la tabla `course` — se toma el ID vivo:
+
+| Curso | ID elegido | Última inscripción | ID descartado | Última inscripción |
+|---|---|---|---|---|
+| Guía para entrevistas de trabajo | 67 | 2026-09-27 | 329 | 2025-10-31 |
+| Disciplina en el trabajo | 212 | 2026-09-27 | 330 | 2026-01-27 |
+
+Cruces con otras slides (no duplican el TOTAL de Slide 12, poblaciones distintas):
+212 y 228 están en slide13 (penitenciarios, MySQL); 100330 está en slide20.
+
+Slide 12 queda en 19 rutas y 116 cursos contados. La columna "Cursos totales" de la
+slide, que cuenta los compartidos en cada ruta, pasaría de 118 a 128.

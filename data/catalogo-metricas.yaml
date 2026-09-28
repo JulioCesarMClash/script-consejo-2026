@@ -330,7 +330,7 @@ metrics:
     / desastres=74,569 / empleo=81,258 / TOTAL=352,206 personas únicas certificadas.'
 - key: slide12_rutas_aprendizaje
   name: Rutas de aprendizaje (Slide 12)
-  description: 'Tabla slide 12: 17 rutas de aprendizaje en 4 secciones (Construcción, Habilidades digitales, Capacitación
+  description: 'Tabla slide 12: 19 rutas de aprendizaje en 4 secciones (Construcción, Habilidades digitales, Capacitación
     básica, Emprendimiento) con las columnas Cursos | Inscripciones | Certificados. value = cursos por ruta (count de IDs,
     derivado del array); inscripciones = COUNT (sin DISTINCT) de fact_inscription con inscripcionDate < ''2026-08-01'' y plataforma
     1 (CPE) o 2 (Aprende); certificados = COUNT (sin DISTINCT) con advance = 100 AND certificationDate < ''2026-08-01'' y
@@ -361,11 +361,13 @@ metrics:
     \  (10, 'Capacitación básica', '¿Cómo mejorar mi entorno?', ARRAY[142,299,364,348,100918]::bigint[], NULL::bigint[]),\n\
     \  (11, 'Capacitación básica', 'Alimentos desde casa', ARRAY[410,282,241,33]::bigint[], NULL::bigint[]),\n  (12, 'Capacitación\
     \ básica', 'Actuar en caso de desastres naturales', ARRAY[387,95,100098,120,314,354,281,57,393,276]::bigint[], NULL::bigint[]),\n\
-    \  (13, 'Emprendimiento', 'Planea tu negocio', ARRAY[93,100092,100149,157,156,158,100327]::bigint[], NULL::bigint[]),\n\
-    \  (14, 'Emprendimiento', 'Planea los gastos y ganancias de tu negocio', ARRAY[169,159,167,100105]::bigint[], NULL::bigint[]),\n\
-    \  (15, 'Emprendimiento', '¿Cómo preparar mis productos para venderlos?', ARRAY[100074,106,107,117,153]::bigint[], NULL::bigint[]),\n\
-    \  (16, 'Emprendimiento', 'Servicio y ventas de tu negocio', ARRAY[100320,118,301,234,100310,100101]::bigint[], NULL::bigint[]),\n\
-    \  (17, 'Emprendimiento', 'Mi negocio en internet', ARRAY[170,320,143,358,343]::bigint[], NULL::bigint[])\n) AS RECORDS(orden,\
+    \  (13, 'Capacitación básica', 'Convive mejor con otros', ARRAY[100330,100380,100381]::bigint[], NULL::bigint[]),\n  (14,\
+    \ 'Emprendimiento', 'Planea tu negocio', ARRAY[93,100092,100149,157,156,158,100327]::bigint[], NULL::bigint[]),\n  (15,\
+    \ 'Emprendimiento', 'Planea los gastos y ganancias de tu negocio', ARRAY[169,159,167,100105]::bigint[], NULL::bigint[]),\n\
+    \  (16, 'Emprendimiento', '¿Cómo preparar mis productos para venderlos?', ARRAY[100074,106,107,117,153]::bigint[], NULL::bigint[]),\n\
+    \  (17, 'Emprendimiento', 'Servicio y ventas de tu negocio', ARRAY[100320,118,301,234,100310,100101]::bigint[], NULL::bigint[]),\n\
+    \  (18, 'Emprendimiento', 'Mi negocio en internet', ARRAY[170,320,143,358,343]::bigint[], NULL::bigint[]),\n  (19, 'Emprendimiento',\
+    \ 'Preparación para buscar trabajo', ARRAY[67,212,216,227,228,100059,100853]::bigint[], NULL::bigint[])\n) AS RECORDS(orden,\
     \ seccion, ruta, curso_ids, curso_ids_conteo) ) SELECT r.seccion, r.ruta, array_length(r.curso_ids, 1) AS value,\n   \
     \    COUNT(fi.\"userId\") FILTER (WHERE fi.\"inscripcionDate\" < '2026-08-01') AS inscripciones,\n       COUNT(fi.\"userId\"\
     ) FILTER (WHERE fi.advance = 100 AND fi.\"certificationDate\" < '2026-08-01') AS certificados,\n       'Acumulado' AS\
@@ -391,6 +393,12 @@ metrics:
     en internet''). Para no duplicar inscripciones ni certificados en el TOTAL de la slide, sus conteos usan SOLO el curso
     que no se repite: 100129 ''Manejo correcto de las tarjetas de crédito'' (columna curso_ids_conteo). Las otras 16 rutas
     llevan curso_ids_conteo = NULL y cuentan todos sus cursos.'
+  - 'Rutas ''Convive mejor con otros'' (Capacitación básica) y ''Preparación para buscar trabajo'' (Emprendimiento), alta
+    2026-09-28: ninguno de sus 10 cursos pertenece a otra ruta de la slide, así que cuentan todos sus cursos. De los cursos
+    duplicados en la tabla course se toma el ID vivo: 67 ''Guía para entrevistas de trabajo'' y 212 ''Disciplina en el trabajo''
+    (los gemelos 329 y 330 no registran inscripciones nuevas desde 2025-10 y 2026-01). Las secciones asignadas son provisionales:
+    las rutas pueden moverse de sección. Nota: 212 y 228 también aparecen en slide13 (penitenciarios, MySQL) y 100330 en slide20;
+    son poblaciones distintas y no duplican el TOTAL de slide 12.'
 - key: slide13_penitenciarios_inscripciones
   name: Slide 13 — Inscripciones totales (Centros Penitenciarios)
   description: 'Métrica de Slide 13 ''Formación en Centros Penitenciarios'': total acumulado de inscripciones a los 99 cursos

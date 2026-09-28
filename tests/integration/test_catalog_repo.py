@@ -230,7 +230,7 @@ class TestCatalogRepo:
             r"(?:NULL|ARRAY\[([\d,\s]+)\])::bigint\[\]\)",
             sql,
         )
-        assert len(rutas) == 17
+        assert len(rutas) == 19
 
         nombre, declarados, conteo = next(
             r for r in rutas if r[0] == "Compras y pagos digitales"
@@ -243,3 +243,53 @@ class TestCatalogRepo:
         # Las otras 16 rutas cuentan todos sus cursos (sin array de conteo).
         assert [r[0] for r in rutas if r[2]] == ["Compras y pagos digitales"]
         assert "COALESCE(r.curso_ids_conteo, r.curso_ids)" in sql
+
+    def test_slide12_has_empleabilidad_and_convivencia_routes(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Slide 12 — rutas "Preparación para buscar trabajo" (Emprendimiento)
+        y "Convive mejor con otros" (Capacitación básica).
+
+        Ninguno de sus 10 cursos pertenece a otra ruta de la slide, así que
+        cuentan todos sus cursos (curso_ids_conteo = NULL). De los cursos
+        duplicados en la tabla `course` se toma el ID vivo: 67 (Guía para
+        entrevistas) y 212 (Disciplina en el trabajo); 329 y 330 quedaron sin
+        inscripciones nuevas.
+
+        Las secciones se mantienen contiguas por `orden` porque el bloque de
+        la hoja emite un subtotal al detectar un cambio de sección.
+        """
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "slide12_rutas_aprendizaje"
+        )
+        rutas = re.findall(
+            r"\((\d+), '([^']+)', '([^']+)', ARRAY\[([\d,\s]+)\]::bigint\[\], "
+            r"(?:NULL|ARRAY\[([\d,\s]+)\])::bigint\[\]\)",
+            metric.db_mapping,
+        )
+        assert len(rutas) == 19
+
+        by_ruta = {r[2]: r for r in rutas}
+        buscar = by_ruta["Preparación para buscar trabajo"]
+        assert buscar[1] == "Emprendimiento"
+        assert [int(i) for i in buscar[3].split(",")] == [
+            67, 212, 216, 227, 228, 100059, 100853,
+        ]
+        assert buscar[4] == ""  # cuenta todos sus cursos
+
+        convive = by_ruta["Convive mejor con otros"]
+        assert convive[1] == "Capacitación básica"
+        assert [int(i) for i in convive[3].split(",")] == [100330, 100380, 100381]
+        assert convive[4] == ""
+
+        # Los IDs retirados no entran.
+        assert "329" not in buscar[3] and "330" not in buscar[3]
+
+        # Cada sección ocupa órdenes consecutivos (requisito de los subtotales).
+        secciones = [r[1] for r in sorted(rutas, key=lambda r: int(r[0]))]
+        assert secciones == list(dict.fromkeys(secciones)) or all(
+            secciones.index(s) + secciones.count(s) - 1
+            == len(secciones) - 1 - secciones[::-1].index(s)
+            for s in set(secciones)
+        )
