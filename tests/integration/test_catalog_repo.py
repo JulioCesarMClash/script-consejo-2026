@@ -208,16 +208,15 @@ class TestCatalogRepo:
         b = catalog_repo.list_metrics()
         assert a is b  # misma instancia cacheada
 
-    def test_slide12_compras_y_pagos_counts_only_standalone_course(
+    def test_slide12_has_no_duplicated_courses(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
-        """Slide 12 — ruta "Compras y pagos digitales".
+        """Slide 12 — cada curso pertenece a UNA sola ruta.
 
-        Declara 6 cursos (columna Cursos), pero 5 de ellos ya pertenecen a
-        otras rutas (373, 100006, 380, 345 en "Interacción con el mundo
-        digital"; 320 en "Mi negocio en internet"). Para no duplicar
-        inscripciones ni certificados en el TOTAL de la slide, la ruta
-        cuenta SOLO el curso que no se repite: 100129.
+        Sin cursos repetidos, el TOTAL de la slide (suma de subtotales por
+        sección) no cuenta dos veces las inscripciones ni los certificados,
+        así que la SQL cuenta todos los cursos de cada ruta y no necesita un
+        array de conteo aparte.
         """
         metric = next(
             m for m in catalog_repo.list_metrics()
@@ -226,23 +225,19 @@ class TestCatalogRepo:
         sql = metric.db_mapping
 
         rutas = re.findall(
-            r"\(\d+, '[^']+', '([^']+)', ARRAY\[([\d,\s]+)\]::bigint\[\], "
-            r"(?:NULL|ARRAY\[([\d,\s]+)\])::bigint\[\]\)",
+            r"\(\d+, '[^']+', '([^']+)', ARRAY\[([\d,\s]+)\]::bigint\[\]\)",
             sql,
         )
-        assert len(rutas) == 19
+        assert len(rutas) == 18
 
-        nombre, declarados, conteo = next(
-            r for r in rutas if r[0] == "Compras y pagos digitales"
-        )
-        assert [int(i) for i in declarados.split(",")] == [
-            373, 100006, 380, 345, 100129, 320,
+        asignaciones = [
+            int(i) for _, ids in rutas for i in ids.split(",")
         ]
-        assert [int(i) for i in conteo.split(",")] == [100129]
+        assert len(asignaciones) == len(set(asignaciones))
 
-        # Las otras 16 rutas cuentan todos sus cursos (sin array de conteo).
-        assert [r[0] for r in rutas if r[2]] == ["Compras y pagos digitales"]
-        assert "COALESCE(r.curso_ids_conteo, r.curso_ids)" in sql
+        assert "Compras y pagos digitales" not in sql
+        assert "curso_ids_conteo" not in sql
+        assert 'ANY(r.curso_ids)' in sql
 
     def test_slide12_has_empleabilidad_and_convivencia_routes(
         self, catalog_repo: YamlMetricRepo
@@ -250,8 +245,7 @@ class TestCatalogRepo:
         """Slide 12 — rutas "Preparación para buscar trabajo" (Emprendimiento)
         y "Convive mejor con otros" (Capacitación básica).
 
-        Ninguno de sus 10 cursos pertenece a otra ruta de la slide, así que
-        cuentan todos sus cursos (curso_ids_conteo = NULL). De los cursos
+        Ninguno de sus 10 cursos pertenece a otra ruta de la slide. De los cursos
         duplicados en la tabla `course` se toma el ID vivo: 67 (Guía para
         entrevistas) y 212 (Disciplina en el trabajo); 329 y 330 quedaron sin
         inscripciones nuevas.
@@ -264,11 +258,10 @@ class TestCatalogRepo:
             if m.key == "slide12_rutas_aprendizaje"
         )
         rutas = re.findall(
-            r"\((\d+), '([^']+)', '([^']+)', ARRAY\[([\d,\s]+)\]::bigint\[\], "
-            r"(?:NULL|ARRAY\[([\d,\s]+)\])::bigint\[\]\)",
+            r"\((\d+), '([^']+)', '([^']+)', ARRAY\[([\d,\s]+)\]::bigint\[\]\)",
             metric.db_mapping,
         )
-        assert len(rutas) == 19
+        assert len(rutas) == 18
 
         by_ruta = {r[2]: r for r in rutas}
         buscar = by_ruta["Preparación para buscar trabajo"]
@@ -276,12 +269,10 @@ class TestCatalogRepo:
         assert [int(i) for i in buscar[3].split(",")] == [
             67, 212, 216, 227, 228, 100059, 100853,
         ]
-        assert buscar[4] == ""  # cuenta todos sus cursos
 
         convive = by_ruta["Convive mejor con otros"]
         assert convive[1] == "Capacitación básica"
         assert [int(i) for i in convive[3].split(",")] == [100330, 100380, 100381]
-        assert convive[4] == ""
 
         # Los IDs retirados no entran.
         assert "329" not in buscar[3] and "330" not in buscar[3]

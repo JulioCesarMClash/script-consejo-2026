@@ -200,3 +200,17 @@ Cruces con otras slides (no duplican el TOTAL de Slide 12, poblaciones distintas
 
 Slide 12 queda en 19 rutas y 116 cursos contados. La columna "Cursos totales" de la
 slide, que cuenta los compartidos en cada ruta, pasaría de 118 a 128.
+
+## H10 — Revertida la ruta "Compras y pagos digitales" (2026-09-30)
+
+Se quitó del catálogo y del Excel de control. Motivo: se van a reajustar las rutas
+de Slide 12 antes de definir dónde caen esos 6 cursos (373, 100006, 380, 345,
+100129, 320).
+
+Con eso se retiró también la columna `curso_ids_conteo` y el `COALESCE` del JOIN:
+ninguna ruta los usaba, porque sin esa ruta ningún curso se repite. Si vuelve a
+hacer falta contar solo parte de una ruta, el mecanismo está en el commit 84abb10.
+
+Estado actual de Slide 12: **18 rutas, 110 cursos, 110 distintos, 0 repetidos.**
+El curso 100129 "Manejo correcto de las tarjetas de crédito" queda fuera del
+catálogo: era el único que solo existía en esa ruta.
