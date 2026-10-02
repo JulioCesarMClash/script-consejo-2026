@@ -9,7 +9,7 @@ slides:
   tipo: cards_2_columnas
   nota: 'Decisión 2026-08-19: el Sheet slide1 reporta Certificados (TOTAL=210,740
 
-    con periodo ''2025-09-01 a 2026-08-01''). La Slide física actual muestra
+    con periodo ''2025-09-01 a 2026-10-01''). La Slide física actual muestra
 
     ''Beneficiarios'' (TOTAL=290,797). Apps Script pintará los Certificados
 
@@ -481,7 +481,7 @@ slides:
   - id: g3948dc9dc6d_0_291
     tipo: text_box
     rol: header_periodo
-    descripcion: 'Header ''Cifras de México periodo Sep. 2024- Sep. 2025'' (notar: el Sheet slide2 usa ''2025-09-01 a 2026-08-01''
+    descripcion: 'Header ''Cifras de México periodo Sep. 2024- Sep. 2025'' (notar: el Sheet slide2 usa ''2025-09-01 a 2026-10-01''
       — diverge)'
     metrica: null
     formato_texto: null

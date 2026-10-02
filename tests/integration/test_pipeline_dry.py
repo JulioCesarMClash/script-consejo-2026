@@ -107,42 +107,42 @@ def _build_row_sequence() -> Sequence[Sequence[Mapping]]:
         [{"count": 2500}],  # certified_unique_cpe
         [{"count": 900}],  # certified_unique_cpe_from_aprende
         [  # slide1_herramientas_pobreza (5 categorías)
-            {"metric_id": "slide1_vivienda", "source": "fact_inscription", "value": 16, "compartidos": 0, "cursos_totales": 16, "certificados": 94084, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-08-01"},
-            {"metric_id": "slide1_digital", "source": "fact_inscription", "value": 21, "compartidos": 2, "cursos_totales": 23, "certificados": 324206, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-08-01"},
-            {"metric_id": "slide1_alimentos", "source": "fact_inscription", "value": 22, "compartidos": 7, "cursos_totales": 29, "certificados": 358350, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-08-01"},
-            {"metric_id": "slide1_desastres", "source": "fact_inscription", "value": 11, "compartidos": 0, "cursos_totales": 11, "certificados": 249705, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-08-01"},
-            {"metric_id": "slide1_empleo", "source": "fact_inscription", "value": 26, "compartidos": 3, "cursos_totales": 29, "certificados": 362015, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-08-01"},
+            {"metric_id": "slide1_vivienda", "source": "fact_inscription", "value": 16, "compartidos": 0, "cursos_totales": 16, "certificados": 94084, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01"},
+            {"metric_id": "slide1_digital", "source": "fact_inscription", "value": 21, "compartidos": 2, "cursos_totales": 23, "certificados": 324206, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01"},
+            {"metric_id": "slide1_alimentos", "source": "fact_inscription", "value": 22, "compartidos": 7, "cursos_totales": 29, "certificados": 358350, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01"},
+            {"metric_id": "slide1_desastres", "source": "fact_inscription", "value": 11, "compartidos": 0, "cursos_totales": 11, "certificados": 249705, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01"},
+            {"metric_id": "slide1_empleo", "source": "fact_inscription", "value": 26, "compartidos": 3, "cursos_totales": 29, "certificados": 362015, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01"},
         ],
         [  # slide12_rutas_aprendizaje (16 rutas, filtrado México)
-            {"seccion": "Construcción", "ruta": "Proyectos constructivos y mantenimiento", "value": 16, "inscripciones": 1255148, "certificados": 145132, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
-            {"seccion": "Habilidades digitales", "ruta": "¿Cómo utilizar un celular?", "value": 2, "inscripciones": 48713, "certificados": 15568, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
-            {"seccion": "Habilidades digitales", "ruta": "¿Cómo utilizar la computadora?", "value": 4, "inscripciones": 635610, "certificados": 191655, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
-            {"seccion": "Habilidades digitales", "ruta": "Preparación para usar internet", "value": 5, "inscripciones": 580677, "certificados": 151923, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
-            {"seccion": "Habilidades digitales", "ruta": "Interacción con el mundo digital", "value": 8, "inscripciones": 149554, "certificados": 42893, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
-            {"seccion": "Capacitación básica", "ruta": "Seguridad, higiene y cuidado de la salud", "value": 6, "inscripciones": 537074, "certificados": 174327, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
-            {"seccion": "Capacitación básica", "ruta": "Uso eficiente de recursos", "value": 5, "inscripciones": 324067, "certificados": 112754, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
-            {"seccion": "Capacitación básica", "ruta": "Entendiendo mi situación económica", "value": 4, "inscripciones": 472492, "certificados": 130501, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
-            {"seccion": "Capacitación básica", "ruta": "¿Cómo mejorar mi entorno?", "value": 4, "inscripciones": 145601, "certificados": 54522, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
-            {"seccion": "Capacitación básica", "ruta": "Alimentos desde casa", "value": 4, "inscripciones": 332550, "certificados": 78492, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
-            {"seccion": "Capacitación básica", "ruta": "Actuar en caso de desastres naturales", "value": 10, "inscripciones": 659857, "certificados": 218947, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
-            {"seccion": "Emprendimiento", "ruta": "Planea tu negocio", "value": 7, "inscripciones": 407222, "certificados": 90798, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
-            {"seccion": "Emprendimiento", "ruta": "Planea los gastos y ganancias de tu negocio", "value": 4, "inscripciones": 216218, "certificados": 46364, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
-            {"seccion": "Emprendimiento", "ruta": "¿Cómo preparar mis productos para venderlos?", "value": 5, "inscripciones": 282946, "certificados": 112048, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
-            {"seccion": "Emprendimiento", "ruta": "Servicio y ventas de tu negocio", "value": 6, "inscripciones": 556123, "certificados": 191899, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
-            {"seccion": "Emprendimiento", "ruta": "Mi negocio en internet", "value": 5, "inscripciones": 372936, "certificados": 67108, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"},
+            {"seccion": "Construcción", "ruta": "Proyectos constructivos y mantenimiento", "value": 16, "inscripciones": 1255148, "certificados": 145132, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"seccion": "Habilidades digitales", "ruta": "¿Cómo utilizar un celular?", "value": 2, "inscripciones": 48713, "certificados": 15568, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"seccion": "Habilidades digitales", "ruta": "¿Cómo utilizar la computadora?", "value": 4, "inscripciones": 635610, "certificados": 191655, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"seccion": "Habilidades digitales", "ruta": "Preparación para usar internet", "value": 5, "inscripciones": 580677, "certificados": 151923, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"seccion": "Habilidades digitales", "ruta": "Interacción con el mundo digital", "value": 8, "inscripciones": 149554, "certificados": 42893, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"seccion": "Capacitación básica", "ruta": "Seguridad, higiene y cuidado de la salud", "value": 6, "inscripciones": 537074, "certificados": 174327, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"seccion": "Capacitación básica", "ruta": "Uso eficiente de recursos", "value": 5, "inscripciones": 324067, "certificados": 112754, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"seccion": "Capacitación básica", "ruta": "Entendiendo mi situación económica", "value": 4, "inscripciones": 472492, "certificados": 130501, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"seccion": "Capacitación básica", "ruta": "¿Cómo mejorar mi entorno?", "value": 4, "inscripciones": 145601, "certificados": 54522, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"seccion": "Capacitación básica", "ruta": "Alimentos desde casa", "value": 4, "inscripciones": 332550, "certificados": 78492, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"seccion": "Capacitación básica", "ruta": "Actuar en caso de desastres naturales", "value": 10, "inscripciones": 659857, "certificados": 218947, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"seccion": "Emprendimiento", "ruta": "Planea tu negocio", "value": 7, "inscripciones": 407222, "certificados": 90798, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"seccion": "Emprendimiento", "ruta": "Planea los gastos y ganancias de tu negocio", "value": 4, "inscripciones": 216218, "certificados": 46364, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"seccion": "Emprendimiento", "ruta": "¿Cómo preparar mis productos para venderlos?", "value": 5, "inscripciones": 282946, "certificados": 112048, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"seccion": "Emprendimiento", "ruta": "Servicio y ventas de tu negocio", "value": 6, "inscripciones": 556123, "certificados": 191899, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"seccion": "Emprendimiento", "ruta": "Mi negocio en internet", "value": 5, "inscripciones": 372936, "certificados": 67108, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
         ],
-        [{"value": 2753, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide13_penitenciarios_inscripciones
-        [{"value": 806, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide13_penitenciarios_certificados
-        [{"value": 345, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "dim_user"}],  # slide13_penitenciarios_usuarios_registrados (universo brand 16+18, sin filtro cursos)
-        [{"value": 98, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide13_penitenciarios_cursos_ofertados
-        [{"value": 174161, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide15_mario_molina_inscripciones
-        [{"value": 8454, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "userresource"}],  # slide15_mario_molina_vistas
-        [{"value": 1498009, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_inscripciones
-        [{"value": 1065475, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_unicas_inscritas
-        [{"value": 240508, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_certificados
-        [{"value": 207562, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_certificadas_unicas
-        [{"value": 68271, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide20_crecimiento_integral_inscripciones (PG canónica)
-        [{"value": 41455, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide20_crecimiento_integral_personas_unicas_inscritas (PG canónica)
+        [{"value": 2753, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"}],  # slide13_penitenciarios_inscripciones
+        [{"value": 806, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"}],  # slide13_penitenciarios_certificados
+        [{"value": 345, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "dim_user"}],  # slide13_penitenciarios_usuarios_registrados (universo brand 16+18, sin filtro cursos)
+        [{"value": 98, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"}],  # slide13_penitenciarios_cursos_ofertados
+        [{"value": 174161, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "inscription"}],  # slide15_mario_molina_inscripciones
+        [{"value": 8454, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "userresource"}],  # slide15_mario_molina_vistas
+        [{"value": 1498009, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "inscription"}],  # slide19_seguridad_vial_inscripciones
+        [{"value": 1065475, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_unicas_inscritas
+        [{"value": 240508, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "inscription"}],  # slide19_seguridad_vial_certificados
+        [{"value": 207562, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_certificadas_unicas
+        [{"value": 68271, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"}],  # slide20_crecimiento_integral_inscripciones (PG canónica)
+        [{"value": 41455, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"}],  # slide20_crecimiento_integral_personas_unicas_inscritas (PG canónica)
         [{"count": 42}],  # slide2_empleo_incluyente_por_sector
         [  # slide4_cultura_salud_aprende
             {"2025": 104736, "sep2026": 102916, "dic2026": 134327, "acumulado": 1413528},
@@ -482,20 +482,20 @@ class TestPipelineDry:
         cut = date(2026, 7, 1)
 
         mysql_fake = FakeSourceConn([
-            [{"value": 2753, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_inscripciones
-            [{"value": 806, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_certificados
-            [{"value": 345, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "dim_user"}],  # slide13_penitenciarios_usuarios_registrados (universo brand 16+18, sin filtro cursos)
-            [{"value": 98, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide13_penitenciarios_cursos_ofertados
-            [{"value": 1498009, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_inscripciones
-            [{"value": 1065475, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_unicas_inscritas
-            [{"value": 240508, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_certificados
-            [{"value": 207562, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_certificadas_unicas
-            [{"value": 68271, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide20_crecimiento_integral_inscripciones (PG canónica)
-            [{"value": 41455, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "fact_inscription"}],  # slide20_crecimiento_integral_personas_unicas_inscritas (PG canónica)
-            [{"value": 8454, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "userresource"}],  # slide15_mario_molina_vistas
+            [{"value": 2753, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "inscription"}],  # slide13_penitenciarios_inscripciones
+            [{"value": 806, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "inscription"}],  # slide13_penitenciarios_certificados
+            [{"value": 345, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "dim_user"}],  # slide13_penitenciarios_usuarios_registrados (universo brand 16+18, sin filtro cursos)
+            [{"value": 98, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "inscription"}],  # slide13_penitenciarios_cursos_ofertados
+            [{"value": 1498009, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "inscription"}],  # slide19_seguridad_vial_inscripciones
+            [{"value": 1065475, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_unicas_inscritas
+            [{"value": 240508, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "inscription"}],  # slide19_seguridad_vial_certificados
+            [{"value": 207562, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "inscription"}],  # slide19_seguridad_vial_personas_certificadas_unicas
+            [{"value": 68271, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"}],  # slide20_crecimiento_integral_inscripciones (PG canónica)
+            [{"value": 41455, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"}],  # slide20_crecimiento_integral_personas_unicas_inscritas (PG canónica)
+            [{"value": 8454, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "userresource"}],  # slide15_mario_molina_vistas
             [{"count": 100}],  # slide3_capacitate_carso
             [{"count": 50}],  # slide3_academica_labs
-            [{"value": 184288, "periodo_inicio": "Acumulado", "periodo_fin": "2026-08-01", "source": "inscription"}],  # slide4_aprende_seguridad_vial_acumulado (hermana MySQL, valor único)
+            [{"value": 184288, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "inscription"}],  # slide4_aprende_seguridad_vial_acumulado (hermana MySQL, valor único)
         ])
         manifests = extract_data(
             metric_repo=repo,

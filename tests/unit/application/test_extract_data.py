@@ -254,14 +254,14 @@ class TestExtractData:
             fetched_at,
             query_params={
                 "period_start": "2025-09-01",
-                "period_end": "2026-08-01",
+                "period_end": "2026-10-01",
             },
         )
 
         assert conn.fetch_calls[0][1] == {
             "cut": "2026-07-01",
             "period_start": "2025-09-01",
-            "period_end": "2026-08-01",
+            "period_end": "2026-10-01",
         }
 
     def test_derived_totals_are_built_from_parts(

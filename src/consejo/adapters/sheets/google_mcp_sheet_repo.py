@@ -607,10 +607,10 @@ SLIDE3_TABLE_HEADERS = [
 ]
 
 # Ventanas fijas de los valores visibles: 2025 = [2025-01-01, 2026-01-01),
-# sep2026 = [2026-01-01, 2026-08-02); el union de ventanas visibles es
-# 2025-01-01..2026-08-02. Las filas slide3 de MySQL no traen estos campos.
+# sep2026 = [2026-01-01, 2026-10-01); el union de ventanas visibles es
+# 2025-01-01..2026-10-01. Las filas slide3 de MySQL no traen estos campos.
 SLIDE3_PERIODO_INICIO = "2025-01-01"
-SLIDE3_PERIODO_FIN = "2026-08-02"
+SLIDE3_PERIODO_FIN = "2026-10-01"
 SLIDE3_FUENTE_MYSQL = "mysql"
 
 # Label legible por key de métrica slide3 (se deriva de la key porque
@@ -691,7 +691,7 @@ SLIDE8_ROWS = [
 SLIDE13_METRIC_ID = "slide13_penitenciarios"
 SLIDE13_CENTROS = 7
 SLIDE13_PERIODO_INICIO = "Acumulado"
-SLIDE13_PERIODO_FIN = "2026-08-01"
+SLIDE13_PERIODO_FIN = "2026-10-01"
 SLIDE13_FUENTE_INSCRIPCION = "inscription"
 SLIDE13_FUENTE_USUARIOS = "dim_user"
 SLIDE13_TABLE_HEADERS = [
@@ -709,11 +709,11 @@ SLIDE13_TABLE_HEADERS = [
 #   - slide15_mario_molina_inscripciones: COUNT(u.id) sobre
 #     fact_inscription (PostgreSQL analisis_cpe_db) JOIN course JOIN
 #     dim_user con c.id IN (217, 236, 310) (los 3 cursos del programa
-#     Mario Molina) y fi.inscripcionDate < '2026-08-01'.
+#     Mario Molina) y fi.inscripcionDate < '2026-10-01'.
 #   - slide15_mario_molina_vistas: SUM(ur.count) sobre userresource
 #     (MySQL capacitate_analisis) JOIN resource con r.id IN (33 IDs de
 #     recursos de la sección Mario Molina) y ur.lastUpdate <
-#     '2026-08-01'.
+#     '2026-10-01'.
 # Queries del archivo Consultas_consejo_panel.sql (sección Mario
 # Molina). El texto narrativo "Mario Molina Premio Nobel" + descripción
 # de la sección queda en la presentación de Slides — el Sheet "Datos"
@@ -723,7 +723,7 @@ SLIDE13_TABLE_HEADERS = [
 # desde fact_inscription (PostgreSQL) y consultas desde MySQL.
 SLIDE15_METRIC_ID = "slide15_mario_molina"
 SLIDE15_PERIODO_INICIO = "Acumulado"
-SLIDE15_PERIODO_FIN = "2026-08-01"
+SLIDE15_PERIODO_FIN = "2026-10-01"
 SLIDE15_FUENTE_INSCRIPCION = "fact_inscription"
 SLIDE15_FUENTE_USERRESOURCE = "MySQL"
 SLIDE15_TABLE_HEADERS = [
@@ -749,7 +749,7 @@ SLIDE15_TABLE_HEADERS = [
 SLIDE19_METRIC_ID = "slide19_seguridad_vial"
 SLIDE19_CURSOS_TOTAL = 16
 SLIDE19_PERIODO_INICIO = "Acumulado"
-SLIDE19_PERIODO_FIN = "2026-08-01"
+SLIDE19_PERIODO_FIN = "2026-10-01"
 SLIDE19_FUENTE_INSCRIPCION = "fact_inscription"
 SLIDE19_FUENTE_CERTIFICADAS_UNICAS = "MySQL"
 SLIDE19_TABLE_HEADERS = [
@@ -767,16 +767,16 @@ SLIDE19_TABLE_HEADERS = [
 # PostgreSQL con la lista de 78 cursos de crecimiento integral del
 # archivo Consultas_consejo_panel.sql — variante declarada por el
 # usuario 2026-08-19 como "la buena": solo filtro `du.plataformaId = 2`,
-# corte >= '2025-04-03' AND < '2026-08-01'). Mismo formato de 6
+# corte >= '2025-04-03' AND < '2026-10-01'). Mismo formato de 6
 # columnas que las otras slides (Período inicio / Período fin / Fuente
 # al final).
 SLIDE20_METRIC_ID = "slide20_crecimiento_integral"
 SLIDE20_PERIODO_INICIO = "2025-04-03"
-SLIDE20_PERIODO_FIN = "2026-08-01"
+SLIDE20_PERIODO_FIN = "2026-10-01"
 SLIDE20_FUENTE_INSCRIPCION = "fact_inscription"
 # KPI hardcoded de la Slide física (corte: 'Contenido' publicado en la
 # iniciativa de crecimiento integral). 73 cursos totales sector 76
-# (46 mantenidos + 27 quitados). Ventana 2025-04-03 a 2026-08-01, fuente mysql.
+# (46 mantenidos + 27 quitados). Ventana 2025-04-03 a 2026-10-01, fuente mysql.
 SLIDE20_CONTENIDO = 73
 SLIDE20_TABLE_HEADERS = [
     "Categoría",
@@ -789,12 +789,12 @@ SLIDE20_TABLE_HEADERS = [
 
 # Ventanas fijas de los valores visibles de slide 4: 2025 =
 # [2025-01-01, 2026-01-01), sep2026 = [2026-01-01, 2026-10-01),
-# dic2026 = [2026-01-01, 2026-08-01) y acumulado histórico < 2026-08-01
-# (la fecha 2026-08-01 documenta el cierre de la ventana visible y se
+# dic2026 = [2026-01-01, 2026-10-01) y acumulado histórico < 2026-10-01
+# (la fecha 2026-10-01 documenta el cierre de la ventana visible y se
 # alinea con el patrón de slide3). Las filas slide4 de PostgreSQL no
 # traen estos campos.
 SLIDE4_PERIODO_INICIO = "2025-01-01"
-SLIDE4_PERIODO_FIN = "2026-08-01"
+SLIDE4_PERIODO_FIN = "2026-10-01"
 SLIDE4_FUENTE_POSTGRES = "postgres"
 SLIDE4_FUENTE_MYSQL = "mysql"
 # Fuente mixta: la fila combina ventanas desde PostgreSQL con el acumulado
@@ -813,10 +813,10 @@ SLIDE4_LABELS = {
 }
 
 # Proyección lineal de dic2026: el total anual estimado se deriva del ritmo
-# mensual observado en la ventana sep2026 (enero a julio completos) aplicado
-# a los meses restantes del año (agosto a diciembre).
-SLIDE3_MESES_OBSERVADOS = 7
-SLIDE3_MESES_RESTANTES = 5
+# mensual observado en la ventana sep2026 (enero a septiembre completos)
+# aplicado a los meses restantes del año (octubre a diciembre).
+SLIDE3_MESES_OBSERVADOS = 9
+SLIDE3_MESES_RESTANTES = 3
 
 
 def _project_dic2026(sep2026_value: int) -> int:
@@ -825,8 +825,8 @@ def _project_dic2026(sep2026_value: int) -> int:
     dic2026 = round(sep2026 + (sep2026 / MESES_OBSERVADOS) * MESES_RESTANTES)
             = round(sep2026 * (1 + MESES_RESTANTES / MESES_OBSERVADOS))
 
-    El promedio mensual observado (sep2026 / 7 meses completos ene-jul) se
-    extiende a los meses restantes ago-dic. Es una estimación de ritmo
+    El promedio mensual observado (sep2026 / 9 meses completos ene-sep) se
+    extiende a los meses restantes oct-dic. Es una estimación de ritmo
     constante, no una predicción con tendencia.
     """
     factor = 1 + SLIDE3_MESES_RESTANTES / SLIDE3_MESES_OBSERVADOS
@@ -1394,10 +1394,10 @@ def _build_slide3_block(
     "slide3_capacitate_carso"), Programa = label legible derivado de la
     key (slide3_capacitate_carso -> "Capacitate Carso") y los valores de
     las columnas de ventana fija "2025", "sep2026" y "acumulado"
-    (rango histórico [2000-01-01, 2026-08-01) calculado en el SQL).
+    (rango histórico [2000-01-01, 2026-10-01) calculado en el SQL).
     dic2026 es la proyección lineal del total anual sobre sep2026 real
     (ver _project_dic2026). base_dic2026 NO se escribe. Los períodos son
-    las ventanas fijas 2025-01-01..2026-08-02 y la fuente es 'mysql'
+    las ventanas fijas 2025-01-01..2026-10-01 y la fuente es 'mysql'
     (db_source de las métricas slide3 de MySQL). Sin fila TOTAL: el =SUM
     no tiene sentido entre programas distintos.
     """
@@ -1668,12 +1668,12 @@ def _build_slide13_block(
     misma nomenclatura que slide12_rutas_aprendizaje y
     slide1_alimentos (categoría = a qué slide pertenece la fila).
 
-    Las 4 KPIs del pipeline llevan "Acumulado" / "2026-08-01" como
+    Las 4 KPIs del pipeline llevan "Acumulado" / "2026-10-01" como
     Período inicio / Período fin. La fuente es "inscription" para las
     que atacan fact_inscription, "dim_user" para la que ataca dim_user
     (usuarios registrados), y "calculado" para el KPI derivado (Cursos
-    por persona). El KPI Centros hardcoded lleva "2026-08-01" /
-    "2026-08-01" / "manual" porque no tiene query.
+    por persona). El KPI Centros hardcoded lleva "2026-10-01" /
+    "2026-10-01" / "manual" porque no tiene query.
     """
     # Indexar los manifests de slide13 por key → value de su primera fila
     by_key: dict[str, object] = {}
@@ -1967,7 +1967,7 @@ def _build_slide20_block(
     # Plan: (etiqueta legible, valor, periodo_inicio, periodo_fin,
     # fuente). 2 KPIs desde `analisis_cpe_db` PostgreSQL con filtro
     # solo `du.plataformaId = 2` y corte >= '2025-04-03' AND
-    # < '2026-08-01' (query declarada por el usuario 2026-08-19). El 3er
+    # < '2026-10-01' (query declarada por el usuario 2026-08-19). El 3er
     # KPI 'Contenido' está hardcoded — sin fuente automatizable. Los
     # labels del Sheet se alinean 1:1 con los 3 KPIs de la Slide física
     # (mapeo en data/mapping-slides.yaml: 'Inscripciones a cursos' y

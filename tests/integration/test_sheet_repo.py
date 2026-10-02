@@ -1079,7 +1079,7 @@ class TestGoogleMcpSheetRepo:
         (categoría slide3_* y fuente manual), y una fila por programa
         (Carso y Academica Labs) con su Categoría slide3_*, valores de
         2025/sep2026, dic2026 proyectado linealmente, períodos fijos
-        2025-01-01..2026-08-02 y fuente mysql. Acumulado queda vacío y
+        2025-01-01..2026-10-01 y fuente mysql. Acumulado queda vacío y
         NO hay fila TOTAL.
         """
         with patch.object(
@@ -1158,14 +1158,14 @@ class TestGoogleMcpSheetRepo:
         )
         assert carso[2]["userEnteredValue"]["numberValue"] == 45807
         assert carso[3]["userEnteredValue"]["numberValue"] == 23850
-        # dic2026 = round(23850 * 12/7) = 40886 (proyección lineal)
-        assert carso[4]["userEnteredValue"]["numberValue"] == 40886
+        # dic2026 = round(23850 * 12/9) = 31800 (proyección lineal)
+        assert carso[4]["userEnteredValue"]["numberValue"] == 31800
         assert carso[5] == {"userEnteredValue": {}}
         assert (
             carso[6]["userEnteredValue"]["stringValue"] == "2025-01-01"
         )
         assert (
-            carso[7]["userEnteredValue"]["stringValue"] == "2026-08-02"
+            carso[7]["userEnteredValue"]["stringValue"] == "2026-10-01"
         )
         assert carso[8]["userEnteredValue"]["stringValue"] == "mysql"
 
@@ -1181,14 +1181,14 @@ class TestGoogleMcpSheetRepo:
         )
         assert academica[2]["userEnteredValue"]["numberValue"] == 0
         assert academica[3]["userEnteredValue"]["numberValue"] == 4347
-        # dic2026 = round(4347 * 12/7) = 7452 (proyección lineal)
-        assert academica[4]["userEnteredValue"]["numberValue"] == 7452
+        # dic2026 = round(4347 * 12/9) = 5796 (proyección lineal)
+        assert academica[4]["userEnteredValue"]["numberValue"] == 5796
         assert academica[5] == {"userEnteredValue": {}}
         assert (
             academica[6]["userEnteredValue"]["stringValue"] == "2025-01-01"
         )
         assert (
-            academica[7]["userEnteredValue"]["stringValue"] == "2026-08-02"
+            academica[7]["userEnteredValue"]["stringValue"] == "2026-10-01"
         )
         assert academica[8]["userEnteredValue"]["stringValue"] == "mysql"
 
@@ -1237,8 +1237,8 @@ class TestGoogleMcpSheetRepo:
         )
         assert rows[2]["values"][2]["userEnteredValue"]["numberValue"] == 100
         assert rows[2]["values"][3]["userEnteredValue"]["numberValue"] == 50
-        # dic2026 = round(50 * 12/7) = 86 (proyección lineal sobre sep2026)
-        assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 86
+        # dic2026 = round(50 * 12/9) = 67 (proyección lineal sobre sep2026)
+        assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 67
         assert rows[2]["values"][5] == {"userEnteredValue": {}}
         assert (
             rows[2]["values"][6]["userEnteredValue"]["stringValue"]
@@ -1246,7 +1246,7 @@ class TestGoogleMcpSheetRepo:
         )
         assert (
             rows[2]["values"][7]["userEnteredValue"]["stringValue"]
-            == "2026-08-02"
+            == "2026-10-01"
         )
         assert (
             rows[2]["values"][8]["userEnteredValue"]["stringValue"]
@@ -1256,13 +1256,13 @@ class TestGoogleMcpSheetRepo:
     def test_project_dic2026_linear_projection(self) -> None:
         """La proyección dic2026 es el total anual a ritmo constante.
 
-        dic2026 = sep2026 * (1 + 5/7): los valores reales conocidos de
-        Carso (23849) y Académica (4347) deben producir 40884 y 7452.
+        dic2026 = sep2026 * (1 + 3/9): los valores reales conocidos de
+        Carso (23849) y Académica (4347) deben producir 31799 y 5796.
         """
-        assert _project_dic2026(23849) == 40884  # round(23849 * 12/7)
-        assert _project_dic2026(4347) == 7452  # round(4347 * 12/7)
-        assert _project_dic2026(23850) == 40886  # round(23850 * 12/7)
-        assert _project_dic2026(50) == 86  # round(50 * 12/7)
+        assert _project_dic2026(23849) == 31799  # round(23849 * 12/9)
+        assert _project_dic2026(4347) == 5796  # round(4347 * 12/9)
+        assert _project_dic2026(23850) == 31800  # round(23850 * 12/9)
+        assert _project_dic2026(50) == 67  # round(50 * 12/9)
         assert _project_dic2026(0) == 0
 
     def test_build_slide3_block_keeps_capacitate_empleo_manual(self) -> None:
@@ -1284,8 +1284,8 @@ class TestGoogleMcpSheetRepo:
         # Capacitate Empleo: dic2026 (col 4) y Acumulado (col 5) vacíos.
         assert rows[1]["values"][4] == {"userEnteredValue": {}}
         assert rows[1]["values"][5] == {"userEnteredValue": {}}
-        # Carso: dic2026 proyectado = 40884, Acumulado vacío.
-        assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 40884
+        # Carso: dic2026 proyectado = 31799, Acumulado vacío.
+        assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 31799
         assert rows[2]["values"][5] == {"userEnteredValue": {}}
 
     def test_snapshot_datos_includes_slide4_comparative_table(
@@ -1384,14 +1384,14 @@ class TestGoogleMcpSheetRepo:
         )
         assert seguridad[2]["userEnteredValue"]["numberValue"] == 25254
         assert seguridad[3]["userEnteredValue"]["numberValue"] == 18578
-        # dic2026 se recalcula con _project_dic2026: round(18578*12/7)=31848.
-        assert seguridad[4]["userEnteredValue"]["numberValue"] == 31848
+        # dic2026 se recalcula con _project_dic2026: round(18578*12/9)=24771.
+        assert seguridad[4]["userEnteredValue"]["numberValue"] == 24771
         assert seguridad[5]["userEnteredValue"]["numberValue"] == 184288
         assert (
             seguridad[6]["userEnteredValue"]["stringValue"] == "2025-01-01"
         )
         assert (
-            seguridad[7]["userEnteredValue"]["stringValue"] == "2026-08-01"
+            seguridad[7]["userEnteredValue"]["stringValue"] == "2026-10-01"
         )
         assert (
             seguridad[8]["userEnteredValue"]["stringValue"]
@@ -1410,14 +1410,14 @@ class TestGoogleMcpSheetRepo:
         )
         assert cultura[2]["userEnteredValue"]["numberValue"] == 104736
         assert cultura[3]["userEnteredValue"]["numberValue"] == 102916
-        # dic2026 se recalcula con _project_dic2026: round(102916*12/7)=176427.
-        assert cultura[4]["userEnteredValue"]["numberValue"] == 176427
+        # dic2026 se recalcula con _project_dic2026: round(102916*12/9)=137221.
+        assert cultura[4]["userEnteredValue"]["numberValue"] == 137221
         assert cultura[5]["userEnteredValue"]["numberValue"] == 1413528
         assert (
             cultura[6]["userEnteredValue"]["stringValue"] == "2025-01-01"
         )
         assert (
-            cultura[7]["userEnteredValue"]["stringValue"] == "2026-08-01"
+            cultura[7]["userEnteredValue"]["stringValue"] == "2026-10-01"
         )
         assert cultura[8]["userEnteredValue"]["stringValue"] == "postgres"
 
@@ -1467,8 +1467,8 @@ class TestGoogleMcpSheetRepo:
         assert rows[2]["values"][2]["userEnteredValue"]["numberValue"] == 100
         assert rows[2]["values"][3]["userEnteredValue"]["numberValue"] == 50
         # dic2026 se recalcula con _project_dic2026, no toma el valor crudo
-        # del manifest: round(50 * (1 + 5/7)) = 86.
-        assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 86
+        # del manifest: round(50 * (1 + 3/9)) = 67.
+        assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 67
         assert rows[2]["values"][5]["userEnteredValue"]["numberValue"] == 999
         assert (
             rows[2]["values"][6]["userEnteredValue"]["stringValue"]
@@ -1476,7 +1476,7 @@ class TestGoogleMcpSheetRepo:
         )
         assert (
             rows[2]["values"][7]["userEnteredValue"]["stringValue"]
-            == "2026-08-01"
+            == "2026-10-01"
         )
         assert (
             rows[2]["values"][8]["userEnteredValue"]["stringValue"]
@@ -1512,10 +1512,10 @@ class TestGoogleMcpSheetRepo:
         assert rows[1]["values"][8]["userEnteredValue"]["stringValue"] == "manual"
         # Seguridad vial: todos los valores reales presentes. dic2026 se
         # recalcula con _project_dic2026, no toma el valor crudo del
-        # manifest: round(18578 * (1 + 5/7)) = 31848.
+        # manifest: round(18578 * (1 + 3/9)) = 24771.
         assert rows[2]["values"][2]["userEnteredValue"]["numberValue"] == 25254
         assert rows[2]["values"][3]["userEnteredValue"]["numberValue"] == 18578
-        assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 31848
+        assert rows[2]["values"][4]["userEnteredValue"]["numberValue"] == 24771
         assert rows[2]["values"][5]["userEnteredValue"]["numberValue"] == 184288
 
     def test_build_slide4_block_mysql_single_value_writes_acumulado(
@@ -1535,7 +1535,7 @@ class TestGoogleMcpSheetRepo:
                 {
                     "value": 207562,
                     "periodo_inicio": "Acumulado",
-                    "periodo_fin": "2026-08-01",
+                    "periodo_fin": "2026-10-01",
                     "source": "inscription",
                 },
             ),
@@ -1569,7 +1569,7 @@ class TestGoogleMcpSheetRepo:
         )
         assert (
             rows[2]["values"][7]["userEnteredValue"]["stringValue"]
-            == "2026-08-01"
+            == "2026-10-01"
         )
         assert (
             rows[2]["values"][8]["userEnteredValue"]["stringValue"] == "mysql"
@@ -2043,7 +2043,7 @@ class TestGoogleMcpSheetRepo:
                 ),
                 freshness_hours=0.5,
                 rows=({"value": 2753, "periodo_inicio": "Acumulado",
-                       "periodo_fin": "2026-08-01",
+                       "periodo_fin": "2026-10-01",
                        "source": "fact_inscription"},),
                 status=FetchStatus.EXTRACTED,
             ),
@@ -2058,7 +2058,7 @@ class TestGoogleMcpSheetRepo:
                 ),
                 freshness_hours=0.5,
                 rows=({"value": 806, "periodo_inicio": "Acumulado",
-                       "periodo_fin": "2026-08-01",
+                       "periodo_fin": "2026-10-01",
                        "source": "fact_inscription"},),
                 status=FetchStatus.EXTRACTED,
             ),
@@ -2073,7 +2073,7 @@ class TestGoogleMcpSheetRepo:
                 ),
                 freshness_hours=0.5,
                 rows=({"value": 276, "periodo_inicio": "Acumulado",
-                       "periodo_fin": "2026-08-01",
+                       "periodo_fin": "2026-10-01",
                        "source": "fact_inscription"},),
                 status=FetchStatus.EXTRACTED,
             ),
@@ -2088,7 +2088,7 @@ class TestGoogleMcpSheetRepo:
                 ),
                 freshness_hours=0.5,
                 rows=({"value": 98, "periodo_inicio": "Acumulado",
-                       "periodo_fin": "2026-08-01",
+                       "periodo_fin": "2026-10-01",
                        "source": "fact_inscription"},),
                 status=FetchStatus.EXTRACTED,
             ),
@@ -2111,12 +2111,12 @@ class TestGoogleMcpSheetRepo:
         # age_gender. Cursos por persona es derivado: round(inscripciones
         # / usuarios_registrados, 2) = round(2753 / 276, 2) = 9.97.
         expected = [
-            ("Inscripciones totales", 2753, "Acumulado", "2026-08-01", "inscription"),
-            ("Certificados", 806, "Acumulado", "2026-08-01", "inscription"),
-            ("Usuarios registrados", 276, "Acumulado", "2026-08-01", "dim_user"),
-            ("Cursos por persona", 9.97, "Acumulado", "2026-08-01", "calculado"),
-            ("Cursos ofertados", 98, "Acumulado", "2026-08-01", "inscription"),
-            ("Centros", SLIDE13_CENTROS, "2026-08-01", "2026-08-01", "manual"),
+            ("Inscripciones totales", 2753, "Acumulado", "2026-10-01", "inscription"),
+            ("Certificados", 806, "Acumulado", "2026-10-01", "inscription"),
+            ("Usuarios registrados", 276, "Acumulado", "2026-10-01", "dim_user"),
+            ("Cursos por persona", 9.97, "Acumulado", "2026-10-01", "calculado"),
+            ("Cursos ofertados", 98, "Acumulado", "2026-10-01", "inscription"),
+            ("Centros", SLIDE13_CENTROS, "2026-10-01", "2026-10-01", "manual"),
         ]
         for fila, (
             expected_metrica, expected_valor,
@@ -2357,12 +2357,12 @@ class TestGoogleMcpSheetRepo:
         # del header. Usuarios registrados viene de dim_user; Cursos por
         # persona = round(2753 / 276, 2) = 9.97.
         expected_plan = [
-            ("Inscripciones totales", 2753, "Acumulado", "2026-08-01", "inscription"),
-            ("Certificados", 806, "Acumulado", "2026-08-01", "inscription"),
-            ("Usuarios registrados", 276, "Acumulado", "2026-08-01", "dim_user"),
-            ("Cursos por persona", 9.97, "Acumulado", "2026-08-01", "calculado"),
-            ("Cursos ofertados", 98, "Acumulado", "2026-08-01", "inscription"),
-            ("Centros", SLIDE13_CENTROS, "2026-08-01", "2026-08-01", "manual"),
+            ("Inscripciones totales", 2753, "Acumulado", "2026-10-01", "inscription"),
+            ("Certificados", 806, "Acumulado", "2026-10-01", "inscription"),
+            ("Usuarios registrados", 276, "Acumulado", "2026-10-01", "dim_user"),
+            ("Cursos por persona", 9.97, "Acumulado", "2026-10-01", "calculado"),
+            ("Cursos ofertados", 98, "Acumulado", "2026-10-01", "inscription"),
+            ("Centros", SLIDE13_CENTROS, "2026-10-01", "2026-10-01", "manual"),
         ]
         slide13_data = datos_rows[
             slide13_header_idx + 1 : slide13_header_idx + 1 + len(expected_plan)
