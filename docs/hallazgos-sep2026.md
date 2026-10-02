@@ -214,3 +214,61 @@ hacer falta contar solo parte de una ruta, el mecanismo está en el commit 84abb
 Estado actual de Slide 12: **18 rutas, 110 cursos, 110 distintos, 0 repetidos.**
 El curso 100129 "Manejo correcto de las tarjetas de crédito" queda fuera del
 catálogo: era el único que solo existía en esa ruta.
+
+## H11 — Slide 12 alineada con la hoja de control (2026-10-02)
+
+Fuente: pestaña `Slide12_Sep2025 - Sep2026` del spreadsheet
+`1K6aej9AFJGBkttvqYWuGVoDqFlJa1mbo7fm1uk6NY0w` (gid 1763924154).
+
+**El orden ya coincidía.** Las 18 rutas de la hoja están en el mismo orden que el
+catálogo, y 17 de 18 traen exactamente los mismos cursos en la misma secuencia. No
+hubo nada que reordenar.
+
+**El único cambio: "Convive mejor con otros", de 3 a 7 cursos.** Entran cuatro:
+
+| ID | Curso |
+|---|---|
+| 305 | Prácticas de cortesía |
+| 100070 | Juego limpio |
+| 100063 | Solidaridad |
+| 299 | Cultura urbana |
+
+### Tres cosas que la hoja traía y hay que saber
+
+**1. La ruta está escrita dos veces.** Filas 76-78 tienen los 3 cursos originales en
+su posición; filas 114-120, al final y después de "Preparación para buscar trabajo",
+repiten esos 3 y agregan los 4 nuevos. Son 3 filas duplicadas exactas (100330,
+100380, 100381).
+
+El usuario confirmó que el bloque de abajo era un **agregado, no un reordenamiento**:
+la ruta se queda en el orden 12 dentro de Capacitación básica. La razón es
+estructural, no cosmética — `_build_slide12_block` emite un subtotal cada vez que
+cambia la sección, así que cada sección tiene que ocupar órdenes consecutivos. Si
+Convive se moviera al final, después de "Preparación para buscar trabajo" que es
+Emprendimiento, Capacitación básica quedaría partida en dos y la hoja emitiría dos
+subtotales de la misma sección, inflando el TOTAL.
+
+**2. El curso 299 queda en dos rutas.** Ya estaba en "¿Cómo mejorar mi entorno?" y
+ahora entra también en Convive. Es el **primer curso compartido del catálogo de
+Slide 12**. Sus inscripciones y certificados se cuentan una vez por ruta, así que el
+TOTAL de la hoja lo incluye dos veces.
+
+La guarda `test_slide12_has_no_duplicated_courses` (que exigía cero repetidos) se
+reemplazó por `test_slide12_course_assignments_match_the_declared_sharing`, que fija
+el reparto exacto: 114 asignaciones, 113 cursos distintos y una allowlist explícita
+de compartidos. Un duplicado accidental sigue rompiendo el test.
+
+**3. "Busca tu primer trabajo" no tiene ID** (fila 113, en "Preparación para buscar
+trabajo"). Es la diferencia entre las 118 filas de la hoja y los 117 IDs. **Pendiente**:
+con el ID resuelto esa ruta pasaría de 7 a 8 cursos y el total a 115 asignaciones /
+114 distintos.
+
+### Números
+
+| | Apariciones | Distintos | Compartidos |
+|---|---|---|---|
+| Catálogo antes | 110 | 110 | 0 |
+| Catálogo ahora | **114** | **113** | 1 (299) |
+| Con el ID pendiente | 115 | 114 | 1 |
+
+Las 118 filas de la hoja = 114 reales + 3 duplicadas + 1 sin ID.

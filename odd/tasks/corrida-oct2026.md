@@ -102,3 +102,21 @@ reconciled against the new 85/53 lists and is still painted as a hardcoded KPI.
 
 - [x] T6 — Slide 20: cohorts split at 2026-06-01, per-row period for únicas
 - [ ] T7 — Reconcile `SLIDE20_CONTENIDO` (73) against the new course lists
+
+## T8 — Slide 12 aligned with the control sheet
+
+Source: tab `Slide12_Sep2025 - Sep2026` of spreadsheet
+`1K6aej9AFJGBkttvqYWuGVoDqFlJa1mbo7fm1uk6NY0w`.
+
+Route order already matched; 17 of 18 routes were already identical. The only
+change is `Convive mejor con otros`, 3 -> 7 courses (adds 305, 100070, 100063,
+299), kept at `orden` 12 in Capacitación básica so section blocks stay
+contiguous for the subtotal logic.
+
+Course 299 is now the first cross-route duplicate in slide 12. The
+zero-duplicates guard was replaced by an explicit sharing allowlist: 114
+assignments over 113 distinct courses. Full write-up in
+`docs/hallazgos-sep2026.md` H11.
+
+- [x] T8 — Slide 12: Convive mejor con otros 3 -> 7, sharing allowlist
+- [ ] T9 — Resolve the missing course ID for "Busca tu primer trabajo"

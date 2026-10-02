@@ -208,15 +208,24 @@ class TestCatalogRepo:
         b = catalog_repo.list_metrics()
         assert a is b  # misma instancia cacheada
 
-    def test_slide12_has_no_duplicated_courses(
+    # Cursos que pertenecen a más de una ruta de slide 12, con las rutas que
+    # los comparten. Declarado por el usuario 2026-10-02 al alinear el
+    # catálogo con la hoja "Slide12_Sep2025 - Sep2026". Cada entrada infla el
+    # TOTAL de la slide (suma de subtotales por sección), así que la lista se
+    # mantiene explícita para que un duplicado accidental no pase inadvertido.
+    SLIDE12_SHARED_COURSES = {
+        299: {"¿Cómo mejorar mi entorno?", "Convive mejor con otros"},
+    }
+
+    def test_slide12_course_assignments_match_the_declared_sharing(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
-        """Slide 12 — cada curso pertenece a UNA sola ruta.
+        """Slide 12 — solo los cursos declarados pertenecen a varias rutas.
 
-        Sin cursos repetidos, el TOTAL de la slide (suma de subtotales por
-        sección) no cuenta dos veces las inscripciones ni los certificados,
-        así que la SQL cuenta todos los cursos de cada ruta y no necesita un
-        array de conteo aparte.
+        El TOTAL de la slide es la suma de los subtotales por sección, así que
+        un curso en dos rutas se cuenta dos veces tanto en inscripciones como
+        en certificados. Por eso el reparto se fija acá: 114 asignaciones
+        sobre 113 cursos distintos, y el único compartido es 299.
         """
         metric = next(
             m for m in catalog_repo.list_metrics()
@@ -230,10 +239,17 @@ class TestCatalogRepo:
         )
         assert len(rutas) == 18
 
-        asignaciones = [
-            int(i) for _, ids in rutas for i in ids.split(",")
-        ]
-        assert len(asignaciones) == len(set(asignaciones))
+        por_curso: dict[int, set[str]] = {}
+        for ruta, ids in rutas:
+            for i in ids.split(","):
+                por_curso.setdefault(int(i), set()).add(ruta)
+
+        asignaciones = sum(len(v) for v in por_curso.values())
+        assert asignaciones == 114
+        assert len(por_curso) == 113
+
+        compartidos = {c: r for c, r in por_curso.items() if len(r) > 1}
+        assert compartidos == self.SLIDE12_SHARED_COURSES
 
         assert "Compras y pagos digitales" not in sql
         assert "curso_ids_conteo" not in sql
@@ -245,10 +261,13 @@ class TestCatalogRepo:
         """Slide 12 — rutas "Preparación para buscar trabajo" (Emprendimiento)
         y "Convive mejor con otros" (Capacitación básica).
 
-        Ninguno de sus 10 cursos pertenece a otra ruta de la slide. De los cursos
-        duplicados en la tabla `course` se toma el ID vivo: 67 (Guía para
-        entrevistas) y 212 (Disciplina en el trabajo); 329 y 330 quedaron sin
-        inscripciones nuevas.
+        De los cursos duplicados en la tabla `course` se toma el ID vivo: 67
+        (Guía para entrevistas) y 212 (Disciplina en el trabajo); 329 y 330
+        quedaron sin inscripciones nuevas.
+
+        El reparto exacto de cursos compartidos vive en
+        `test_slide12_course_assignments_match_the_declared_sharing`: desde el
+        2026-10-02 Convive comparte 299 con "¿Cómo mejorar mi entorno?".
 
         Las secciones se mantienen contiguas por `orden` porque el bloque de
         la hoja emite un subtotal al detectar un cambio de sección.
@@ -272,7 +291,9 @@ class TestCatalogRepo:
 
         convive = by_ruta["Convive mejor con otros"]
         assert convive[1] == "Capacitación básica"
-        assert [int(i) for i in convive[3].split(",")] == [100330, 100380, 100381]
+        assert [int(i) for i in convive[3].split(",")] == [
+            100330, 100380, 100381, 305, 100070, 100063, 299,
+        ]
 
         # Los IDs retirados no entran.
         assert "329" not in buscar[3] and "330" not in buscar[3]
@@ -466,3 +487,39 @@ class TestCatalogRepo:
             re.findall(r'IN \(([\d,\s]+)\)', unicas.db_mapping)
         )
         assert "fi.\"inscripcionDate\" < '2026-08-01'" in ofertados.db_mapping
+
+    def test_slide12_convivencia_matches_the_control_sheet(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """"Convive mejor con otros" sigue el orden de la hoja de control.
+
+        La hoja "Slide12_Sep2025 - Sep2026" la trae escrita dos veces: un
+        bloque viejo con 3 cursos en su posición y uno nuevo al final con los
+        3 originales más 4 agregados. El usuario confirmó el 2026-10-02 que el
+        bloque de abajo era un agregado, no un reordenamiento: la ruta se queda
+        en el orden 12 dentro de Capacitación básica para que las secciones
+        sigan contiguas y los subtotales de la hoja no se dupliquen.
+        """
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "slide12_rutas_aprendizaje"
+        )
+        rutas = re.findall(
+            r"\((\d+), '([^']+)', '([^']+)', ARRAY\[([\d,\s]+)\]::bigint\[\]\)",
+            metric.db_mapping,
+        )
+        by_ruta = {r[2]: r for r in rutas}
+
+        convive = by_ruta["Convive mejor con otros"]
+        assert int(convive[0]) == 12
+        assert convive[1] == "Capacitación básica"
+        # Orden exacto de la hoja: los 3 originales y después los 4 nuevos.
+        assert [int(i) for i in convive[3].split(",")] == [
+            100330, 100380, 100381, 305, 100070, 100063, 299,
+        ]
+
+        # Las secciones ocupan órdenes consecutivos: el bloque de la hoja
+        # emite un subtotal cada vez que cambia de sección.
+        secciones = [r[1] for r in sorted(rutas, key=lambda r: int(r[0]))]
+        bloques = [s for i, s in enumerate(secciones) if i == 0 or s != secciones[i - 1]]
+        assert len(bloques) == len(set(bloques))
