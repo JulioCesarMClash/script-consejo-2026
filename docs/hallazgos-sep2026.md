@@ -359,3 +359,42 @@ columna dic2026 se calcula con `_project_dic2026` sobre `sep2026`).
 
 La proyección ahora se apoya en 9 meses reales en vez de 7: Carso proyecta
 `round(30,953 × 12/9) = 41,271` para dic 2026.
+
+## H13 — Corrida de producción del cierre Sep 2026 (2026-10-02)
+
+`pipeline --cut 2026-10-01` con escritura real. Destino: spreadsheet
+`1AI7nEsWPoXsu43AilsGYFVfbiOeNUQm7Kk4PVIMmqog` — "Consejo 2026 - Snapshot Técnico",
+el spreadsheet dedicado del snapshot (5 hojas: Control, Datos, Reporte, Errores,
+Configuracion). No es la hoja de control del usuario ni el deck.
+
+**37 métricas · 87 filas · DQS 0 issues · hoja `Errores` vacía.**
+`run_id 298f5fff` · `catalog_hash 925e62f7` · `bundle_hash d56df02b`.
+
+### El bundle_hash NO sirve para comparar dos corridas
+
+El hash de producción (`d56df02b`) difiere del dry run (`a1c55192`), pero eso es por
+construcción, no por drift de datos: `Bundle._canonical_dict` incluye `run_id` y el
+`fetched_at` de cada manifiesto, y los dos cambian en cada ejecución. **Dos corridas
+nunca van a producir el mismo hash, ni con datos idénticos.**
+
+El hash sirve para lo que fue hecho — detectar que un snapshot ya escrito fue
+alterado después — no para reconciliar corridas. Para eso hay que comparar valores.
+
+### Verificación por valores: 0 diferencias
+
+Comparadas las 123 filas de la hoja `Datos` contra el JSON del dry run: **todos los
+valores comparables coinciden exactamente** (slide 1 por categoría, las 18 rutas de
+slide 12 en cursos/inscripciones/certificados, y los KPIs de slide 20). No hubo drift
+entre las dos corridas, separadas por unos 40 minutos.
+
+Los subtotales por sección de slide 12 cierran: 17 + 20 + 43 + 34 = **114 cursos**,
+8,067,045 inscripciones, 2,307,986 certificados.
+
+Slide 20 quedó escrita con sus tres períodos divergentes visibles en la hoja, que era
+el punto de darle su propia constante:
+
+| Métrica | Valor | Período fin en la hoja |
+|---|---|---|
+| Inscripciones a cursos | 38,795 | 2026-10-01 |
+| Personas únicas inscritas | 17,372 | **2026-08-01** |
+| Contenido (hardcoded) | 73 | 2026-10-01 |

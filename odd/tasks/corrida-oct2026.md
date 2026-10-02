@@ -132,4 +132,7 @@ reconciliation are in `docs/hallazgos-sep2026.md` H12.
 Tasks:
 
 - [x] T5 — Full suite green + dry run
-- [ ] T10 — Production run (writes to Sheets) — needs the user's go-ahead
+- [x] T10 — Production run: 37 metrics, 87 rows, DQS 0 issues, written to
+      "Consejo 2026 - Snapshot Técnico". Verified value-by-value against the
+      dry run: 0 differences. See `docs/hallazgos-sep2026.md` H13.
+- [ ] T7 — Reconcile `SLIDE20_CONTENIDO` (73) against the new course lists
