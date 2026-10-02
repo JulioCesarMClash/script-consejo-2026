@@ -43,7 +43,7 @@ Dates live in four places and none of them share a single source of truth:
 - [x] T2 — Catalog: 19 `db_mapping` cutoffs + caveats/notes prose
 - [x] T3 — Sheet repo: `SLIDE*_PERIODO_FIN` labels + projection months (7/5 -> 9/3)
 - [x] T4 — Fixtures and docs coherence (`mapping-slides.yaml`, pipeline fixtures)
-- [ ] T5 — Full suite green + dry run
+- [x] T5 — Full suite green + dry run (see T5 section below)
 
 ## Checks
 
@@ -122,3 +122,14 @@ assignments over 113 distinct courses. Full write-up in
 - [x] T9 — DISCARDED by the user 2026-10-02: "Busca tu primer trabajo"
       stays out for now, so "Preparación para buscar trabajo" keeps its 7
       courses and slide 12 closes at 114 assignments / 113 distinct.
+
+## T5 — done (dry run)
+
+`pipeline --cut 2026-10-01 --dry-run` against the real databases: 37 manifests,
+DQS 0 issues, bundle hash `a1c55192ab3de961`. Results and the slide-1
+reconciliation are in `docs/hallazgos-sep2026.md` H12.
+
+Tasks:
+
+- [x] T5 — Full suite green + dry run
+- [ ] T10 — Production run (writes to Sheets) — needs the user's go-ahead

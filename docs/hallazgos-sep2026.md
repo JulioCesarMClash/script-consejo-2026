@@ -292,3 +292,70 @@ De los 4 que sí entraron hoy, solo 2 eran nuevos para el catálogo completo:
 305 y 299 cruzan con otras slides, pero esas miden poblaciones distintas: no inflan
 el TOTAL de Slide 12. El único cruce que sí lo infla es 299 dentro de la propia
 Slide 12.
+
+## H12 — Corrida de prueba del cierre Sep 2026 (2026-10-02)
+
+`pipeline --cut 2026-10-01 --dry-run` contra las bases reales. Datos reales, sin
+escribir en Sheets.
+
+**37 manifiestos extraídos. DQS: 0 issues. Bundle hash `a1c55192ab3de961`.**
+
+Las ventanas salieron como se definieron: slides 1 y 2 en `2025-09-01 -> 2026-10-01`,
+los acumulados en `Acumulado -> 2026-10-01`, y slide 20 con sus tres períodos
+divergentes a propósito.
+
+### Slide 12 — 18 rutas, 114 cursos
+
+| Sección | Rutas | Cursos |
+|---|---|---|
+| Construcción | 1 | 17 |
+| Habilidades digitales | 4 | 20 |
+| Capacitación básica | 7 | 43 |
+| Emprendimiento | 6 | 34 |
+| **TOTAL** | **18** | **114** |
+
+Inscripciones 8,067,045 · Certificados 2,307,986. "Convive mejor con otros" ya
+reporta sus 7 cursos (185,745 inscripciones / 97,008 certificados).
+
+### Slide 20 — los tres períodos divergentes, confirmados en vivo
+
+| Métrica | Valor | Ventana |
+|---|---|---|
+| Inscripciones | 38,795 | 2025-04-03 -> 2026-10-01 |
+| Personas únicas inscritas | 17,372 | 2025-04-03 -> **2026-08-01** |
+| Cursos ofertados | 77 | 2025-04-03 -> **2026-08-01** |
+
+Cursos ofertados da 77 sobre los 85 de la lista: **8 cursos no registraron ninguna
+inscripción** en la ventana.
+
+### El 352,206 de slide 1 era sin el filtro de México
+
+La corrida dio TOTAL=237,683 personas únicas certificadas, contra el `TOTAL=352,206`
+que había registrado un caveat. La diferencia no es la ventana — se midió el efecto
+de cada variable:
+
+| Variante | Meses | TOTAL |
+|---|---|---|
+| `2025-09-01 -> 2026-08-01` (ventana del caveat) | 11 | 213,344 |
+| `2025-09-01 -> 2026-10-01` (**corrida nueva**) | 13 | **237,683** |
+| `2025-07-01 -> 2026-08-01` (ventana del `.env` anterior) | 13 | 245,896 |
+| `2025-09-01 -> 2026-08-01` **sin filtro de México** | 11 | 356,657 |
+
+El caveat venía del commit `3e1c62e` (2026-08-17), donde la query **todavía no tenía
+`l."countryName" = 'México'`** y las categorías sumaban 96 cursos en vez de 101.
+Reproducida sin ese filtro en su misma ventana da 356,657, a 1.3% del valor
+registrado — la diferencia restante son los 5 cursos nuevos y el backfill de
+certificaciones con fecha retroactiva.
+
+El caveat quedó marcado como OBSOLETO en el catálogo y se agregó el resultado de esta
+corrida al lado. La métrica es monótona en la ventana, que era lo que había que
+descartar.
+
+### Nota: `base_dic2026` de slide 3 ahora da 0
+
+Su ventana es `[corte, 2027-01-01)`, o sea `[2026-10-01, 2027-01-01)`, y la corrida se
+hizo el 2026-10-02. No afecta nada: `base_dic2026` nunca se escribe en la hoja (la
+columna dic2026 se calcula con `_project_dic2026` sobre `sep2026`).
+
+La proyección ahora se apoya en 9 meses reales en vez de 7: Carso proyecta
+`round(30,953 × 12/9) = 41,271` para dic 2026.

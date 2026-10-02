@@ -326,8 +326,14 @@ metrics:
     no lo incluye.
   - Organización de cursos estática, validada contra Consultas consejo panel.sql (Sep-2025) + cursos IA (100212, 366).
   - Excluye IDs 100433/100436 (sector 81) con 0 certificados/inscripciones en fact_inscription.
-  - 'Resultado al corte de la corrida anterior < ''2026-08-01'' (periodo 2025-09-01..2026-08-01, PG): vivienda=20,653 / digital=76,371
-    / alimentos=99,355 / desastres=74,569 / empleo=81,258 / TOTAL=352,206 personas únicas certificadas.'
+  - OBSOLETO — no usar como referencia. El TOTAL=352,206 registrado el 2026-08-17 (vivienda=20,653 / digital=76,371 / alimentos=99,355
+    / desastres=74,569 / empleo=81,258) se midió SIN el filtro l."countryName" = 'México', que se agregó al catálogo después,
+    y con 96 cursos en vez de los 101 actuales. Reproducido el 2026-10-02 quitando el filtro y en esa misma ventana 2025-09-01..2026-08-01
+    da 356,657 (+1.3%, por los 5 cursos nuevos y el backfill de certificaciones retroactivas), lo que confirma el origen de
+    la diferencia.
+  - 'Resultado de la corrida de cierre Sep 2026 (ventana 2025-09-01..2026-10-01, 13 meses, PG, con filtro de México): vivienda=16,336
+    / digital=53,967 / alimentos=63,897 / desastres=49,356 / empleo=54,127 / TOTAL=237,683 personas únicas certificadas. La
+    métrica es monótona en la ventana: la misma query a 11 meses (..2026-08-01) da 213,344.'
 - key: slide12_rutas_aprendizaje
   name: Rutas de aprendizaje (Slide 12)
   description: 'Tabla slide 12: 18 rutas de aprendizaje en 4 secciones (Construcción, Habilidades digitales, Capacitación
