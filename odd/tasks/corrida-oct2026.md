@@ -59,3 +59,46 @@ source.
 
 Route per task: direct inline (mechanical, already-understood literal
 migration; the Agent tool is disabled for this session by user instruction).
+
+## T6 — Slide 20 Crecimiento Integral, nueva estructura de cohortes
+
+Declared by the user 2026-10-02. The CI courses were released 2025-04-03 and
+stayed unchanged until 2026-06-01, when the course set changed. The previous
+catalog shape (46 "mantenidos" + 27 "quitados" = 73 courses) is replaced.
+
+New course lists: A = 85 original courses, B = 53 courses still live after the
+change. `B` is a strict subset of `A`; the 2026-06-01 change only retired 32
+courses, none were added. The user's pasted list B carried `100359` twice (54
+entries, 53 distinct) and was deduplicated.
+
+The three metrics no longer share a window:
+
+| Metric | Shape | Window |
+|---|---|---|
+| `*_inscripciones` | `COUNT`, two cohorts OR'd | A in `[2025-04-03, 2026-06-01)` + B in `[2026-06-01, 2026-10-01)` |
+| `*_personas_unicas_inscritas` | `COUNT(DISTINCT userId)`, one cohort | A in `[2025-04-03, 2026-08-01)` |
+| `*_cursos_ofertados` | `COUNT(DISTINCT courseId)`, one cohort | A in `[2025-04-03, 2026-08-01)` |
+
+The `2026-08-01` cutoff on the last two **diverges from the run cutoff on
+purpose**: it was raised to the user as a conflict and they chose to keep the
+query literal. Consequences recorded so the deck can explain them:
+
+- Those two metrics reach two months less than inscripciones on the same slide.
+- Their universe includes the 32 courses retired on 2026-06-01, which the
+  inscripciones live cohort excludes.
+- The sheet row for personas únicas now carries its own
+  `SLIDE20_PERIODO_FIN_UNICAS = "2026-08-01"` instead of the shared
+  `SLIDE20_PERIODO_FIN`, so the published period matches the query that ran.
+- `test_no_metric_keeps_the_previous_run_cutoff` now asserts an explicit
+  two-metric allowlist rather than an empty set, and
+  `test_accumulated_metrics_share_the_oct2026_cutoff` drops from 19 to 17.
+
+### Still open on slide 20
+
+`SLIDE20_CONTENIDO = 73` was derived from the old 46+27 list. It has not been
+reconciled against the new 85/53 lists and is still painted as a hardcoded KPI.
+
+## Tasks (continued)
+
+- [x] T6 — Slide 20: cohorts split at 2026-06-01, per-row period for únicas
+- [ ] T7 — Reconcile `SLIDE20_CONTENIDO` (73) against the new course lists

@@ -763,20 +763,32 @@ SLIDE19_TABLE_HEADERS = [
 
 # Layout de Slide 20: tarjeta de KPIs de "Crecimiento integral" (última
 # slide de la presentación del Consejo 2026). 2 KPIs vienen de las
-# métricas `slide20_*` del catálogo (2 queries en `analisis_cpe_db`
-# PostgreSQL con la lista de 78 cursos de crecimiento integral del
-# archivo Consultas_consejo_panel.sql — variante declarada por el
-# usuario 2026-08-19 como "la buena": solo filtro `du.plataformaId = 2`,
-# corte >= '2025-04-03' AND < '2026-10-01'). Mismo formato de 6
-# columnas que las otras slides (Período inicio / Período fin / Fuente
-# al final).
+# métricas `slide20_*` del catálogo (queries en `analisis_cpe_db`
+# PostgreSQL declaradas por el usuario 2026-10-02, solo filtro
+# `du.plataformaId = 2` desde '2025-04-03'). Los cursos se liberaron el
+# 2025-04-03 y cambiaron el 2026-06-01, así que las dos métricas no
+# comparten ventana: inscripciones suma 85 cursos originales en
+# [2025-04-03, 2026-06-01) más 53 cursos vigentes en
+# [2026-06-01, 2026-10-01); personas únicas usa una sola ventana con los
+# 85 originales en [2025-04-03, 2026-08-01). Mismo formato de 6 columnas
+# que las otras slides (Período inicio / Período fin / Fuente al final).
 SLIDE20_METRIC_ID = "slide20_crecimiento_integral"
 SLIDE20_PERIODO_INICIO = "2025-04-03"
 SLIDE20_PERIODO_FIN = "2026-10-01"
+# Personas únicas inscritas corta en 2026-08-01, no en el corte de la
+# corrida: por decisión del usuario (2026-10-02) esa métrica se quedó en
+# UNA sola ventana con los 85 cursos originales, mientras inscripciones se
+# parte en el cambio de cursos del 2026-06-01 y sí llega a 2026-10-01.
+# Su fila lleva este período propio para no reportar una ventana que la
+# query no usó.
+SLIDE20_PERIODO_FIN_UNICAS = "2026-08-01"
 SLIDE20_FUENTE_INSCRIPCION = "fact_inscription"
 # KPI hardcoded de la Slide física (corte: 'Contenido' publicado en la
-# iniciativa de crecimiento integral). 73 cursos totales sector 76
-# (46 mantenidos + 27 quitados). Ventana 2025-04-03 a 2026-10-01, fuente mysql.
+# iniciativa de crecimiento integral). 73 cursos totales sector 76.
+# PENDIENTE: el 73 venía de la lista anterior de 46 mantenidos + 27
+# quitados, que el usuario reemplazó el 2026-10-02 por 85 cursos
+# originales / 53 vigentes. El valor sigue sin confirmar contra las listas
+# nuevas. Fuente mysql.
 SLIDE20_CONTENIDO = 73
 SLIDE20_TABLE_HEADERS = [
     "Categoría",
@@ -1965,9 +1977,11 @@ def _build_slide20_block(
     row_0based += 1
 
     # Plan: (etiqueta legible, valor, periodo_inicio, periodo_fin,
-    # fuente). 2 KPIs desde `analisis_cpe_db` PostgreSQL con filtro
-    # solo `du.plataformaId = 2` y corte >= '2025-04-03' AND
-    # < '2026-10-01' (query declarada por el usuario 2026-08-19). El 3er
+    # fuente). 2 KPIs desde `analisis_cpe_db` PostgreSQL con filtro solo
+    # `du.plataformaId = 2` desde '2025-04-03' (queries declaradas por el
+    # usuario 2026-10-02). Inscripciones parte la ventana en el cambio de
+    # cursos del 2026-06-01 y cierra en '2026-10-01'; personas únicas usa
+    # una sola ventana y cierra en '2026-08-01'. El 3er
     # KPI 'Contenido' está hardcoded — sin fuente automatizable. Los
     # labels del Sheet se alinean 1:1 con los 3 KPIs de la Slide física
     # (mapeo en data/mapping-slides.yaml: 'Inscripciones a cursos' y
@@ -1985,7 +1999,7 @@ def _build_slide20_block(
             "Personas únicas inscritas",
             by_key["slide20_crecimiento_integral_personas_unicas_inscritas"],
             SLIDE20_PERIODO_INICIO,
-            SLIDE20_PERIODO_FIN,
+            SLIDE20_PERIODO_FIN_UNICAS,
             SLIDE20_FUENTE_INSCRIPCION,
         ),
         (

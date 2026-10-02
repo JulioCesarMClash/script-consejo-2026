@@ -285,30 +285,40 @@ class TestCatalogRepo:
             for s in set(secciones)
         )
 
+    # Excepción deliberada al corte de la corrida: el usuario declaró el
+    # 2026-10-02 que las dos métricas de personas/cursos de Crecimiento
+    # Integral se quedan en '2026-08-01'. Cualquier otra métrica que
+    # conserve el corte viejo es un olvido de migración.
+    SLIDE20_AUG2026_CUTOFF_BY_DESIGN = {
+        "slide20_crecimiento_integral_personas_unicas_inscritas",
+        "slide20_crecimiento_integral_cursos_ofertados",
+    }
+
     def test_no_metric_keeps_the_previous_run_cutoff(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
-        """Ninguna métrica conserva el corte de la corrida anterior.
+        """Solo las 2 excepciones declaradas conservan el corte viejo.
 
         La corrida de cierre Sep 2026 mueve el corte duro de '2026-08-01'
-        a '2026-10-01'. Un literal viejo sobreviviente mezclaría ventanas
-        entre slides.
+        a '2026-10-01'. Un literal viejo sobreviviente fuera de la lista de
+        excepciones mezclaría ventanas entre slides sin que nadie lo note.
         """
-        stale = [
+        stale = {
             m.key
             for m in catalog_repo.list_metrics()
             if "2026-08-01" in (m.db_mapping or "")
-        ]
+        }
 
-        assert stale == []
+        assert stale == self.SLIDE20_AUG2026_CUTOFF_BY_DESIGN
 
     def test_accumulated_metrics_share_the_oct2026_cutoff(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
-        """Las 19 métricas con corte duro usan todas '2026-10-01'.
+        """Las 17 métricas con corte duro de la corrida usan '2026-10-01'.
 
         Las demás derivan su ventana de `%(period_start)s`/`%(period_end)s`
-        (slides 1 y 2 y las certificaciones) o no tienen corte.
+        (slides 1 y 2 y las certificaciones), no tienen corte, o son las 2
+        excepciones de slide 20 que se quedaron en '2026-08-01'.
         """
         with_cutoff = sorted(
             m.key
@@ -316,10 +326,15 @@ class TestCatalogRepo:
             if "'2026-10-01'" in (m.db_mapping or "")
         )
 
-        assert len(with_cutoff) == 19
+        assert len(with_cutoff) == 17
         assert "slide12_rutas_aprendizaje" in with_cutoff
         assert "slide3_capacitate_carso" in with_cutoff
         assert "slide4_aprende_seguridad_vial" in with_cutoff
+        # Inscripciones de slide 20 sí llega al corte de la corrida; sus dos
+        # métricas hermanas no.
+        assert "slide20_crecimiento_integral_inscripciones" in with_cutoff
+        for key in self.SLIDE20_AUG2026_CUTOFF_BY_DESIGN:
+            assert key not in with_cutoff
 
     def test_slide20_inscripciones_splits_at_the_course_change(
         self, catalog_repo: YamlMetricRepo
@@ -395,3 +410,59 @@ class TestCatalogRepo:
         }
 
         assert vigentes & retirados == set()
+
+    def test_slide20_unicas_uses_the_literal_single_window(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Personas únicas de slide 20 queda en una sola ventana.
+
+        Decisión del usuario 2026-10-02: a diferencia de inscripciones, que
+        se parte en el cambio de cursos del 2026-06-01, personas únicas usa
+        los 85 cursos originales en [2025-04-03, 2026-08-01) tal cual la
+        query declarada. El corte diverge del resto de la corrida (que cierra
+        en 2026-10-01) y eso es a propósito.
+        """
+        metric = next(
+            m
+            for m in catalog_repo.list_metrics()
+            if m.key
+            == "slide20_crecimiento_integral_personas_unicas_inscritas"
+        )
+        sql = metric.db_mapping
+
+        cohorts = re.findall(r'IN \(([\d,\s]+)\)', sql)
+        assert len(cohorts) == 1, "una sola ventana, sin partir en junio"
+        cursos = [int(i) for i in cohorts[0].split(",")]
+        assert len(cursos) == 85
+        assert len(set(cursos)) == 85
+
+        assert 'COUNT(DISTINCT fi."userId")' in sql
+        assert 'du."plataformaId" = 2' in sql
+        assert "fi.\"inscripcionDate\" >= '2025-04-03'" in sql
+        assert "fi.\"inscripcionDate\" < '2026-08-01'" in sql
+        assert "2026-10-01" not in sql
+        # Sin el OR de dos cohortes no hay riesgo de doble conteo, pero el
+        # universo incluye los 32 cursos retirados en junio.
+        assert " OR " not in sql
+
+    def test_slide20_cursos_ofertados_follows_unicas(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Cursos ofertados comparte ventana y universo con personas únicas."""
+        unicas, ofertados = (
+            next(
+                m
+                for m in catalog_repo.list_metrics()
+                if m.key == key
+            )
+            for key in (
+                "slide20_crecimiento_integral_personas_unicas_inscritas",
+                "slide20_crecimiento_integral_cursos_ofertados",
+            )
+        )
+
+        assert 'COUNT(DISTINCT fi."courseId")' in ofertados.db_mapping
+        assert re.findall(r'IN \(([\d,\s]+)\)', ofertados.db_mapping) == (
+            re.findall(r'IN \(([\d,\s]+)\)', unicas.db_mapping)
+        )
+        assert "fi.\"inscripcionDate\" < '2026-08-01'" in ofertados.db_mapping

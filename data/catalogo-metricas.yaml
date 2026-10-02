@@ -660,26 +660,25 @@ metrics:
   name: Slide 20 — Personas únicas inscritas en crecimiento integral
   description: 'Slide 20 Crecimiento integral (73 cursos PG): personas únicas Aprende, 46 mantenidos +27 quitados OR dedup
     >=2025-04-03.'
-  formula: COUNT(DISTINCT inscription.userId) WHERE (46 mantenidos <2026-10-01 OR 27 quitados <2026-06-01), u.plataformaId=2,
-    dedup cross-cohorte.
+  formula: COUNT(DISTINCT fact_inscription.userId) WHERE courseId IN (85 cursos originales) AND inscripcionDate >= '2025-04-03'
+    AND < '2026-08-01', dim_user.plataformaId = 2.
   type: count_distinct
   source: fact_inscription
   platform_scope:
   - aprende
   db_source: postgres
-  db_mapping: "      SELECT COUNT(DISTINCT fi.\"userId\") AS value,\n             'Acumulado' AS periodo_inicio,\n       \
-    \      '2026-10-01' AS periodo_fin,\n             'fact_inscription' AS source\n      FROM fact_inscription fi\n     \
-    \ JOIN dim_user du ON du.\"userId\" = fi.\"userId\"\n      WHERE du.\"plataformaId\" = 2\n        AND ((fi.\"courseId\"\
-    \ IN (291,100066,100147,100330,100331,100337,100338,100339,100340,100341,100342,100343,100345,100346,100347,100348,100349,100350,100351,100352,100355,100356,100357,100358,100359,100361,100363,100366,100367,100368,100369,100373,100374,100379,100382,100384,100386,100387,100388,100389,100390,100396,100397,100659,100660,100864)\
-    \ AND fi.\"inscripcionDate\" >= '2025-04-03' AND fi.\"inscripcionDate\" < '2026-10-01')\n          OR (fi.\"courseId\"\
-    \ IN (100109,100695,100696,100697,100698,100699,100700,100701,100702,100703,100704,100705,100706,100707,100708,100709,100710,100712,100713,100714,100715,100716,100717,100722,100723,100724,100725)\
-    \ AND fi.\"inscripcionDate\" >= '2025-04-03' AND fi.\"inscripcionDate\" < '2026-06-01'))"
+  db_mapping: "      SELECT COUNT(DISTINCT fi.\"userId\") AS value,\n             '2025-04-03' AS periodo_inicio,\n      \
+    \       '2026-08-01' AS periodo_fin,\n             'fact_inscription' AS source\n      FROM fact_inscription fi\n    \
+    \  JOIN course c ON c.\"id\" = fi.\"courseId\"\n      JOIN dim_user du ON du.\"userId\" = fi.\"userId\"\n      WHERE du.\"\
+    plataformaId\" = 2\n        AND fi.\"courseId\" IN (100109,100330,100331,100337,100338,100339,100340,100341,100342,100343,100344,100345,100346,100347,100348,100349,100350,100351,100352,100353,100354,100355,100356,100357,100358,100359,100360,100362,100364,100365,100366,100367,100369,100371,100374,100377,100378,100379,100380,100381,100382,100384,100386,100387,100388,100389,100390,100396,100397,100399,100659,100660,100695,100696,100697,100698,100699,100700,100701,100702,100703,100704,100705,100706,100707,100708,100709,100710,100712,100713,100714,100715,100716,100717,100718,100719,100722,100723,100724,100725,100854,100855,100856,100857,100858)\n\
+    \        AND fi.\"inscripcionDate\" >= '2025-04-03'\n        AND fi.\"inscripcionDate\" < '2026-08-01'"
   caveats:
-  - '73 cursos totales sector 76: 46 mantenidos + 27 quitados.'
-  - Mantenidos (<2026-10-01) y quitados (<2026-06-01) con OR y COUNT DISTINCT para dedup (evita duplicar 1,218 personas en
-    ambas cohortes).
-  - Solo usuarios plataformaId=2.
-  - Rango base >= '2024-08-31'.
+  - 'Decisión del usuario 2026-10-02: a diferencia de inscripciones (que se parte en el cambio de cursos del 2026-06-01),
+    esta métrica usa UNA sola ventana con los 85 cursos originales en [2025-04-03, 2026-08-01), tal cual la query declarada.'
+  - El corte '2026-08-01' DIVERGE a propósito del resto de la corrida, que cierra en '2026-10-01'. La fila de la hoja lleva
+    su propio período (SLIDE20_PERIODO_FIN_UNICAS) para no reportar una ventana que la query no usó.
+  - El universo incluye los 32 cursos retirados el 2026-06-01, a diferencia de la cohorte vigente que usa inscripciones.
+  - 'Personas únicas: COUNT(DISTINCT userId). Al ser una sola ventana no hace falta el OR de dos cohortes para deduplicar.'
 - key: slide15_mario_molina_vistas
   name: Slide 15 — Vistas/consultas a la sección Mario Molina
   description: 'Métrica de Slide 15 "Mario Molina Premio Nobel": total acumulado de vistas/consultas a los 33 recursos de
@@ -889,22 +888,26 @@ metrics:
   name: Slide 20 — Cursos ofertados (crecimiento integral)
   description: 'Métrica de Slide 20: cursos distintos con al menos una inscripción. 46 mantenidos (<2026-10-01) + 27 quitados
     (<2026-06-01) = 73.'
-  formula: COUNT(DISTINCT courseId) WHERE (46 mantenidos <2026-10-01 OR 27 quitados <2026-06-01).
+  formula: COUNT(DISTINCT fact_inscription.courseId) WHERE courseId IN (85 cursos originales) AND inscripcionDate >= '2025-04-03'
+    AND < '2026-08-01', dim_user.plataformaId = 2.
   type: count_distinct
   source: fact_inscription
   platform_scope:
   - aprende
   db_source: postgres
-  db_mapping: "      SELECT COUNT(DISTINCT fi.\"courseId\") AS value,\n             'Acumulado' AS periodo_inicio,\n     \
-    \        '2026-10-01' AS periodo_fin,\n             'fact_inscription' AS source\n      FROM fact_inscription fi\n   \
-    \   JOIN dim_user du ON du.\"userId\" = fi.\"userId\"\n      WHERE du.\"plataformaId\" = 2\n        AND ((fi.\"courseId\"\
-    \ IN (291,100066,100147,100330,100331,100337,100338,100339,100340,100341,100342,100343,100345,100346,100347,100348,100349,100350,100351,100352,100355,100356,100357,100358,100359,100361,100363,100366,100367,100368,100369,100373,100374,100379,100382,100384,100386,100387,100388,100389,100390,100396,100397,100659,100660,100864)\
-    \ AND fi.\"inscripcionDate\" >= '2025-04-03' AND fi.\"inscripcionDate\" < '2026-10-01')\n          OR (fi.\"courseId\"\
-    \ IN (100109,100695,100696,100697,100698,100699,100700,100701,100702,100703,100704,100705,100706,100707,100708,100709,100710,100712,100713,100714,100715,100716,100717,100722,100723,100724,100725)\
-    \ AND fi.\"inscripcionDate\" >= '2025-04-03' AND fi.\"inscripcionDate\" < '2026-06-01'))"
+  db_mapping: "      SELECT COUNT(DISTINCT fi.\"courseId\") AS value,\n             '2025-04-03' AS periodo_inicio,\n    \
+    \         '2026-08-01' AS periodo_fin,\n             'fact_inscription' AS source\n      FROM fact_inscription fi\n  \
+    \    JOIN course c ON c.\"id\" = fi.\"courseId\"\n      JOIN dim_user du ON du.\"userId\" = fi.\"userId\"\n      WHERE\
+    \ du.\"plataformaId\" = 2\n        AND fi.\"courseId\" IN (100109,100330,100331,100337,100338,100339,100340,100341,100342,100343,100344,100345,100346,100347,100348,100349,100350,100351,100352,100353,100354,100355,100356,100357,100358,100359,100360,100362,100364,100365,100366,100367,100369,100371,100374,100377,100378,100379,100380,100381,100382,100384,100386,100387,100388,100389,100390,100396,100397,100399,100659,100660,100695,100696,100697,100698,100699,100700,100701,100702,100703,100704,100705,100706,100707,100708,100709,100710,100712,100713,100714,100715,100716,100717,100718,100719,100722,100723,100724,100725,100854,100855,100856,100857,100858)\n\
+    \        AND fi.\"inscripcionDate\" >= '2025-04-03'\n        AND fi.\"inscripcionDate\" < '2026-08-01'"
   caveats:
-  - '73 cursos sector 76: 46 mantenidos + 27 quitados.'
-  - Conteo distinto por curso (cohortes disjuntas, no hay dedup cruzado).
+  - 'Decisión del usuario 2026-10-02: a diferencia de inscripciones (que se parte en el cambio de cursos del 2026-06-01),
+    esta métrica usa UNA sola ventana con los 85 cursos originales en [2025-04-03, 2026-08-01), tal cual la query declarada.'
+  - El corte '2026-08-01' DIVERGE a propósito del resto de la corrida, que cierra en '2026-10-01'. La fila de la hoja lleva
+    su propio período (SLIDE20_PERIODO_FIN_UNICAS) para no reportar una ventana que la query no usó.
+  - El universo incluye los 32 cursos retirados el 2026-06-01, a diferencia de la cohorte vigente que usa inscripciones.
+  - 'Cursos ofertados: cuántos de los 85 cursos tuvieron al menos una inscripción en la ventana. Comparte universo y ventana
+    con personas únicas.'
 notes:
 - key: certification_rule
   description: 'Regla oficial de certificación: certificationDate IS NOT NULL AND advance = 100. Usar solo certificationDate

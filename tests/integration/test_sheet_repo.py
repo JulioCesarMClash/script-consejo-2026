@@ -33,9 +33,15 @@ from src.consejo.adapters.sheets.google_mcp_sheet_repo import (
     _build_slide8_block,
     _build_slide12_block,
     _build_slide13_block,
+    _build_slide20_block,
     _build_slide_block,
     _build_reporte_requests,
     _project_dic2026,
+    SLIDE20_CONTENIDO,
+    SLIDE20_METRIC_ID,
+    SLIDE20_PERIODO_FIN,
+    SLIDE20_PERIODO_FIN_UNICAS,
+    SLIDE20_PERIODO_INICIO,
 )
 from src.consejo.domain.entities import Bundle, DqsIssue, Metric, SourceManifest
 from src.consejo.domain.value_objects import (
@@ -2739,3 +2745,81 @@ class TestGoogleMcpSheetRepo:
 
         assert response["id"] == 41
         assert response["result"]["protocolVersion"] == "2024-11-05"
+
+
+class TestSlide20Block:
+    """Slide 20: cada fila reporta la ventana que su query realmente usó."""
+
+    @staticmethod
+    def _manifest(key: str, value: int) -> SourceManifest:
+        return SourceManifest(
+            metric_id=MetricId(key),
+            source=MetricSource.FACT_INSCRIPTION,
+            cut=Cut(date(2026, 10, 1)),
+            fetched_at=datetime(2026, 10, 1, 10, 0, 0, tzinfo=timezone.utc),
+            freshness_hours=0.5,
+            rows=({"value": value},),
+            status=FetchStatus.EXTRACTED,
+        )
+
+    def test_unicas_row_reports_its_own_cutoff(self) -> None:
+        """Personas únicas corta en 2026-08-01, no en el corte de la corrida.
+
+        Inscripciones llega a 2026-10-01 porque parte la ventana en el cambio
+        de cursos; personas únicas se quedó en una sola ventana hasta
+        2026-08-01 por decisión del usuario. Si la hoja pintara el mismo
+        período en las dos filas estaría reportando una ventana que la query
+        de únicas no usó.
+        """
+        manifests = [
+            self._manifest(
+                "slide20_crecimiento_integral_inscripciones", 68271
+            ),
+            self._manifest(
+                "slide20_crecimiento_integral_personas_unicas_inscritas",
+                41455,
+            ),
+        ]
+
+        rows, next_row = _build_slide20_block(manifests, 0)
+
+        # header + 3 KPIs
+        assert next_row == 4
+        assert len(rows) == 4
+
+        insc, unicas, contenido = rows[1], rows[2], rows[3]
+
+        def cells(row: dict) -> list:
+            return [c.get("userEnteredValue", {}) for c in row["values"]]
+
+        assert cells(insc)[1]["stringValue"] == "Inscripciones a cursos"
+        assert cells(insc)[2]["numberValue"] == 68271
+        assert cells(insc)[3]["stringValue"] == SLIDE20_PERIODO_INICIO
+        assert cells(insc)[4]["stringValue"] == SLIDE20_PERIODO_FIN
+        assert cells(insc)[4]["stringValue"] == "2026-10-01"
+
+        assert cells(unicas)[1]["stringValue"] == "Personas únicas inscritas"
+        assert cells(unicas)[2]["numberValue"] == 41455
+        assert cells(unicas)[3]["stringValue"] == SLIDE20_PERIODO_INICIO
+        assert cells(unicas)[4]["stringValue"] == SLIDE20_PERIODO_FIN_UNICAS
+        assert cells(unicas)[4]["stringValue"] == "2026-08-01"
+
+        # El KPI manual sigue la ventana de inscripciones.
+        assert cells(contenido)[1]["stringValue"] == "Contenido"
+        assert cells(contenido)[2]["numberValue"] == SLIDE20_CONTENIDO
+        assert cells(contenido)[4]["stringValue"] == SLIDE20_PERIODO_FIN
+
+        # Categoría igual en las 3 filas, como slide12/13/15/19.
+        for row in (insc, unicas, contenido):
+            assert cells(row)[0]["stringValue"] == SLIDE20_METRIC_ID
+
+    def test_missing_manifest_raises_instead_of_partial_block(self) -> None:
+        """Falta una métrica -> KeyError, no un bloque a medias."""
+        manifests = [
+            self._manifest(
+                "slide20_crecimiento_integral_inscripciones", 68271
+            ),
+        ]
+
+        with pytest.raises(KeyError):
+            _build_slide20_block(manifests, 0)
