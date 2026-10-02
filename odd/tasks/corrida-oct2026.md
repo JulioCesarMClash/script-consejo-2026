@@ -119,4 +119,6 @@ assignments over 113 distinct courses. Full write-up in
 `docs/hallazgos-sep2026.md` H11.
 
 - [x] T8 — Slide 12: Convive mejor con otros 3 -> 7, sharing allowlist
-- [ ] T9 — Resolve the missing course ID for "Busca tu primer trabajo"
+- [x] T9 — DISCARDED by the user 2026-10-02: "Busca tu primer trabajo"
+      stays out for now, so "Preparación para buscar trabajo" keeps its 7
+      courses and slide 12 closes at 114 assignments / 113 distinct.

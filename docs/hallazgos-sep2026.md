@@ -259,9 +259,10 @@ el reparto exacto: 114 asignaciones, 113 cursos distintos y una allowlist explí
 de compartidos. Un duplicado accidental sigue rompiendo el test.
 
 **3. "Busca tu primer trabajo" no tiene ID** (fila 113, en "Preparación para buscar
-trabajo"). Es la diferencia entre las 118 filas de la hoja y los 117 IDs. **Pendiente**:
-con el ID resuelto esa ruta pasaría de 7 a 8 cursos y el total a 115 asignaciones /
-114 distintos.
+trabajo"). Es la diferencia entre las 118 filas de la hoja y los 117 IDs.
+**Descartado por el usuario el 2026-10-02**: queda fuera por ahora, así que
+"Preparación para buscar trabajo" se mantiene en 7 cursos y Slide 12 cierra en 114
+asignaciones / 113 distintos.
 
 ### Números
 
@@ -272,3 +273,22 @@ con el ID resuelto esa ruta pasaría de 7 a 8 cursos y el total a 115 asignacion
 | Con el ID pendiente | 115 | 114 | 1 |
 
 Las 118 filas de la hoja = 114 reales + 3 duplicadas + 1 sin ID.
+
+### Las 3 filas duplicadas no traían cursos nuevos
+
+Verificado contra `62b8180^`: los 3 IDs que la hoja repite (100330, 100380, 100381)
+ya estaban en el catálogo desde que se creó la ruta (commit f9bfdd4). La repetición
+de la hoja es cosmética — los mismos 3 cursos escritos dos veces, no cursos extra.
+
+De los 4 que sí entraron hoy, solo 2 eran nuevos para el catálogo completo:
+
+| ID | ¿Estaba antes? | Dónde |
+|---|---|---|
+| 305 | sí | slide19 seguridad vial, slide4 |
+| 299 | sí | slide1 herramientas pobreza, slide12 "¿Cómo mejorar mi entorno?" |
+| 100070 | no | solo slide12 |
+| 100063 | no | solo slide12 |
+
+305 y 299 cruzan con otras slides, pero esas miden poblaciones distintas: no inflan
+el TOTAL de Slide 12. El único cruce que sí lo infla es 299 dentro de la propia
+Slide 12.
