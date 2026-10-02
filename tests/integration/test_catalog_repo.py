@@ -320,3 +320,78 @@ class TestCatalogRepo:
         assert "slide12_rutas_aprendizaje" in with_cutoff
         assert "slide3_capacitate_carso" in with_cutoff
         assert "slide4_aprende_seguridad_vial" in with_cutoff
+
+    def test_slide20_inscripciones_splits_at_the_course_change(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Slide 20 parte la ventana el 2026-06-01, cuando cambiaron los cursos.
+
+        Los cursos de Crecimiento Integral se liberaron el 2025-04-03 y se
+        mantuvieron iguales hasta el 2026-06-01. Desde ese día el catálogo
+        cambió, por lo que la cuenta es:
+
+            85 cursos originales en [2025-04-03, 2026-06-01)
+          + 53 cursos vigentes   en [2026-06-01, 2026-10-01)
+
+        Las dos ventanas son disjuntas, así que cada inscripción cae en
+        exactamente una y `COUNT` no duplica.
+        """
+        metric = next(
+            m
+            for m in catalog_repo.list_metrics()
+            if m.key == "slide20_crecimiento_integral_inscripciones"
+        )
+        sql = metric.db_mapping
+
+        cohorts = re.findall(r'IN \(([\d,\s]+)\)', sql)
+        assert len(cohorts) == 2
+        originales = [int(i) for i in cohorts[0].split(",")]
+        vigentes = [int(i) for i in cohorts[1].split(",")]
+
+        assert len(originales) == 85
+        assert len(set(originales)) == 85
+        assert len(vigentes) == 53
+        assert len(set(vigentes)) == 53
+        # La lista vigente es un subconjunto de la original: el 2026-06-01
+        # solo se retiraron cursos, no se agregaron.
+        assert set(vigentes) < set(originales)
+        assert len(set(originales) - set(vigentes)) == 32
+
+        # Ventanas disjuntas y contiguas.
+        assert (
+            "fi.\"inscripcionDate\" >= '2025-04-03' "
+            "AND fi.\"inscripcionDate\" < '2026-06-01'"
+        ) in sql
+        assert (
+            "fi.\"inscripcionDate\" >= '2026-06-01' "
+            "AND fi.\"inscripcionDate\" < '2026-10-01'"
+        ) in sql
+
+        # Inscripciones = filas, no personas.
+        assert 'COUNT(fi."userId")' in sql
+        assert "DISTINCT" not in sql
+        assert 'du."plataformaId" = 2' in sql
+
+    def test_slide20_retired_courses_are_absent_after_the_change(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Los 32 cursos retirados no entran en la ventana post 2026-06-01."""
+        metric = next(
+            m
+            for m in catalog_repo.list_metrics()
+            if m.key == "slide20_crecimiento_integral_inscripciones"
+        )
+        vigentes = {
+            int(i)
+            for i in re.findall(r'IN \(([\d,\s]+)\)', metric.db_mapping)[1]
+            .split(",")
+        }
+
+        retirados = {
+            100109, 100360, 100390, 100660, 100695, 100696, 100697, 100698,
+            100699, 100700, 100701, 100702, 100703, 100704, 100705, 100706,
+            100707, 100708, 100709, 100710, 100712, 100713, 100714, 100715,
+            100716, 100717, 100718, 100719, 100722, 100723, 100724, 100725,
+        }
+
+        assert vigentes & retirados == set()

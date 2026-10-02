@@ -630,24 +630,32 @@ metrics:
   name: Slide 20 — Inscripciones a cursos de crecimiento integral
   description: 'Slide 20 Crecimiento integral (73 cursos sector 76, PG): inscripciones usuarios Aprende (du.plataformaId=2).
     46 mantenidos >=2025-04-03 <2026-10-01 + 27 quitados >=2025-04-03 <2026-06-01 OR dedup.'
-  formula: COUNT(inscription.userId) WHERE (46 mantenidos AND <'2026-10-01') OR (27 quitados AND <'2026-06-01'), u.plataformaId=2.
+  formula: COUNT(fact_inscription.userId) WHERE (85 cursos originales AND inscripcionDate >= '2025-04-03' AND < '2026-06-01')
+    OR (53 cursos vigentes AND inscripcionDate >= '2026-06-01' AND < '2026-10-01'), dim_user.plataformaId = 2.
   type: count
   source: fact_inscription
   platform_scope:
   - aprende
   db_source: postgres
-  db_mapping: "      SELECT COUNT(fi.\"userId\") AS value,\n             'Acumulado' AS periodo_inicio,\n             '2026-10-01'\
-    \ AS periodo_fin,\n             'fact_inscription' AS source\n      FROM fact_inscription fi\n      JOIN dim_user du ON\
-    \ du.\"userId\" = fi.\"userId\"\n      WHERE du.\"plataformaId\" = 2\n        AND ((fi.\"courseId\" IN (291,100066,100147,100330,100331,100337,100338,100339,100340,100341,100342,100343,100345,100346,100347,100348,100349,100350,100351,100352,100355,100356,100357,100358,100359,100361,100363,100366,100367,100368,100369,100373,100374,100379,100382,100384,100386,100387,100388,100389,100390,100396,100397,100659,100660,100864)\
-    \ AND fi.\"inscripcionDate\" >= '2025-04-03' AND fi.\"inscripcionDate\" < '2026-10-01')\n          OR (fi.\"courseId\"\
-    \ IN (100109,100695,100696,100697,100698,100699,100700,100701,100702,100703,100704,100705,100706,100707,100708,100709,100710,100712,100713,100714,100715,100716,100717,100722,100723,100724,100725)\
-    \ AND fi.\"inscripcionDate\" >= '2025-04-03' AND fi.\"inscripcionDate\" < '2026-06-01'))"
+  db_mapping: "      SELECT COUNT(fi.\"userId\") AS value,\n             '2025-04-03' AS periodo_inicio,\n             '2026-10-01'\
+    \ AS periodo_fin,\n             'fact_inscription' AS source\n      FROM fact_inscription fi\n      JOIN course c ON c.\"\
+    id\" = fi.\"courseId\"\n      JOIN dim_user du ON du.\"userId\" = fi.\"userId\"\n      WHERE du.\"plataformaId\" = 2\n\
+    \        AND ((fi.\"courseId\" IN (100109,100330,100331,100337,100338,100339,100340,100341,100342,100343,100344,100345,100346,100347,100348,100349,100350,100351,100352,100353,100354,100355,100356,100357,100358,100359,100360,100362,100364,100365,100366,100367,100369,100371,100374,100377,100378,100379,100380,100381,100382,100384,100386,100387,100388,100389,100390,100396,100397,100399,100659,100660,100695,100696,100697,100698,100699,100700,100701,100702,100703,100704,100705,100706,100707,100708,100709,100710,100712,100713,100714,100715,100716,100717,100718,100719,100722,100723,100724,100725,100854,100855,100856,100857,100858)\
+    \ AND fi.\"inscripcionDate\" >= '2025-04-03' AND fi.\"inscripcionDate\" < '2026-06-01')\n          OR (fi.\"courseId\"\
+    \ IN (100330,100331,100337,100338,100339,100340,100341,100342,100343,100344,100345,100346,100347,100348,100349,100350,100351,100352,100353,100354,100355,100356,100357,100358,100359,100362,100364,100365,100366,100367,100369,100371,100374,100377,100378,100379,100380,100381,100382,100384,100386,100387,100388,100389,100396,100397,100399,100659,100854,100855,100856,100857,100858)\
+    \ AND fi.\"inscripcionDate\" >= '2026-06-01' AND fi.\"inscripcionDate\" < '2026-10-01'))"
   caveats:
-  - '73 cursos totales sector 76 (Crecimiento integral): 46 mantenidos + 27 quitados en mayo 2026.'
-  - 'Mantenidos (46): inscripciones < ''2026-10-01'' (incluye junio+julio).'
-  - 'Quitados (27): inscripciones < ''2026-06-01'' (excluye junio+julio porque ya no estaban).'
-  - Filtro usuarios plataformaId=2 (solo Aprende). Dedup no aplica a COUNT(*).
-  - Corte base >= '2024-08-31'. Duplicados por nombre resueltos con id<100000 y platformId=1.
+  - 'Los cursos de Crecimiento Integral se liberaron el 2025-04-03 y se mantuvieron sin cambios hasta el 2026-06-01; desde
+    ese día el catálogo cambió. La métrica parte la ventana en ese corte: 85 cursos originales en [2025-04-03, 2026-06-01)
+    + 53 cursos vigentes en [2026-06-01, 2026-10-01).'
+  - Las dos ventanas son disjuntas y contiguas, así que cada inscripción cae en exactamente una y COUNT no duplica filas (no
+    hace falta DISTINCT para deduplicar cohortes, a diferencia de personas únicas).
+  - 'Los 53 cursos vigentes son un subconjunto estricto de los 85 originales: el 2026-06-01 solo se retiraron 32 cursos, ninguno
+    se agregó.'
+  - 'Query declarada por el usuario 2026-10-02. Reemplaza la variante anterior de 46 mantenidos + 27 quitados (73 cursos),
+    que usaba otra lista: salen 291, 100066, 100147, 100361, 100363, 100368, 100373 y 100864.'
+  - La lista vigente del usuario traía 100359 repetido (54 entradas, 53 cursos distintos); se deduplicó.
+  - Inscripciones = filas de fact_inscription, no personas. Sin DISTINCT.
 - key: slide20_crecimiento_integral_personas_unicas_inscritas
   name: Slide 20 — Personas únicas inscritas en crecimiento integral
   description: 'Slide 20 Crecimiento integral (73 cursos PG): personas únicas Aprende, 46 mantenidos +27 quitados OR dedup
