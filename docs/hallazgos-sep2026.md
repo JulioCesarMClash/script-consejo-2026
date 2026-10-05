@@ -398,3 +398,39 @@ el punto de darle su propia constante:
 | Inscripciones a cursos | 38,795 | 2026-10-01 |
 | Personas únicas inscritas | 17,372 | **2026-08-01** |
 | Contenido (hardcoded) | 73 | 2026-10-01 |
+
+## H14 — Slide 20 personas únicas alineada al corte de la corrida (2026-10-05)
+
+Revisando la hoja del snapshot, el usuario vio el `2026-08-01` en la fila "Personas
+únicas inscritas" y pidió moverlo a `2026-10-01`. Revierte la decisión del 2026-10-02
+de tomar la query al pie de la letra (ver H13), y deja a las tres métricas de slide 20
+cerrando en el mismo corte.
+
+**Lo que cambió es el número, no la etiqueta.** La ventana de la query pasa de
+`[2025-04-03, 2026-08-01)` a `[2025-04-03, 2026-10-01)`, así que personas únicas y
+cursos ofertados suben.
+
+Se movieron las dos: `personas_unicas_inscritas` y `cursos_ofertados` comparten
+ventana y universo por diseño, y dejar la segunda en agosto habría reintroducido la
+misma divergencia desde otro lado. Cursos ofertados no se pinta en la slide, así que
+no era visible en la hoja.
+
+**Lo que NO cambió**: la estructura. Personas únicas sigue usando UNA sola ventana con
+los 85 cursos originales, no las dos cohortes de inscripciones. Esa sigue siendo la
+diferencia de fondo entre las métricas — personas únicas incluye los 32 cursos
+retirados el 2026-06-01, inscripciones no. La fecha nunca fue la diferencia real.
+
+### Consecuencias en el código
+
+- `SLIDE20_PERIODO_FIN_UNICAS` se eliminó. Existía solo para que la hoja no publicara
+  una ventana que la query no había usado; sin divergencia es peso muerto.
+- `test_no_metric_keeps_the_previous_run_cutoff` vuelve a exigir el conjunto vacío, en
+  vez de la allowlist de 2 métricas.
+- `test_accumulated_metrics_share_the_oct2026_cutoff` vuelve de 17 a **19** métricas, y
+  ahora verifica que las 3 de slide 20 comparten el corte.
+- `test_unicas_row_reports_its_own_cutoff` pasó a
+  `test_all_rows_share_the_run_cutoff`.
+
+Ningún `db_mapping` conserva `2026-08-01`. Los literales que quedan en el catálogo son
+prosa: los resultados históricos de slide 1 y slide 15, y la explicación de este mismo
+cambio.

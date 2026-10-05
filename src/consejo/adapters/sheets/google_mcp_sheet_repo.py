@@ -767,21 +767,16 @@ SLIDE19_TABLE_HEADERS = [
 # PostgreSQL declaradas por el usuario 2026-10-02, solo filtro
 # `du.plataformaId = 2` desde '2025-04-03'). Los cursos se liberaron el
 # 2025-04-03 y cambiaron el 2026-06-01, así que las dos métricas no
-# comparten ventana: inscripciones suma 85 cursos originales en
+# comparten universo: inscripciones suma 85 cursos originales en
 # [2025-04-03, 2026-06-01) más 53 cursos vigentes en
 # [2026-06-01, 2026-10-01); personas únicas usa una sola ventana con los
-# 85 originales en [2025-04-03, 2026-08-01). Mismo formato de 6 columnas
-# que las otras slides (Período inicio / Período fin / Fuente al final).
+# 85 originales en [2025-04-03, 2026-10-01), o sea que incluye los 32
+# cursos retirados en junio. Las dos cierran en el mismo corte de la
+# corrida. Mismo formato de 6 columnas que las otras slides (Período
+# inicio / Período fin / Fuente al final).
 SLIDE20_METRIC_ID = "slide20_crecimiento_integral"
 SLIDE20_PERIODO_INICIO = "2025-04-03"
 SLIDE20_PERIODO_FIN = "2026-10-01"
-# Personas únicas inscritas corta en 2026-08-01, no en el corte de la
-# corrida: por decisión del usuario (2026-10-02) esa métrica se quedó en
-# UNA sola ventana con los 85 cursos originales, mientras inscripciones se
-# parte en el cambio de cursos del 2026-06-01 y sí llega a 2026-10-01.
-# Su fila lleva este período propio para no reportar una ventana que la
-# query no usó.
-SLIDE20_PERIODO_FIN_UNICAS = "2026-08-01"
 SLIDE20_FUENTE_INSCRIPCION = "fact_inscription"
 # KPI hardcoded de la Slide física (corte: 'Contenido' publicado en la
 # iniciativa de crecimiento integral). 73 cursos totales sector 76.
@@ -1980,8 +1975,8 @@ def _build_slide20_block(
     # fuente). 2 KPIs desde `analisis_cpe_db` PostgreSQL con filtro solo
     # `du.plataformaId = 2` desde '2025-04-03' (queries declaradas por el
     # usuario 2026-10-02). Inscripciones parte la ventana en el cambio de
-    # cursos del 2026-06-01 y cierra en '2026-10-01'; personas únicas usa
-    # una sola ventana y cierra en '2026-08-01'. El 3er
+    # cursos del 2026-06-01; personas únicas usa una sola ventana con los 85
+    # cursos originales. Las dos cierran en '2026-10-01'. El 3er
     # KPI 'Contenido' está hardcoded — sin fuente automatizable. Los
     # labels del Sheet se alinean 1:1 con los 3 KPIs de la Slide física
     # (mapeo en data/mapping-slides.yaml: 'Inscripciones a cursos' y
@@ -1999,7 +1994,7 @@ def _build_slide20_block(
             "Personas únicas inscritas",
             by_key["slide20_crecimiento_integral_personas_unicas_inscritas"],
             SLIDE20_PERIODO_INICIO,
-            SLIDE20_PERIODO_FIN_UNICAS,
+            SLIDE20_PERIODO_FIN,
             SLIDE20_FUENTE_INSCRIPCION,
         ),
         (

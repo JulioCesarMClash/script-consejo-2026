@@ -40,7 +40,6 @@ from src.consejo.adapters.sheets.google_mcp_sheet_repo import (
     SLIDE20_CONTENIDO,
     SLIDE20_METRIC_ID,
     SLIDE20_PERIODO_FIN,
-    SLIDE20_PERIODO_FIN_UNICAS,
     SLIDE20_PERIODO_INICIO,
 )
 from src.consejo.domain.entities import Bundle, DqsIssue, Metric, SourceManifest
@@ -2762,14 +2761,14 @@ class TestSlide20Block:
             status=FetchStatus.EXTRACTED,
         )
 
-    def test_unicas_row_reports_its_own_cutoff(self) -> None:
-        """Personas únicas corta en 2026-08-01, no en el corte de la corrida.
+    def test_all_rows_share_the_run_cutoff(self) -> None:
+        """Las 3 filas de slide 20 cierran en el corte de la corrida.
 
-        Inscripciones llega a 2026-10-01 porque parte la ventana en el cambio
-        de cursos; personas únicas se quedó en una sola ventana hasta
-        2026-08-01 por decisión del usuario. Si la hoja pintara el mismo
-        período en las dos filas estaría reportando una ventana que la query
-        de únicas no usó.
+        Inscripciones parte la ventana en el cambio de cursos del 2026-06-01
+        y personas únicas usa una sola ventana con los 85 cursos originales,
+        pero las dos terminan en 2026-10-01. Personas únicas había quedado en
+        2026-08-01 y el usuario lo corrigió el 2026-10-05 al revisar la hoja,
+        así que ya no hay período divergente que pintar.
         """
         manifests = [
             self._manifest(
@@ -2801,8 +2800,8 @@ class TestSlide20Block:
         assert cells(unicas)[1]["stringValue"] == "Personas únicas inscritas"
         assert cells(unicas)[2]["numberValue"] == 41455
         assert cells(unicas)[3]["stringValue"] == SLIDE20_PERIODO_INICIO
-        assert cells(unicas)[4]["stringValue"] == SLIDE20_PERIODO_FIN_UNICAS
-        assert cells(unicas)[4]["stringValue"] == "2026-08-01"
+        assert cells(unicas)[4]["stringValue"] == SLIDE20_PERIODO_FIN
+        assert cells(unicas)[4]["stringValue"] == "2026-10-01"
 
         # El KPI manual sigue la ventana de inscripciones.
         assert cells(contenido)[1]["stringValue"] == "Contenido"

@@ -136,3 +136,17 @@ Tasks:
       "Consejo 2026 - Snapshot Técnico". Verified value-by-value against the
       dry run: 0 differences. See `docs/hallazgos-sep2026.md` H13.
 - [ ] T7 — Reconcile `SLIDE20_CONTENIDO` (73) against the new course lists
+
+## T11 — Slide 20 personas únicas realigned to the run cutoff (2026-10-05)
+
+The user spotted the `2026-08-01` in the snapshot sheet and asked for
+`2026-10-01`, reversing the 2026-10-02 literal-query decision. Both
+`personas_unicas_inscritas` and `cursos_ofertados` moved, since they share the
+window by design. The single-window structure stays: the real difference from
+inscripciones is the 32 retired courses, never the date.
+
+`SLIDE20_PERIODO_FIN_UNICAS` was removed; the guard allowlist is empty again and
+the oct2026 cutoff count is back to 19. Write-up in H14.
+
+- [x] T11 — Realign slide 20 únicas/ofertados to 2026-10-01
+- [ ] T12 — Re-run production so the sheet carries the new numbers
