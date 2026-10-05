@@ -434,3 +434,49 @@ retirados el 2026-06-01, inscripciones no. La fecha nunca fue la diferencia real
 Ningún `db_mapping` conserva `2026-08-01`. Los literales que quedan en el catálogo son
 prosa: los resultados históricos de slide 1 y slide 15, y la explicación de este mismo
 cambio.
+
+## H15 — Segunda corrida de producción y separación del drift (2026-10-05)
+
+`pipeline --cut 2026-10-01` tras alinear el corte de slide 20 (H14).
+**37 métricas · 87 filas · DQS 0 issues.** `run_id 1c675c58` ·
+`catalog_hash 4d8d7798` · `bundle_hash 912692a4`.
+
+Entre las dos corridas de producción (2026-10-02 y 2026-10-05) la hoja cambió en
+**41 filas**, pero solo una es por el ajuste. Verificado con `git`: entre los dos
+commits de corrida los únicos `db_mapping` distintos son
+`slide20_crecimiento_integral_personas_unicas_inscritas` y
+`slide20_crecimiento_integral_cursos_ofertados`. Todo lo demás corrió con la query
+byte a byte idéntica, así que su variación es de la fuente.
+
+### El ajuste pedido
+
+| Métrica | Antes | Ahora | Delta |
+|---|---|---|---|
+| Personas únicas inscritas | 17,372 | **19,361** | +1,989 (+11.4%) |
+
+Período fin en la hoja: `2026-08-01` → `2026-10-01`. Los dos meses extra agregan 1,989
+personas únicas.
+
+### Drift de la fuente en 3 días: +4,315 / -1,229
+
+Los incrementos son lo esperado en tablas acumulativas: slide 12 sube 744
+inscripciones, slide 19 ocho, slide 15 dos.
+
+**Los decrementos merecen atención.** 13 celdas bajaron, y una no es ruido:
+
+| Métrica | Columna | Antes | Ahora | Delta |
+|---|---|---|---|---|
+| `slide4_cultura_salud_aprende` | acumulado | 1,544,218 | 1,543,790 | **-428** |
+| `slide4_cultura_salud_aprende` | dic2026 (proyectado) | 135,136 | 134,717 | -419 |
+| `slide4_cultura_salud_aprende` | sep2026 | 101,352 | 101,038 | **-314** |
+| `slide4_cultura_salud_aprende` | 2025 | 133,536 | 133,485 | -51 |
+| resto (slide 2, 12, 19) | certificados | — | — | -1 a -3 |
+
+Son `COUNT(DISTINCT userId)` con `advance = 100`: un acumulado histórico no debería
+bajar. -428 sobre 1.54M es 0.028%, compatible con depuración en la fuente (borrado de
+cuentas, dedup de usuarios, o `advance` revertido por debajo de 100). Los -1 a -3 del
+resto son del mismo orden y apuntan al mismo origen.
+
+**No es nuestro código**: la query de `slide4_cultura_salud_aprende` es idéntica entre
+las dos corridas. Queda anotado para vigilar si el decremento crece — una métrica
+acumulada que baja es un síntoma que conviene poder explicar antes de presentarla.

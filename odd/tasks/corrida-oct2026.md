@@ -149,4 +149,9 @@ inscripciones is the 32 retired courses, never the date.
 the oct2026 cutoff count is back to 19. Write-up in H14.
 
 - [x] T11 — Realign slide 20 únicas/ofertados to 2026-10-01
-- [ ] T12 — Re-run production so the sheet carries the new numbers
+- [x] T12 — Re-ran production: 37 metrics, 87 rows, DQS 0 issues. Personas
+      únicas 17,372 -> 19,361 (+11.4%). The other 40 changed rows are source
+      drift over 3 days, confirmed by diffing the catalog between runs: only
+      the 2 slide20 queries changed. See H15.
+- [ ] T13 — Watch the `slide4_cultura_salud_aprende` decrement (-428 on an
+      accumulated COUNT(DISTINCT), source-side, not ours)
