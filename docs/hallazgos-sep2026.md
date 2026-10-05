@@ -610,3 +610,15 @@ Era el tipo de bug que solo aparece cuando algo *arriba* cambia de tamaño — y
 donde apareció es justo la que el usuario estaba revisando. Cualquiera leyendo la hoja
 habría visto `mysql` en una fila de certificados por sector y, con razón, habría
 desconfiado del resto de los números.
+
+### Verificado: 14 celdas sucias -> 0
+
+Corrida limpia tras el fix (`bundle_hash e16ddcf4`): **0 celdas con restos** en las 132
+filas de `Datos`, y nada poblado de la columna J en adelante.
+
+Nota sobre cómo medirlo: el primer chequeo reportó 18 restos que no existían. Resolvía
+el ancho de cada fila por prefijo del `metric_id` con `startswith`, y
+`"slide12_rutas_aprendizaje".startswith("slide1")` es `True` — las filas de slide 12 se
+clasificaban como slide 1, y su novena columna legítima (`Fuente`) se contaba como
+basura. Hay que resolver por el prefijo **más largo** que coincide, o usar `slide1_` con
+guion bajo. Los prefijos `slide1`/`slide12`, `slide2`/`slide20` son ambiguos.

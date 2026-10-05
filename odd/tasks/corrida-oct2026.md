@@ -172,5 +172,5 @@ since the `CASE` silently prefers the first matching branch.
 - [x] T17 — Fix: `Datos` clear range covered 8 columns while the widest
       block writes 9, leaving 26 stale cells in column I (H18). The width is
       now derived from the `*_TABLE_HEADERS` constants.
-- [ ] T15 — Re-run production so the sheet carries the new sector, the
-      37-course list and no stale cells
+- [x] T15 — Re-ran production (`bundle_hash e16ddcf4`): 37 metrics, 94 rows,
+      DQS 0 issues, 0 stale cells. Slide 2 TOTAL 54,145 across 7 sectors.
