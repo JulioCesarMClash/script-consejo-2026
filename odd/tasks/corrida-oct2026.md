@@ -155,3 +155,17 @@ the oct2026 cutoff count is back to 19. Write-up in H14.
       the 2 slide20 queries changed. See H15.
 - [ ] T13 — Watch the `slide4_cultura_salud_aprende` decrement (-428 on an
       accumulated COUNT(DISTINCT), source-side, not ours)
+
+## T14 — Slide 2 gains the "Convivir mejor con otros" sector (2026-10-05)
+
+6 -> 7 sectors, 30 -> 38 courses. All 8 course IDs already existed elsewhere in
+the catalog; none is new. Resolved two name-duplicate IDs by dominance and
+liveness (305 over 297/331/100109/100711/100907; 100063 over 100704), matching
+slide 12's choices.
+
+Slide 2 groups by `c.name`, so same-name IDs would merge into one row — verified
+no collisions. Added a guard that each course belongs to exactly one sector,
+since the `CASE` silently prefers the first matching branch.
+
+- [x] T14 — Slide 2: new sector with 8 courses
+- [ ] T15 — Re-run production so the sheet carries the new sector

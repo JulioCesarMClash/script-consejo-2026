@@ -480,3 +480,58 @@ resto son del mismo orden y apuntan al mismo origen.
 **No es nuestro código**: la query de `slide4_cultura_salud_aprende` es idéntica entre
 las dos corridas. Queda anotado para vigilar si el decremento crece — una métrica
 acumulada que baja es un síntoma que conviene poder explicar antes de presentarla.
+
+## H16 — Sector "Convivir mejor con otros" en Slide 2 (2026-10-05)
+
+Slide 2 pasa de **6 a 7 sectores** y de **30 a 38 cursos**.
+
+| ID | Curso | ¿Lo teníamos? |
+|---|---|---|
+| 100330 | Actitud más humana | sí — slide 12 y slide 20 |
+| 100380 | Momentos significativos | sí — slide 12 y slide 20 |
+| 100381 | El arte de acompañar | sí — slide 12 y slide 20 |
+| 305 | Prácticas de cortesía | sí — slide 12, slide 19, slide 4 |
+| 100070 | Juego limpio | sí — slide 12 (desde el 2026-10-02) |
+| 100063 | Solidaridad | sí — slide 12 (desde el 2026-10-02) |
+| 299 | Cultura urbana | sí — slide 1 y slide 12 (en 2 rutas) |
+| 348 | Seguridad para todas y todos | sí — slide 12, "¿Cómo mejorar mi entorno?" |
+
+Los 7 primeros son los mismos de la ruta "Convive mejor con otros" de Slide 12. El 8vo
+(348) ya estaba en Slide 12 pero en otra ruta. Ningún curso es nuevo para el catálogo.
+
+### El nombre difiere entre slides, a propósito
+
+Slide 2 usa **"ConvivIR mejor con otros"** (infinitivo) y Slide 12 **"ConvivE mejor con
+otros"** (imperativo). Así los declaró el usuario en cada caso. No es un typo nuestro —
+queda anotado para que nadie lo "corrija" después.
+
+### Dos trampas de Slide 2 que hubo que verificar
+
+**1. Agrupa por `c.name`, no por `courseId`.** El `GROUP BY grupo, curso` usa el nombre
+del curso, así que dos IDs con el mismo nombre se fusionan en una sola fila sumando los
+usuarios de ambos. Verificado: ninguno de los 8 cursos nuevos choca de nombre con los
+30 previos ni entre sí.
+
+Esto importaba porque **"Prácticas de cortesía" existe 6 veces** en `course`:
+
+| ID | Inscripciones | Certificados | Última inscripción |
+|---|---|---|---|
+| **305** | **186,558** | **102,634** | 2026-10-03 |
+| 100109 | 32,206 | 0 | 2026-10-03 |
+| 331 | 10,911 | 5,801 | 2026-08-25 (muerto) |
+| 297 | 9,911 | 4,209 | 2026-10-03 |
+| 100711 | 39 | 0 | 2026-10-03 |
+| 100907 | 0 | 0 | nunca |
+
+Y "Solidaridad" dos veces: 100063 (43,920 / 28,794) contra 100704 (340 / 0). Se tomó el
+ID dominante y vivo en los dos casos — **305 y 100063**, los mismos que slide 12.
+
+**2. El `CASE` toma la primera rama que coincide.** Un curso en dos sectores se
+asignaría en silencio al de arriba y desaparecería del otro. Nueva guarda
+`test_slide2_assigns_each_course_to_one_sector`: 38 cursos en 7 sectores, todos
+distintos.
+
+El bloque de la hoja no necesitó cambios: `_build_slide2_block` detecta el cambio de
+sector y arma el TOTAL desde la lista de subtotales que recolecta, así que soporta
+cualquier cantidad de sectores. Por el `ORDER BY grupo, curso` el sector nuevo va a
+aparecer entre "Construcción y mantenimiento" y "Educación financiera".

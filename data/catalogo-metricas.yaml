@@ -725,17 +725,14 @@ metrics:
     mi query da ~8.4k porque la BD actual tiene vistas con fecha anterior que se agregaron al sistema después de generar el
     slide.
 - key: slide2_empleo_incluyente_por_sector
-  name: Certificados por sector — empleo incluyente (Slide 2)
-  description: 'Personas certificadas en los 6 sectores de empleo incluyente (construcción y mantenimiento, limpieza y mantenimiento,
-    transporte, alimentos y atención, agropecuarias, educación financiera). Grano por curso: una persona certificada en dos
-    cursos del mismo sector cuenta en ambos. Fuente original: PerfilesFemeninos.sql (período certificación septiembre a septiembre).
-    Regla: advance = 100, único, plataforma 1 o 2.
-
-    '
-  formula: 'COUNT(DISTINCT fact_inscription.userId) POR CURSO en los 6 sectores, WHERE advance = 100 AND certificationDate
+  name: Certificados por sector — empleo incluyente y convivencia (Slide 2)
+  description: 'Personas certificadas en los 7 sectores de la slide 2 (construcción y mantenimiento, limpieza y mantenimiento,
+    transporte, alimentos y atención, agropecuarias, educación financiera y convivir mejor con otros). Grano por curso: una
+    persona certificada en dos cursos del mismo sector cuenta en ambos. Fuente original: PerfilesFemeninos.sql (período certificación
+    septiembre a septiembre); el sector de convivencia lo declaró el usuario el 2026-10-05. Regla: advance = 100, único, plataforma
+    1 o 2.'
+  formula: COUNT(DISTINCT fact_inscription.userId) POR CURSO en los 7 sectores, WHERE advance = 100 AND certificationDate
     en período AND plataformaId IN (1,2) AND Mexico.
-
-    '
   type: count_distinct
   source: fact_inscription
   platform_scope:
@@ -747,9 +744,10 @@ metrics:
     \      WHEN fi.\"courseId\" IN (6,57,8,100214,128) THEN 'Limpieza y mantenimiento'\n      WHEN fi.\"courseId\" IN (77,100310,41)\
     \ THEN 'Servicios en transporte'\n      WHEN fi.\"courseId\" IN (39,5,38,58) THEN 'Alimentos y atención'\n      WHEN fi.\"\
     courseId\" IN (52,33) THEN 'Actividades agropecuarias'\n      WHEN fi.\"courseId\" IN (100322,100128,100325) THEN 'Educación\
-    \ financiera'\n      ELSE NULL\n    END AS grupo\n  FROM public.fact_inscription fi\n  JOIN public.dim_user u ON u.\"\
-    userId\" = fi.\"userId\"\n  JOIN public.dim_local l ON l.\"localId\" = u.\"localId\"\n  JOIN public.course c ON c.id =\
-    \ fi.\"courseId\"\n  WHERE fi.advance = 100\n    AND fi.\"certificationDate\" >= %(period_start)s\n    AND fi.\"certificationDate\"\
+    \ financiera'\n      WHEN fi.\"courseId\" IN (100330,100380,100381,305,100070,100063,299,348) THEN 'Convivir mejor con\
+    \ otros'\n      ELSE NULL\n    END AS grupo\n  FROM public.fact_inscription fi\n  JOIN public.dim_user u ON u.\"userId\"\
+    \ = fi.\"userId\"\n  JOIN public.dim_local l ON l.\"localId\" = u.\"localId\"\n  JOIN public.course c ON c.id = fi.\"\
+    courseId\"\n  WHERE fi.advance = 100\n    AND fi.\"certificationDate\" >= %(period_start)s\n    AND fi.\"certificationDate\"\
     \ <= %(period_end)s\n    AND u.\"plataformaId\" IN (1,2)\n    AND l.\"countryName\" = 'México'\n) detalle WHERE grupo\
     \ IS NOT NULL GROUP BY grupo, curso ORDER BY grupo, curso ASC\n"
   caveats:
@@ -759,6 +757,22 @@ metrics:
   - 'Fuente original: Perfiles_Femeninos.sql (IDs exactos por sector).'
   - 'Orden de filas: alfabético por curso dentro de cada sector (no por valor DESC). El sheet repo emite un bloque con subtotales
     por sector y TOTAL general.'
+  - 'Sector "Convivir mejor con otros" agregado el 2026-10-05 por pedido del usuario, con 8 cursos: 100330 (Actitud más humana),
+    100380 (Momentos significativos), 100381 (El arte de acompañar), 305 (Prácticas de cortesía), 100070 (Juego limpio), 100063
+    (Solidaridad), 299 (Cultura urbana) y 348 (Seguridad para todas y todos). Slide 2 pasa de 6 a 7 sectores y de 30 a 38
+    cursos.'
+  - 'Los primeros 7 cursos son los mismos de la ruta "Convive mejor con otros" de slide 12; el 8vo (348, Seguridad para todas
+    y todos) solo está acá y en la ruta "¿Cómo mejorar mi entorno?" de slide 12. OJO con el nombre: slide 2 usa "ConvivIR
+    mejor con otros" (infinitivo) y slide 12 "ConvivE mejor con otros" (imperativo), tal como los declaró el usuario. No es
+    un typo nuestro.'
+  - 'De los cursos con nombre duplicado en `course` se tomó el ID dominante y vivo: "Prácticas de cortesía" existe como 297/305/331/100109/100711/100907
+    y se usa 305 (186,558 inscripciones contra 9,911 del siguiente, activo al 2026-10-04); "Solidaridad" existe como 100063/100704
+    y se usa 100063 (43,920 contra 340). Mismos IDs que slide 12.'
+  - 'Slide 2 agrupa por `c.name`, NO por `courseId`: dos IDs con el mismo nombre se fusionarían en una sola fila sumando los
+    usuarios de ambos. Verificado el 2026-10-05 que ninguno de los 8 cursos nuevos choca de nombre con los 30 previos ni entre
+    sí.'
+  - 'El `CASE` toma la primera rama que coincide, así que un curso en dos sectores se asignaría en silencio al de arriba.
+    Verificado: 38 cursos en 7 sectores, todos distintos.'
 - key: slide3_capacitate_carso
   name: Capacítate Carso — usuarios registrados por ventana fija (Slide 3)
   description: 'Usuarios únicos registrados en carso_analisis.user con registrationDate dentro de CUATRO ventanas de tiempo

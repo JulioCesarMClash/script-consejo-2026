@@ -1172,7 +1172,7 @@ def _build_slide2_block(
             sobre las filas de cursos de ese sector.
       - Fila en blanco.
       - TOTAL GENERAL: Categoría=metric_id, Sector="TOTAL",
-        Certificados=suma aditiva `=D<sub1>+D<sub2>+...+D<sub6>`
+        Certificados=suma aditiva `=D<sub1>+D<sub2>+...+D<subN>`
         (sintaxis con ``+`` — probamos ``=SUM(D<sub1>,D<sub2>,...)``
         con comas y Sheets devolvió ``#ERROR!``; un rango continuo
         ``=SUM(D<sub1>:D<sub_n>)`` tampoco sirve porque las filas

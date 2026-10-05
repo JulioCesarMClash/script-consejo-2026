@@ -522,3 +522,64 @@ class TestCatalogRepo:
         secciones = [r[1] for r in sorted(rutas, key=lambda r: int(r[0]))]
         bloques = [s for i, s in enumerate(secciones) if i == 0 or s != secciones[i - 1]]
         assert len(bloques) == len(set(bloques))
+
+    def test_slide2_has_convivencia_sector(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Slide 2 — sector "Convivir mejor con otros" con 8 cursos.
+
+        Declarado por el usuario el 2026-10-05. De los cursos con nombre
+        duplicado en `course` se toma el ID dominante y vivo: 305 "Prácticas
+        de cortesía" (186,558 inscripciones contra 9,911 del siguiente) y
+        100063 "Solidaridad" (43,920 contra 340).
+
+        Importa que no haya nombres repetidos: slide 2 agrupa por `c.name`,
+        así que dos IDs con el mismo nombre se fusionarían en una sola fila
+        sumando usuarios de ambos.
+        """
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "slide2_empleo_incluyente_por_sector"
+        )
+        sql = metric.db_mapping
+
+        sectores = re.findall(
+            r"WHEN fi\.\"courseId\" IN \(([\d,\s]+)\) THEN '([^']+)'", sql
+        )
+        assert len(sectores) == 7
+
+        por_sector = {s: [int(i) for i in ids.split(",")] for ids, s in sectores}
+        assert "Convivir mejor con otros" in por_sector
+        assert por_sector["Convivir mejor con otros"] == [
+            100330, 100380, 100381, 305, 100070, 100063, 299, 348,
+        ]
+
+        # Los 6 sectores previos siguen intactos.
+        assert len(por_sector["Construcción y mantenimiento"]) == 13
+        assert len(por_sector["Limpieza y mantenimiento"]) == 5
+        assert len(por_sector["Servicios en transporte"]) == 3
+        assert len(por_sector["Alimentos y atención"]) == 4
+        assert len(por_sector["Actividades agropecuarias"]) == 2
+        assert len(por_sector["Educación financiera"]) == 3
+
+    def test_slide2_assigns_each_course_to_one_sector(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Slide 2 — ningún curso cae en dos sectores.
+
+        El `CASE` toma la primera rama que coincide, así que un curso repetido
+        se asignaría silenciosamente al sector de arriba y desaparecería del
+        otro. Con 38 cursos en 7 sectores el reparto tiene que ser exacto.
+        """
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "slide2_empleo_incluyente_por_sector"
+        )
+        sectores = re.findall(
+            r"WHEN fi\.\"courseId\" IN \(([\d,\s]+)\) THEN '([^']+)'",
+            metric.db_mapping,
+        )
+        todos = [int(i) for ids, _ in sectores for i in ids.split(",")]
+
+        assert len(todos) == 38
+        assert len(set(todos)) == 38
