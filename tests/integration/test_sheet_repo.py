@@ -34,6 +34,7 @@ from src.consejo.adapters.sheets.google_mcp_sheet_repo import (
     _build_slide12_block,
     _build_slide13_block,
     _build_slide20_block,
+    _clear_sheet_if_exists,
     _build_slide_block,
     _build_reporte_requests,
     _project_dic2026,
@@ -2822,3 +2823,49 @@ class TestSlide20Block:
 
         with pytest.raises(KeyError):
             _build_slide20_block(manifests, 0)
+
+
+class TestClearSheet:
+    """La limpieza previa debe barrer todo el ancho que los bloques escriben."""
+
+    @staticmethod
+    def _all_header_widths() -> dict[str, int]:
+        import src.consejo.adapters.sheets.google_mcp_sheet_repo as repo
+        return {
+            name: len(value)
+            for name, value in vars(repo).items()
+            if name.endswith("TABLE_HEADERS")
+        }
+
+    def test_datos_clear_covers_the_widest_block(self) -> None:
+        """`Datos` se limpia hasta la última columna que algún bloque usa.
+
+        Los bloques de slides 3, 4 y 12 escriben 9 columnas (la 9a es
+        'Fuente'). Si la limpieza barre menos, al crecer un bloque de arriba
+        todo lo de abajo se corre y la columna no barrida conserva el valor de
+        la corrida anterior: la hoja queda con 'Fuente'/'mysql'/'manual'
+        flotando en filas que ya no les corresponden.
+
+        Pasó el 2026-10-05 al agregar el sector "Convivir mejor con otros" a
+        slide 2: la hoja creció 9 filas y quedaron 26 celdas con restos en la
+        columna I.
+        """
+        ancho_maximo = max(self._all_header_widths().values())
+
+        requests = _clear_sheet_if_exists("Datos", {"Datos"}, sheet_id=7)
+
+        assert len(requests) == 1
+        rango = requests[0]["repeatCell"]["range"]
+        assert rango["sheetId"] == 7
+        assert rango["startColumnIndex"] == 0
+        assert rango["endColumnIndex"] >= ancho_maximo, (
+            f"la limpieza barre {rango['endColumnIndex']} columnas pero el "
+            f"bloque más ancho escribe {ancho_maximo}"
+        )
+        # El grid completo, no solo las filas que se van a reescribir.
+        assert rango["startRowIndex"] == 0
+        assert rango["endRowIndex"] >= 1000
+
+    def test_clear_is_skipped_when_the_sheet_does_not_exist(self) -> None:
+        """Una hoja que se va a crear no necesita limpieza."""
+        assert _clear_sheet_if_exists("Datos", set(), sheet_id=7) == []

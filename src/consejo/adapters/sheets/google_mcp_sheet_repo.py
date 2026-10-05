@@ -2219,6 +2219,19 @@ def _build_config_requests(
 # ── Helpers de Sheets API ───────────────────────────────────────────────────
 
 
+def _datos_block_width() -> int:
+    """Ancho en columnas del bloque más ancho que se escribe en 'Datos'.
+
+    Se calcula sobre las constantes `*_TABLE_HEADERS` del módulo para que
+    agregar o ensanchar un bloque no deje columnas sin limpiar.
+    """
+    return max(
+        len(headers)
+        for name, headers in globals().items()
+        if name.endswith("TABLE_HEADERS") and isinstance(headers, list)
+    )
+
+
 def _clear_sheet_if_exists(
     name: str, existing: set[str], sheet_id: int
 ) -> list[dict]:
@@ -2227,13 +2240,21 @@ def _clear_sheet_if_exists(
     Borra el grid entero (hasta 1000 filas x max_cols) con repeatCell para
     evitar que queden restos de contenido previo más alto que el nuevo
     (un updateCells dirigido a fila 0 no borra filas más allá).
+
+    El ancho de 'Datos' se DERIVA de los headers de los bloques, no se
+    hardcodea: si un bloque nuevo agrega columnas, la limpieza las cubre
+    sola. Estaba fijo en 8 y los bloques de slides 3, 4 y 12 escriben 9,
+    así que la columna I nunca se barría. El 2026-10-05, al agregar un
+    sector a slide 2, la hoja creció 9 filas, todos los bloques de abajo se
+    corrieron y quedaron 26 celdas con el 'Fuente'/'mysql'/'manual' de la
+    corrida anterior en filas que ya no les correspondían.
     """
     if name not in existing:
         return []
 
     max_cols = {
         "Control": 2,
-        "Datos": 8,
+        "Datos": _datos_block_width(),
         "Reporte": 3,
         "Errores": 3,
         "Configuracion": 4,

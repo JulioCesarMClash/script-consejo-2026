@@ -573,3 +573,40 @@ La corrida de producción que estaba en vuelo cuando llegó esta lista se cortó
 escribir. El proceso carga el catálogo en memoria al arrancar, así que habría publicado
 la versión de 38 cursos con el 27 adentro; editar el YAML a mitad de camino no la
 afecta.
+
+## H18 — BUG: la hoja `Datos` no limpiaba la columna I (2026-10-05)
+
+Detectado al revisar la hoja después de agregar el sector a Slide 2: **26 filas tenían
+restos de la corrida anterior** en la columna I — valores como `Fuente`, `mysql`,
+`manual` y `fact_inscription` flotando en filas que ya no les correspondían.
+
+### Causa
+
+`_clear_sheet_if_exists` barría la hoja `Datos` con `endColumnIndex: 8`, o sea hasta la
+columna **H**. Pero los bloques de **slides 3, 4 y 12 escriben 9 columnas** (la novena
+es `Fuente`). La columna **I nunca se limpiaba**.
+
+Mientras el layout no cambiaba de alto, el bug era invisible: cada corrida reescribía la
+columna I con el mismo valor en la misma fila. Al agregar el sector "Convivir mejor con
+otros", slide 2 creció 9 filas, **todos los bloques de abajo se corrieron**, y la
+columna I quedó con los valores de las filas anteriores. Ejemplo: la fila 57 era
+`slide3_capacitate_carso | ... | mysql`; ahora es una fila de slide 2 que arrastra el
+`mysql`.
+
+### Arreglo
+
+El ancho ya no se hardcodea: se **deriva** de las constantes `*_TABLE_HEADERS` del
+módulo con `_datos_block_width()`. Si mañana un bloque agrega columnas, la limpieza las
+cubre sola. El test nuevo compara el `endColumnIndex` contra el máximo real de los
+headers, así que el desfase no puede volver en silencio:
+
+```
+la limpieza barre 8 columnas pero el bloque más ancho escribe 9
+```
+
+### Por qué importaba más de lo que parecía
+
+Era el tipo de bug que solo aparece cuando algo *arriba* cambia de tamaño — y la corrida
+donde apareció es justo la que el usuario estaba revisando. Cualquiera leyendo la hoja
+habría visto `mysql` en una fila de certificados por sector y, con razón, habría
+desconfiado del resto de los números.

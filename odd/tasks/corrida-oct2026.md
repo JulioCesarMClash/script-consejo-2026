@@ -169,5 +169,8 @@ since the `CASE` silently prefers the first matching branch.
 
 - [x] T14 — Slide 2: new sector with 8 courses
 - [x] T16 — Slide 2 final list: 37 courses, course 27 removed (H17)
-- [ ] T15 — Re-run production so the sheet carries the new sector and the
-      37-course list
+- [x] T17 — Fix: `Datos` clear range covered 8 columns while the widest
+      block writes 9, leaving 26 stale cells in column I (H18). The width is
+      now derived from the `*_TABLE_HEADERS` constants.
+- [ ] T15 — Re-run production so the sheet carries the new sector, the
+      37-course list and no stale cells
