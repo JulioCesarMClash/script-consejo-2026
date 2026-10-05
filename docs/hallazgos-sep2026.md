@@ -535,3 +535,41 @@ El bloque de la hoja no necesitó cambios: `_build_slide2_block` detecta el camb
 sector y arma el TOTAL desde la lista de subtotales que recolecta, así que soporta
 cualquier cantidad de sectores. Por el `ORDER BY grupo, curso` el sector nuevo va a
 aparecer entre "Construcción y mantenimiento" y "Educación financiera".
+
+## H17 — Lista final de Slide 2: sale el curso 27 (2026-10-05)
+
+El usuario fijó la lista definitiva: **37 cursos en 7 sectores**. Contra la versión
+anterior hay una sola diferencia real.
+
+**Sale el curso 27 "Reparador de aire acondicionado"** de "Construcción y
+mantenimiento", que queda en 12 cursos.
+
+No es limpieza de un curso muerto: el 27 tiene **254,823 inscripciones** y actividad al
+2026-10-03. Es una decisión de negocio, y coincide con la pestaña "Pobreza" de la hoja
+de control del usuario, que tampoco lo traía — lo mismo que ya había quedado anotado en
+H3 como la única diferencia entre esa pestaña y el proyecto. Ahora el catálogo se
+alinea.
+
+### Consecuencia: las 3 slides de pobreza ya no comparten el universo de construcción
+
+El 27 **sigue contándose** en Slide 1 (`slide1_vivienda`, 17 cursos) y en Slide 12
+("Proyectos constructivos y mantenimiento", 17 cursos). Solo sale de Slide 2.
+
+Eso es deliberado y quedó cubierto con `test_slide2_excludes_aire_acondicionado`, que
+verifica las dos cosas a la vez: que el 27 no está en slide 2 y que **sí sigue** en
+slides 1 y 12. Si alguien lo "arregla" en cualquiera de las dos direcciones, el test lo
+caza.
+
+### El orden del `IN` no importa
+
+La lista del usuario trae "Limpieza y mantenimiento" en otro orden que el catálogo
+(`6, 100214, 8, 57, 128` contra `6, 57, 8, 100214, 128`). No se tocó: la SQL cierra con
+`ORDER BY grupo, curso ASC`, así que las filas de la hoja salen alfabéticas por nombre
+de curso sin importar cómo esté escrito el `IN`.
+
+### Nota de operación
+
+La corrida de producción que estaba en vuelo cuando llegó esta lista se cortó antes de
+escribir. El proceso carga el catálogo en memoria al arrancar, así que habría publicado
+la versión de 38 cursos con el 27 adentro; editar el YAML a mitad de camino no la
+afecta.

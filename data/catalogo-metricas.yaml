@@ -726,11 +726,11 @@ metrics:
     slide.
 - key: slide2_empleo_incluyente_por_sector
   name: Certificados por sector — empleo incluyente y convivencia (Slide 2)
-  description: 'Personas certificadas en los 7 sectores de la slide 2 (construcción y mantenimiento, limpieza y mantenimiento,
-    transporte, alimentos y atención, agropecuarias, educación financiera y convivir mejor con otros). Grano por curso: una
-    persona certificada en dos cursos del mismo sector cuenta en ambos. Fuente original: PerfilesFemeninos.sql (período certificación
-    septiembre a septiembre); el sector de convivencia lo declaró el usuario el 2026-10-05. Regla: advance = 100, único, plataforma
-    1 o 2.'
+  description: 'Personas certificadas en los 7 sectores (37 cursos) de la slide 2 (construcción y mantenimiento, limpieza
+    y mantenimiento, transporte, alimentos y atención, agropecuarias, educación financiera y convivir mejor con otros). Grano
+    por curso: una persona certificada en dos cursos del mismo sector cuenta en ambos. Fuente original: PerfilesFemeninos.sql
+    (período certificación septiembre a septiembre); el sector de convivencia lo declaró el usuario el 2026-10-05. Regla:
+    advance = 100, único, plataforma 1 o 2.'
   formula: COUNT(DISTINCT fact_inscription.userId) POR CURSO en los 7 sectores, WHERE advance = 100 AND certificationDate
     en período AND plataformaId IN (1,2) AND Mexico.
   type: count_distinct
@@ -740,7 +740,7 @@ metrics:
   - aprende
   db_mapping: "SELECT grupo, curso, COUNT(DISTINCT \"userId\") AS value,\n       %(period_start)s AS periodo_inicio,\n   \
     \    %(period_end)s AS periodo_fin,\n       'fact_inscription' AS source\nFROM (\n  SELECT fi.\"userId\", c.name AS curso,\n\
-    \    CASE\n      WHEN fi.\"courseId\" IN (9,187,4,367,205,206,11,30,23,29,24,12,27) THEN 'Construcción y mantenimiento'\n\
+    \    CASE\n      WHEN fi.\"courseId\" IN (9,187,4,367,205,206,11,30,23,29,24,12) THEN 'Construcción y mantenimiento'\n\
     \      WHEN fi.\"courseId\" IN (6,57,8,100214,128) THEN 'Limpieza y mantenimiento'\n      WHEN fi.\"courseId\" IN (77,100310,41)\
     \ THEN 'Servicios en transporte'\n      WHEN fi.\"courseId\" IN (39,5,38,58) THEN 'Alimentos y atención'\n      WHEN fi.\"\
     courseId\" IN (52,33) THEN 'Actividades agropecuarias'\n      WHEN fi.\"courseId\" IN (100322,100128,100325) THEN 'Educación\
@@ -773,6 +773,14 @@ metrics:
     sí.'
   - 'El `CASE` toma la primera rama que coincide, así que un curso en dos sectores se asignaría en silencio al de arriba.
     Verificado: 38 cursos en 7 sectores, todos distintos.'
+  - 'Lista final fijada por el usuario el 2026-10-05: 37 cursos en 7 sectores. Respecto de la versión anterior sale el curso
+    27 (Reparador de aire acondicionado) de "Construcción y mantenimiento", que queda en 12 cursos.'
+  - 'El 27 NO es un curso retirado: tiene 254,823 inscripciones y actividad al 2026-10-03. La exclusión es una decisión de
+    negocio y coincide con la pestaña "Pobreza" de la hoja de control del usuario, que tampoco lo traía (hallazgo H3). Sigue
+    contándose en slide 1 (vivienda) y en slide 12 ("Proyectos constructivos y mantenimiento"), así que las tres slides de
+    pobreza ya NO comparten el mismo universo de construcción.'
+  - 'El orden dentro de cada lista `IN` es irrelevante para la hoja: la SQL cierra con `ORDER BY grupo, curso ASC`, así que
+    las filas salen alfabéticas por nombre de curso sin importar cómo esté escrito el IN.'
 - key: slide3_capacitate_carso
   name: Capacítate Carso — usuarios registrados por ventana fija (Slide 3)
   description: 'Usuarios únicos registrados en carso_analisis.user con registrationDate dentro de CUATRO ventanas de tiempo

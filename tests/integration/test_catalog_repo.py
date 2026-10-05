@@ -554,8 +554,10 @@ class TestCatalogRepo:
             100330, 100380, 100381, 305, 100070, 100063, 299, 348,
         ]
 
-        # Los 6 sectores previos siguen intactos.
-        assert len(por_sector["Construcción y mantenimiento"]) == 13
+        # Los 6 sectores previos siguen intactos salvo Construcción, que el
+        # 2026-10-05 perdió el curso 27 (Reparador de aire acondicionado).
+        assert len(por_sector["Construcción y mantenimiento"]) == 12
+        assert 27 not in por_sector["Construcción y mantenimiento"]
         assert len(por_sector["Limpieza y mantenimiento"]) == 5
         assert len(por_sector["Servicios en transporte"]) == 3
         assert len(por_sector["Alimentos y atención"]) == 4
@@ -569,7 +571,7 @@ class TestCatalogRepo:
 
         El `CASE` toma la primera rama que coincide, así que un curso repetido
         se asignaría silenciosamente al sector de arriba y desaparecería del
-        otro. Con 38 cursos en 7 sectores el reparto tiene que ser exacto.
+        otro. Con 37 cursos en 7 sectores el reparto tiene que ser exacto.
         """
         metric = next(
             m for m in catalog_repo.list_metrics()
@@ -581,5 +583,32 @@ class TestCatalogRepo:
         )
         todos = [int(i) for ids, _ in sectores for i in ids.split(",")]
 
-        assert len(todos) == 38
-        assert len(set(todos)) == 38
+        assert len(todos) == 37
+        assert len(set(todos)) == 37
+
+    def test_slide2_excludes_aire_acondicionado(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Slide 2 no cuenta el curso 27 (Reparador de aire acondicionado).
+
+        Lo quitó el usuario el 2026-10-05 al fijar la lista final de 37 cursos,
+        alineada con la pestaña "Pobreza" de su hoja de control, que tampoco lo
+        traía (hallazgo H3).
+
+        No es un curso retirado: tiene 254,823 inscripciones y actividad al
+        2026-10-03, así que la exclusión es una decisión de negocio y hay que
+        poder notarla si alguien lo vuelve a meter. Sigue contándose en slide 1
+        (vivienda) y en slide 12 ("Proyectos constructivos y mantenimiento").
+        """
+        metricas = {m.key: m.db_mapping for m in catalog_repo.list_metrics()}
+
+        s2 = metricas["slide2_empleo_incluyente_por_sector"]
+        sectores = re.findall(
+            r"WHEN fi\.\"courseId\" IN \(([\d,\s]+)\) THEN '([^']+)'", s2
+        )
+        todos = {int(i) for ids, _ in sectores for i in ids.split(",")}
+        assert 27 not in todos
+
+        # Pero sigue en las otras dos slides de pobreza.
+        assert re.search(r"(?<!\d)27(?!\d)", metricas["slide1_herramientas_pobreza"])
+        assert re.search(r"(?<!\d)27(?!\d)", metricas["slide12_rutas_aprendizaje"])

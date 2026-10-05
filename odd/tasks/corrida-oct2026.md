@@ -168,4 +168,6 @@ no collisions. Added a guard that each course belongs to exactly one sector,
 since the `CASE` silently prefers the first matching branch.
 
 - [x] T14 — Slide 2: new sector with 8 courses
-- [ ] T15 — Re-run production so the sheet carries the new sector
+- [x] T16 — Slide 2 final list: 37 courses, course 27 removed (H17)
+- [ ] T15 — Re-run production so the sheet carries the new sector and the
+      37-course list
