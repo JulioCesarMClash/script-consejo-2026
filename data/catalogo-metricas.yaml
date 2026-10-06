@@ -284,56 +284,64 @@ metrics:
   caveats:
   - No incluye tablas agregadas (agg_*). Consulta directa a fact_inscription.
 - key: slide1_herramientas_pobreza
-  name: Herramientas de capacitación combate pobreza extrema (Slide 1)
-  description: 'Tabla slide 1: 5 categorías de cursos (vivienda, digital, alimentos, desastres, empleo) para el combate a
-    la pobreza extrema. value = cursos únicos por categoría (count de IDs, derivado del array); cursos_totales = cursos únicos
-    + compartidos; certificados = personas certificadas únicas (COUNT DISTINCT userId) con advance = 100, certificationDate
-    en el período y plataforma 1 (CPE) o 2 (Aprende). La slide del deck muestra "Personas beneficiadas" en cada categoría,
-    por lo que usamos el conteo único (sin doble certificación de la misma persona en varios cursos de la misma categoría).
-    El curso 342 (Introducción a Primer Respondiente) pertenece solo a desastres. La fila total se compone en la hoja (Slide
-    1) con fórmula =SUM.
-
-    '
-  formula: 'Por categoría: value = array_length(IDs cursos), cursos_totales = value + compartidos, certificados = COUNT(DISTINCT
-    fact_inscription.userId) de fact_inscription WHERE advance = 100 AND certificationDate en período AND plataforma IN (1,2).
-
-    '
+  name: Certificados por categoría — herramientas contra la pobreza (Slide 1)
+  description: 'Personas certificadas en las 6 categorías de la slide 1 (113 cursos). Distribución declarada por el usuario
+    el 2026-10-06. Grano por categoría: COUNT(DISTINCT userId) dentro de los cursos de cada una, así que quien certifica en
+    dos categorías cuenta en las dos y el TOTAL de la hoja (=SUM) no son personas únicas. Regla: advance = 100, período oficial
+    de certificados, plataforma 1 o 2, México.'
+  formula: COUNT(DISTINCT fact_inscription.userId) POR CATEGORÍA en las 6 categorías, WHERE advance = 100 AND certificationDate
+    en período AND plataformaId IN (1,2) AND Mexico.
   type: count_distinct
   source: fact_inscription
   platform_scope:
   - cpe
   - aprende
-  db_mapping: "WITH categorias AS (\n  SELECT * FROM (VALUES\n  ('slide1_vivienda',\n   ARRAY[9,187,4,389,390,367,11,30,140,23,29,24,12,100157,244,240,27]::bigint[],\
-    \ 0),\n  ('slide1_digital',\n   ARRAY[254,399,213,258,285,379,43,321,374,375,100002,\n          100006,394,380,100003,345,368,372,373,100897,100212,366]::bigint[],\
-    \ 2),\n  ('slide1_alimentos',\n   ARRAY[33,241,282,410,103,145,242,362,382,128,129,130,141,347,\n          89,291,100147,100322,142,299,348,364,100900,100861,100918]::bigint[],\
-    \ 7),\n  ('slide1_desastres',\n   ARRAY[57,95,120,276,281,314,342,354,387,393,100098]::bigint[], 0),\n  ('slide1_empleo',\n\
-    \   ARRAY[93,156,157,158,100092,100149,159,167,169,100105,106,107,117,\n          153,100074,118,234,301,100101,100310,100320,143,170,320,343,\n\
-    \          358]::bigint[], 3)\n) AS RECORDS(metric_id, categoria_ids, compartidos) ) SELECT c.metric_id,\n       'fact_inscription'\
-    \ AS source,\n       array_length(c.categoria_ids, 1) AS value,\n       c.compartidos,\n       array_length(c.categoria_ids,\
-    \ 1) + c.compartidos AS cursos_totales,\n       (SELECT COUNT(DISTINCT fi.\"userId\")\n         FROM fact_inscription\
-    \ fi\n         JOIN dim_user u ON u.\"userId\" = fi.\"userId\"\n         JOIN dim_local l ON l.\"localId\" = u.\"localId\"\
-    \n         WHERE fi.\"courseId\" = ANY(c.categoria_ids)\n           AND fi.advance = 100\n           AND fi.\"certificationDate\"\
-    \ >= %(period_start)s\n           AND fi.\"certificationDate\" < %(period_end)s\n           AND u.\"plataformaId\" IN\
-    \ (1,2)\n           AND l.\"countryName\" = 'México'\n        ) AS certificados,\n       %(period_start)s AS periodo_inicio,\n\
-    \       %(period_end)s AS periodo_fin\nFROM categorias c ORDER BY c.metric_id\n"
+  db_mapping: "WITH categorias AS (\n  SELECT * FROM (VALUES\n  (1, 'slide1_vivienda',\n   ARRAY[9,187,4,389,390,367,11,205,206,30,140,23,29,24,12,100157,244,240,27]::bigint[],\
+    \ 0),\n  (2, 'slide1_digital',\n   ARRAY[254,399,213,258,285,379,43,321,374,375,100002,100006,394,380,100003,345,100897,368,372,100129,373]::bigint[],\
+    \ 0),\n  (3, 'slide1_alimentos',\n   ARRAY[33,241,282,410,103,145,242,362,382,128,129,130,141,347,89,291,100147,100322,142,299,348,364,100900,100861,100918,100214]::bigint[],\
+    \ 0),\n  (4, 'slide1_desastres',\n   ARRAY[57,95,120,276,281,314,342,354,387,393,100098]::bigint[], 0),\n  (5, 'slide1_autoempleo',\n\
+    \   ARRAY[93,156,157,158,100092,100149,159,167,169,100105,106,107,117,153,100074,118,234,301,100101,100310,100320,143,170,320,343,358,100327,77]::bigint[],\
+    \ 0),\n  (6, 'slide1_buscar_trabajo',\n   ARRAY[100919,228,100853,216,227,67,212,100059]::bigint[], 0)\n) AS RECORDS(orden,\
+    \ metric_id, categoria_ids, compartidos) ) SELECT c.metric_id,\n       'fact_inscription' AS source,\n       array_length(c.categoria_ids,\
+    \ 1) AS value,\n       c.compartidos,\n       array_length(c.categoria_ids, 1) + c.compartidos AS cursos_totales,\n  \
+    \     (SELECT COUNT(DISTINCT fi.\"userId\")\n         FROM fact_inscription fi\n         JOIN dim_user u ON u.\"userId\"\
+    \ = fi.\"userId\"\n         JOIN dim_local l ON l.\"localId\" = u.\"localId\"\n         WHERE fi.\"courseId\" = ANY(c.categoria_ids)\n\
+    \           AND fi.advance = 100\n           AND fi.\"certificationDate\" >= %(period_start)s\n           AND fi.\"certificationDate\"\
+    \ < %(period_end)s\n           AND u.\"plataformaId\" IN (1,2)\n           AND l.\"countryName\" = 'México'\n        )\
+    \ AS certificados,\n       %(period_start)s AS periodo_inicio,\n       %(period_end)s AS periodo_fin\nFROM categorias\
+    \ c ORDER BY c.orden\n"
   caveats:
-  - El total (cursos únicos y certificados) se compone en la hoja Slide 1 con fórmula =SUM, no en SQL.
-  - 'Certificación: advance = 100 AND certificationDate IS NOT NULL, plataforma 1 o 2, período oficial de certificados, filtrado
-    por México (l.countryName = ''México'' vía JOIN a dim_local). La slide del deck dice ''Cifras de México''. Conteos con
-    COUNT(DISTINCT userId) — ''Personas beneficiadas'' (no de inscripciones), por lo que se descartan dobles certificaciones
-    de la misma persona en la misma categoría.'
-  - El curso 342 (Introducción a Primer Respondiente) pertenece SOLO a desastres para no duplicar certificados; alimentos
-    no lo incluye.
-  - Organización de cursos estática, validada contra Consultas consejo panel.sql (Sep-2025) + cursos IA (100212, 366).
+  - 'Distribución declarada por el usuario el 2026-10-06: 6 categorías y 113 cursos. Etiquetas del deck por clave: slide1_vivienda
+    = "Formación para mejorar tu vivienda" (19); slide1_digital = "Desarrollo de habilidades digitales básicas" (21); slide1_alimentos
+    = "Alimentos desde casa, seguridad e higiene elemental" (26); slide1_desastres = "Formación para actuar ante desastres
+    naturales" (11); slide1_autoempleo = "Crea tu propio empleo" (28); slide1_buscar_trabajo = "Activate para buscar trabajo"
+    (8). La hoja publica la clave corta en su columna Categoría.'
+  - 'La vieja `slide1_empleo` (26 cursos) se partió en dos: slide1_autoempleo y slide1_buscar_trabajo. Las otras 4 claves
+    se conservan para que el histórico siga siendo legible.'
+  - 'Columna `orden` nueva: la SQL ordenaba por `metric_id` y la hoja salía alfabética. Ahora `ORDER BY c.orden` respeta el
+    orden de la lista del usuario (vivienda, digital, alimentos, desastres, autoempleo, buscar trabajo).'
+  - 'Los `compartidos` quedaron en 0 en las 6 categorías. Antes eran 0/2/7/0/3 = 12 sobre 101 cursos en los arrays: el solapamiento
+    se resolvía asignando cada curso a una categoría y los 12 restantes se declaraban como literal. La distribución nueva
+    trae los 113 cursos explícitos, así que no queda nada que declarar y la columna "Cursos totales" del deck sigue dando
+    113 — ahora respaldada por cursos reales.'
+  - 'Reparto: 113 asignaciones sobre 113 cursos distintos, cero compartidos entre categorías.'
+  - 'Entran 14 cursos respecto de la versión anterior: 67, 77, 205, 206, 212, 216, 227, 228, 100059, 100129, 100214, 100327,
+    100853 y 100919. El 100129 (Manejo correcto de las tarjetas de crédito) vuelve al catálogo: había quedado afuera en el
+    revert de la ruta "Compras y pagos digitales" (hallazgo H10).'
+  - 'Salen 2 cursos ACTIVOS, no retirados: 100212 (Fundamentos de inteligencia artificial, 87,133 inscripciones) y 366 (Fundamentos
+    de blockchain, 25,499), los que un caveat anterior llamaba "cursos IA". La exclusión es editorial.'
+  - El curso 342 (Introducción a Primer Respondiente) sigue SOLO en desastres para no duplicar certificados; alimentos no
+    lo incluye.
+  - '"Busca tu primer trabajo" aparece en la lista del usuario SIN ID de curso y por indicación suya NO se cuenta. "Activate
+    para buscar trabajo" queda en 8 cursos en vez de 9. Mismo caso que en slide 12 (hallazgo H11).'
   - Excluye IDs 100433/100436 (sector 81) con 0 certificados/inscripciones en fact_inscription.
-  - OBSOLETO — no usar como referencia. El TOTAL=352,206 registrado el 2026-08-17 (vivienda=20,653 / digital=76,371 / alimentos=99,355
-    / desastres=74,569 / empleo=81,258) se midió SIN el filtro l."countryName" = 'México', que se agregó al catálogo después,
-    y con 96 cursos en vez de los 101 actuales. Reproducido el 2026-10-02 quitando el filtro y en esa misma ventana 2025-09-01..2026-08-01
-    da 356,657 (+1.3%, por los 5 cursos nuevos y el backfill de certificaciones retroactivas), lo que confirma el origen de
-    la diferencia.
-  - 'Resultado de la corrida de cierre Sep 2026 (ventana 2025-09-01..2026-10-01, 13 meses, PG, con filtro de México): vivienda=16,336
-    / digital=53,967 / alimentos=63,897 / desastres=49,356 / empleo=54,127 / TOTAL=237,683 personas únicas certificadas. La
-    métrica es monótona en la ventana: la misma query a 11 meses (..2026-08-01) da 213,344.'
+  - 'El total (cursos únicos y certificados) se compone en la hoja Slide 1 con fórmula =SUM, no en SQL. Como cada categoría
+    es COUNT(DISTINCT) dentro de sus cursos, ese TOTAL NO son personas únicas: en la corrida del 2026-10-05 la suma daba 237,691
+    contra 208,815 personas reales (+13.8%). Ver hallazgo H20.'
+  - 'Certificación: advance = 100, período oficial de certificados vía %(period_start)s/%(period_end)s, plataforma 1 o 2,
+    filtrado por México (l.countryName = ''México'' vía JOIN a dim_local).'
+  - OBSOLETO — no usar como referencia. El TOTAL=352,206 registrado el 2026-08-17 se midió SIN el filtro de México y con 96
+    cursos. Ver hallazgo H12.
 - key: slide12_rutas_aprendizaje
   name: Rutas de aprendizaje (Slide 12)
   description: 'Tabla slide 12: 18 rutas de aprendizaje en 4 secciones (Construcción, Habilidades digitales, Capacitación

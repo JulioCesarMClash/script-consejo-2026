@@ -657,83 +657,118 @@ class TestCatalogRepo:
 
         assert 27 not in todos
 
+    # Orden y claves de las 6 categorías de slide 1, tal como el usuario
+    # declaró la distribución el 2026-10-06. La clave corta es la que la hoja
+    # publica en su columna "Categoría"; el nombre largo es la etiqueta del
+    # deck y vive en los caveats.
+    SLIDE1_CATEGORIAS = [
+        ("slide1_vivienda", 19),            # Formación para mejorar tu vivienda
+        ("slide1_digital", 21),             # Desarrollo de habilidades digitales básicas
+        ("slide1_alimentos", 26),           # Alimentos desde casa, seguridad e higiene
+        ("slide1_desastres", 11),           # Formación para actuar ante desastres naturales
+        ("slide1_autoempleo", 28),          # Crea tu propio empleo
+        ("slide1_buscar_trabajo", 8),       # Activate para buscar trabajo
+    ]
+
+    @staticmethod
+    def _slide1_categorias(sql: str) -> list[tuple[int, str, list[int], int]]:
+        """(orden, metric_id, cursos, compartidos) en el orden del SQL."""
+        return [
+            (int(o), key, [int(i) for i in ids.replace("\n", "").split(",")], int(comp))
+            for o, key, ids, comp in re.findall(
+                r"\((\d+),\s*'(slide1_\w+)',\s*ARRAY\[([\d,\s]+)\]::bigint\[\],\s*(\d+)\)",
+                sql,
+            )
+        ]
+
+    def test_slide1_has_the_declared_six_category_distribution(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Slide 1 — 6 categorías con los cursos que declaró el usuario.
+
+        La distribución del 2026-10-06 parte la vieja `slide1_empleo` en dos
+        ("Crea tu propio empleo" y "Activate para buscar trabajo") y suma 14
+        cursos quitando 2, pasando de 101 a 113.
+
+        El `orden` existe para que la hoja respete el orden de la lista del
+        usuario; sin él la SQL ordenaba por `metric_id` y salía alfabético.
+        """
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "slide1_herramientas_pobreza"
+        )
+        cats = self._slide1_categorias(metric.db_mapping)
+
+        assert [(c[1], len(c[2])) for c in cats] == self.SLIDE1_CATEGORIAS
+        assert [c[0] for c in cats] == [1, 2, 3, 4, 5, 6]
+        assert "ORDER BY c.orden" in metric.db_mapping
+
+        por_key = {c[1]: c[2] for c in cats}
+        # Las dos categorías nuevas, con su lista exacta y en orden.
+        assert por_key["slide1_autoempleo"] == [
+            93, 156, 157, 158, 100092, 100149, 159, 167, 169, 100105, 106,
+            107, 117, 153, 100074, 118, 234, 301, 100101, 100310, 100320,
+            143, 170, 320, 343, 358, 100327, 77,
+        ]
+        assert por_key["slide1_buscar_trabajo"] == [
+            100919, 228, 100853, 216, 227, 67, 212, 100059,
+        ]
+
     def test_slide1_assigns_each_course_to_one_category(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
         """Slide 1 — cada curso pertenece a UNA sola categoría.
 
-        El TOTAL de la hoja es `=SUM` sobre las 5 categorías, y cada categoría
-        es `COUNT(DISTINCT userId)` dentro de sus cursos. Un curso en dos
-        categorías metería a sus certificados en las dos y el total se
-        inflaría más de lo que ya se infla por personas.
+        El TOTAL de la hoja es `=SUM` sobre las categorías, y cada una es
+        `COUNT(DISTINCT userId)` dentro de sus cursos. Un curso en dos
+        categorías metería a sus certificados en las dos.
 
-        El solapamiento se resolvió asignando cada curso a una sola categoría
-        (ver el caveat del curso 342, que va solo a desastres). Los literales
-        `compartidos` registran cuántos cursos de cada categoría pertenecen
-        conceptualmente a otra, no cursos repetidos en los arrays.
+        Son 113 cursos, el mismo número que la slide ya publicaba como
+        "Cursos totales" cuando eran 101 en los arrays más 12 declarados como
+        compartidos.
         """
         metric = next(
             m for m in catalog_repo.list_metrics()
             if m.key == "slide1_herramientas_pobreza"
         )
-        cats = re.findall(
-            r"\('(slide1_\w+)',\s*ARRAY\[([\d,\s]+)\]::bigint\[\],\s*(\d+)\)",
-            metric.db_mapping,
-        )
-        assert len(cats) == 5
+        cats = self._slide1_categorias(metric.db_mapping)
+        assert len(cats) == 6
 
         por_curso: dict[int, set[str]] = {}
-        for cat, ids, _ in cats:
-            for i in ids.replace("\n", "").split(","):
-                por_curso.setdefault(int(i), set()).add(cat)
+        for _, key, ids, _c in cats:
+            for i in ids:
+                por_curso.setdefault(i, set()).add(key)
 
-        asignaciones = sum(len(v) for v in por_curso.values())
-        assert asignaciones == 101
-        assert len(por_curso) == 101
+        assert sum(len(v) for v in por_curso.values()) == 113
+        assert len(por_curso) == 113
         assert {c: r for c, r in por_curso.items() if len(r) > 1} == {}
 
-        # El 342 va SOLO a desastres, no a alimentos.
+        # El 342 sigue solo en desastres (ver su caveat).
         assert por_curso[342] == {"slide1_desastres"}
+        # "Busca tu primer trabajo" no tiene ID y no se cuenta.
+        assert len(por_curso[100919]) == 1
 
-    def test_slide1_shared_course_literals_are_editorial(
+    def test_slide1_shared_course_literals_are_zero(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
-        """Los `compartidos` de slide 1 suman 12 y dan "Cursos totales" 113.
+        """Los `compartidos` quedaron en 0 y "Cursos totales" sigue en 113.
 
-        No son cursos repetidos en los arrays (eso lo cubre
-        `test_slide1_assigns_each_course_to_one_category`): son un conteo
-        editorial de cuántos cursos de cada categoría pertenecen también a
-        otra, que la hoja publica como `cursos_totales = value + compartidos`.
-
-        Se fijan acá porque no se pueden derivar del SQL: si alguien los mueve,
-        la columna "Cursos totales" del deck cambia sin que ninguna query lo
-        explique.
+        Antes eran 0/2/7/0/3 = 12 sobre 101 cursos en los arrays, porque el
+        solapamiento se resolvía asignando cada curso a una categoría y los
+        12 restantes se declaraban aparte. La distribución del 2026-10-06 trae
+        los 113 cursos explícitos, así que no queda nada que declarar: la
+        columna del deck sigue dando 113, pero ahora respaldada por cursos
+        reales en vez de un literal.
         """
         metric = next(
             m for m in catalog_repo.list_metrics()
             if m.key == "slide1_herramientas_pobreza"
         )
-        cats = re.findall(
-            r"\('(slide1_\w+)',\s*ARRAY\[([\d,\s]+)\]::bigint\[\],\s*(\d+)\)",
-            metric.db_mapping,
-        )
-        compartidos = {cat: int(c) for cat, _, c in cats}
-        cursos = {
-            cat: len(ids.replace("\n", "").split(","))
-            for cat, ids, _ in cats
-        }
+        cats = self._slide1_categorias(metric.db_mapping)
 
-        assert compartidos == {
-            "slide1_vivienda": 0,
-            "slide1_digital": 2,
-            "slide1_alimentos": 7,
-            "slide1_desastres": 0,
-            "slide1_empleo": 3,
-        }
-        assert sum(compartidos.values()) == 12
-        assert sum(cursos.values()) == 101
-        assert sum(cursos.values()) + sum(compartidos.values()) == 113
-
+        assert [c[3] for c in cats] == [0, 0, 0, 0, 0, 0]
+        assert sum(len(c[2]) for c in cats) == 113
+        assert sum(len(c[2]) + c[3] for c in cats) == 113
     def test_slide2_excludes_seguridad_para_todas(
         self, catalog_repo: YamlMetricRepo
     ) -> None:

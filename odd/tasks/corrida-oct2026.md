@@ -227,3 +227,16 @@ tests now read only `slide2_empleo_incluyente_por_sector`. Write-up in H22.
 
 - [x] T24 — Slide 2: 348 removed, sector renamed, tests decoupled
 - [ ] T25 — Re-run production for the slide 2 change
+
+## T26 — Slide 1 six-category distribution (2026-10-06)
+
+5 categories / 101 courses -> 6 / 113. The old `slide1_empleo` splits into
+`slide1_autoempleo` (28) and `slide1_buscar_trabajo` (8). 14 courses in, 2 out
+(100212 and 366, both active — editorial exclusion). `compartidos` literals went
+to 0 and the deck's "Cursos totales" still reads 113, now backed by real
+courses. New `orden` column so the sheet follows the user's order. SQL executed
+against Postgres: 113/113, zero cross-category duplicates, 264,870 certificates
+over 227,064 unique people. Write-up in H23.
+
+- [x] T26 — Slide 1: new distribution, compartidos -> 0, `orden` column
+- [ ] T27 — Re-run production for the slide 1 and slide 2 changes

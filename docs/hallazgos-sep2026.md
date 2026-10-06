@@ -817,3 +817,71 @@ escribí asumiendo que las dos listas diferían porque Slide 12 tenía el 348, y
 falló — en Slide 12 el 348 está en "¿Cómo mejorar mi entorno?", no en convivencia. Tras
 quitar el 348 de Slide 2 las dos listas quedaron **idénticas** (los mismos 7 cursos).
 Coincidencia a tener en cuenta: mismo nombre y misma lista en dos slides distintas.
+
+## H23 — Slide 1: distribución nueva de 6 categorías y 113 cursos (2026-10-06)
+
+El usuario declaró la distribución definitiva. La vieja `slide1_empleo` se parte en dos
+y la slide pasa de **5 categorías / 101 cursos** a **6 / 113**.
+
+| # | Clave | Etiqueta del deck | Cursos | Certificados |
+|---|---|---|---|---|
+| 1 | `slide1_vivienda` | Formación para mejorar tu vivienda | 19 | 16,644 |
+| 2 | `slide1_digital` | Desarrollo de habilidades digitales básicas | 21 | 52,903 |
+| 3 | `slide1_alimentos` | Alimentos desde casa, seguridad e higiene elemental | 26 | 64,664 |
+| 4 | `slide1_desastres` | Formación para actuar ante desastres naturales | 11 | 49,356 |
+| 5 | `slide1_autoempleo` | Crea tu propio empleo | 28 | 56,411 |
+| 6 | `slide1_buscar_trabajo` | Activate para buscar trabajo | 8 | 24,892 |
+| | | **TOTAL** | **113** | **264,870** |
+
+Verificado ejecutando la SQL nueva contra Postgres: 113 asignaciones sobre 113 cursos
+distintos, cero compartidos entre categorías.
+
+### Los `compartidos` pasaron a 0, y el 113 del deck no se mueve
+
+Antes eran `0/2/7/0/3 = 12` sobre 101 cursos en los arrays, con
+`Cursos totales = 101 + 12 = 113`: el solapamiento se resolvía asignando cada curso a
+una categoría y los 12 restantes se declaraban como literal editorial (ver H20).
+
+La distribución nueva trae los **113 cursos explícitos**, así que no queda nada que
+declarar. Los literales quedaron en **0** y la columna "Cursos totales" del deck sigue
+dando **113** — pero ahora respaldada por cursos reales en vez de un número que ninguna
+query explicaba. La aritmética cierra exacto: `101 + 14 entran − 2 salen = 113`.
+
+### Salen dos cursos activos
+
+| ID | Curso | Inscripciones |
+|---|---|---|
+| 100212 | Fundamentos de inteligencia artificial | 87,133 |
+| 366 | Fundamentos de blockchain | 25,499 |
+
+Son los que un caveat anterior llamaba "cursos IA". **No son cursos retirados** — tienen
+volumen real y actividad al 2026-10-03, así que la exclusión es editorial y conviene
+poder explicarla.
+
+### Entran 14
+
+`67, 77, 205, 206, 212, 216, 227, 228, 100059, 100129, 100214, 100327, 100853, 100919`.
+
+El **100129** (Manejo correcto de las tarjetas de crédito) **vuelve al catálogo**: había
+quedado completamente afuera en el revert de la ruta "Compras y pagos digitales" (H10),
+donde era el único curso que no pertenecía a ninguna otra ruta.
+
+### Columna `orden` nueva
+
+La SQL cerraba con `ORDER BY c.metric_id` y la hoja salía alfabética (alimentos,
+desastres, digital, empleo, vivienda). Ahora hay una columna `orden` y
+`ORDER BY c.orden`, así que las filas respetan el orden de la lista del usuario. El
+bloque de la hoja no necesitó cambios: `_build_slide1_block` itera las filas del
+manifest y compone el TOTAL con `=SUM`, sin asumir cuántas categorías hay.
+
+### "Busca tu primer trabajo" no se cuenta
+
+Aparece en la lista sin ID de curso y el usuario indicó no contarlo, así que "Activate
+para buscar trabajo" queda en **8** cursos en vez de 9. Mismo caso que en Slide 12
+(H11), donde también quedó fuera.
+
+### El TOTAL sigue sin ser personas
+
+264,870 es la suma de las 6 categorías. Las **personas únicas reales son 227,064**
+(+16.6% de inflado), porque quien certifica en dos categorías cuenta en las dos. Con 6
+categorías en vez de 5 el inflado subió: era 13.8% con la distribución anterior.
