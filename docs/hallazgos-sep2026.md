@@ -726,3 +726,48 @@ beneficiadas", el número correcto es el de la columna "Personas reales".
 - `test_slide1_shared_course_literals_are_editorial` — fija los 5 literales, su suma 12 y
   el 113 resultante.
 - `test_slide2_assigns_each_course_to_one_sector` ya existía desde H16 (37/37).
+
+## H21 — El 299 se reubica a "Convive mejor con otros" (2026-10-06)
+
+Tercer y último estado del curso 299 (Cultura urbana) en Slide 12, por pedido del
+usuario:
+
+| Fecha | Estado | Total de la slide |
+|---|---|---|
+| 2026-10-02 | En **dos** rutas: "¿Cómo mejorar mi entorno?" y "Convive mejor con otros" | 2,307,998 (inflado) |
+| 2026-10-06 | Solo en "¿Cómo mejorar mi entorno?" | 2,302,728 (real) |
+| 2026-10-06 | **Solo en "Convive mejor con otros"** | **2,302,728** (sin cambio) |
+
+**El total no se mueve.** Es una mudanza, no una duplicación: siguen siendo los mismos
+113 cursos distintos. Y como las dos rutas pertenecen a **Capacitación básica**, tampoco
+cambia el subtotal de la sección — solo se mueven ~5,270 certificaciones de una fila de
+ruta a la otra.
+
+Reparto resultante:
+
+| Ruta | Antes | Ahora |
+|---|---|---|
+| ¿Cómo mejorar mi entorno? | 5 cursos | **4** (`142, 364, 348, 100918`) |
+| Convive mejor con otros | 6 cursos | **7** (`100330, 100380, 100381, 305, 100070, 100063, 299`) |
+
+Invariante intacta: **113 asignaciones / 113 distintos / cero compartidos.**
+
+### Nota de nomenclatura
+
+El usuario escribió "Convivir mejor con otros" al pedir el cambio, que es el nombre del
+**sector de Slide 2**. En Slide 12 la ruta se llama "Convive mejor con otros" y así se
+dejó — es el nombre que él mismo declaró para esa slide (ver H16). La diferencia
+infinitivo/imperativo entre slides sigue siendo deliberada.
+
+### El 299 ahora
+
+| Slide | Grupo |
+|---|---|
+| Slide 1 | `slide1_alimentos` |
+| Slide 2 | Convivir mejor con otros |
+| Slide 12 | **Convive mejor con otros** |
+
+Una vez en cada slide. El test
+`test_slide12_keeps_cultura_urbana_only_in_convivencia` fija la ruta nueva, verifica que
+"¿Cómo mejorar mi entorno?" quedó exactamente en `[142, 364, 348, 100918]`, y que el 299
+**sigue** en slides 1 y 2.

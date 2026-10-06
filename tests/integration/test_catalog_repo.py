@@ -249,15 +249,21 @@ class TestCatalogRepo:
         assert "curso_ids_conteo" not in sql
         assert 'ANY(r.curso_ids)' in sql
 
-    def test_slide12_keeps_cultura_urbana_only_in_mi_entorno(
+    def test_slide12_keeps_cultura_urbana_only_in_convivencia(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
-        """El 299 vive en "¿Cómo mejorar mi entorno?" y en ninguna otra ruta.
+        """El 299 vive en "Convive mejor con otros" y en ninguna otra ruta.
 
-        Decisión del usuario 2026-10-06: el total real de certificados de
-        pobreza extrema es 2,302,728, el de los 113 cursos distintos. Dejar el
-        299 en dos rutas lo inflaba a 2,307,998 porque sus 5,270
-        certificaciones entraban dos veces en la suma de subtotales.
+        Historia de esta asignación:
+        - 2026-10-02: entró en "Convive mejor con otros" al alinear con la hoja
+          de control, pero quedó TAMBIÉN en "¿Cómo mejorar mi entorno?". El
+          total se infló a 2,307,998 porque sus 5,270 certificaciones entraban
+          dos veces en la suma de subtotales.
+        - 2026-10-06: se quitó de convivencia para dejarlo solo en mi entorno,
+          y el total volvió al real, 2,302,728.
+        - 2026-10-06 (después): el usuario lo reubicó a convivencia. El total
+          NO cambia — es una mudanza, no una duplicación — y las dos rutas son
+          de Capacitación básica, así que el subtotal de la sección tampoco.
 
         Sigue contándose en slide 1 y en el sector "Convivir mejor con otros"
         de slide 2: son slides distintas y no comparten total.
@@ -272,7 +278,11 @@ class TestCatalogRepo:
             if 299 in [int(i) for i in ids.split(",")]
         ]
 
-        assert con_299 == ["¿Cómo mejorar mi entorno?"]
+        assert con_299 == ["Convive mejor con otros"]
+
+        # Y ya no está en la ruta de la que salió.
+        por_ruta = {r: [int(i) for i in ids.split(",")] for r, ids in rutas}
+        assert por_ruta["¿Cómo mejorar mi entorno?"] == [142, 364, 348, 100918]
 
         # No se tocaron las otras slides.
         assert re.search(r"(?<!\d)299(?!\d)", metricas["slide1_herramientas_pobreza"])
@@ -318,7 +328,7 @@ class TestCatalogRepo:
         convive = by_ruta["Convive mejor con otros"]
         assert convive[1] == "Capacitación básica"
         assert [int(i) for i in convive[3].split(",")] == [
-            100330, 100380, 100381, 305, 100070, 100063,
+            100330, 100380, 100381, 305, 100070, 100063, 299,
         ]
 
         # Los IDs retirados no entran.
@@ -539,10 +549,10 @@ class TestCatalogRepo:
         assert int(convive[0]) == 12
         assert convive[1] == "Capacitación básica"
         # Orden de la hoja: los 3 originales y después los nuevos. El 299
-        # salió el 2026-10-06 para no duplicarlo contra "¿Cómo mejorar mi
-        # entorno?" (ver test_slide12_keeps_cultura_urbana_only_in_mi_entorno).
+        # cierra la lista: se reubicó acá desde "¿Cómo mejorar mi entorno?"
+        # (ver test_slide12_keeps_cultura_urbana_only_in_convivencia).
         assert [int(i) for i in convive[3].split(",")] == [
-            100330, 100380, 100381, 305, 100070, 100063,
+            100330, 100380, 100381, 305, 100070, 100063, 299,
         ]
 
         # Las secciones ocupan órdenes consecutivos: el bloque de la hoja

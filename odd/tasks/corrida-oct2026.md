@@ -203,3 +203,13 @@ either figure is presented as "personas beneficiadas". Write-up in H20.
 - [x] T20 — Audit slides 1 and 2 for duplicates; added 2 guards
 - [ ] T21 — Decide whether the deck needs a "personas únicas" figure alongside
       the summed TOTAL for slides 1 and 2
+
+## T22 — Course 299 relocated to "Convive mejor con otros" (2026-10-06)
+
+Third and final placement. The total does not change (2,302,728): it is a move,
+not a duplication, and both routes belong to Capacitación básica so the section
+subtotal is unchanged too. "¿Cómo mejorar mi entorno?" drops to 4 courses,
+convivencia goes to 7. Invariant holds: 113/113/0. Write-up in H21.
+
+- [x] T22 — 299 moved to "Convive mejor con otros"
+- [ ] T23 — Re-run production so the two route rows reflect the move
