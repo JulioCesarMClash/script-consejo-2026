@@ -640,3 +640,80 @@ class TestCatalogRepo:
         # Pero sigue en las otras dos slides de pobreza.
         assert re.search(r"(?<!\d)27(?!\d)", metricas["slide1_herramientas_pobreza"])
         assert re.search(r"(?<!\d)27(?!\d)", metricas["slide12_rutas_aprendizaje"])
+
+    def test_slide1_assigns_each_course_to_one_category(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Slide 1 — cada curso pertenece a UNA sola categoría.
+
+        El TOTAL de la hoja es `=SUM` sobre las 5 categorías, y cada categoría
+        es `COUNT(DISTINCT userId)` dentro de sus cursos. Un curso en dos
+        categorías metería a sus certificados en las dos y el total se
+        inflaría más de lo que ya se infla por personas.
+
+        El solapamiento se resolvió asignando cada curso a una sola categoría
+        (ver el caveat del curso 342, que va solo a desastres). Los literales
+        `compartidos` registran cuántos cursos de cada categoría pertenecen
+        conceptualmente a otra, no cursos repetidos en los arrays.
+        """
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "slide1_herramientas_pobreza"
+        )
+        cats = re.findall(
+            r"\('(slide1_\w+)',\s*ARRAY\[([\d,\s]+)\]::bigint\[\],\s*(\d+)\)",
+            metric.db_mapping,
+        )
+        assert len(cats) == 5
+
+        por_curso: dict[int, set[str]] = {}
+        for cat, ids, _ in cats:
+            for i in ids.replace("\n", "").split(","):
+                por_curso.setdefault(int(i), set()).add(cat)
+
+        asignaciones = sum(len(v) for v in por_curso.values())
+        assert asignaciones == 101
+        assert len(por_curso) == 101
+        assert {c: r for c, r in por_curso.items() if len(r) > 1} == {}
+
+        # El 342 va SOLO a desastres, no a alimentos.
+        assert por_curso[342] == {"slide1_desastres"}
+
+    def test_slide1_shared_course_literals_are_editorial(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Los `compartidos` de slide 1 suman 12 y dan "Cursos totales" 113.
+
+        No son cursos repetidos en los arrays (eso lo cubre
+        `test_slide1_assigns_each_course_to_one_category`): son un conteo
+        editorial de cuántos cursos de cada categoría pertenecen también a
+        otra, que la hoja publica como `cursos_totales = value + compartidos`.
+
+        Se fijan acá porque no se pueden derivar del SQL: si alguien los mueve,
+        la columna "Cursos totales" del deck cambia sin que ninguna query lo
+        explique.
+        """
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "slide1_herramientas_pobreza"
+        )
+        cats = re.findall(
+            r"\('(slide1_\w+)',\s*ARRAY\[([\d,\s]+)\]::bigint\[\],\s*(\d+)\)",
+            metric.db_mapping,
+        )
+        compartidos = {cat: int(c) for cat, _, c in cats}
+        cursos = {
+            cat: len(ids.replace("\n", "").split(","))
+            for cat, ids, _ in cats
+        }
+
+        assert compartidos == {
+            "slide1_vivienda": 0,
+            "slide1_digital": 2,
+            "slide1_alimentos": 7,
+            "slide1_desastres": 0,
+            "slide1_empleo": 3,
+        }
+        assert sum(compartidos.values()) == 12
+        assert sum(cursos.values()) == 101
+        assert sum(cursos.values()) + sum(compartidos.values()) == 113

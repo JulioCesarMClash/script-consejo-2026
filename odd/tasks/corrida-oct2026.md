@@ -185,3 +185,21 @@ back: 113 assignments over 113 distinct courses. Write-up in H19.
 
 - [x] T18 — 299 removed from "Convive mejor con otros" (6 courses now)
 - [ ] T19 — Re-run production so the sheet TOTAL reads 2,302,728
+
+## T20 — Duplicate audit on slides 1 and 2 (2026-10-06)
+
+No duplicate courses in either: slide 1 is 101/101 across 5 categories, slide 2
+is 37/37 across 7 sectors. Nothing to deduplicate. Slide 1's `compartidos`
+literals (summing 12) are an editorial count of conceptual overlap, not repeated
+array entries — the overlap was already resolved by assigning each course to one
+category (see the course-342 caveat).
+
+What the audit did surface: both slides' TOTAL inflates people, because it sums
+`COUNT(DISTINCT userId)` per group. Slide 1 publishes 237,691 against 208,815
+real people (+13.8%); slide 2 publishes 54,145 against 43,461 (+24.6%). Not
+changed — the per-course grain is what the deck asked for — but it matters if
+either figure is presented as "personas beneficiadas". Write-up in H20.
+
+- [x] T20 — Audit slides 1 and 2 for duplicates; added 2 guards
+- [ ] T21 — Decide whether the deck needs a "personas únicas" figure alongside
+      the summed TOTAL for slides 1 and 2

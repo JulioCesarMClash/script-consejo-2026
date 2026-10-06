@@ -669,3 +669,60 @@ Los certificados de slide 12 son **CERTIFICACIONES**, no personas: `COUNT` sin
 personas distintas** — menos de la mitad. Slides 1 y 2 sí cuentan
 `COUNT(DISTINCT userId)`, así que las cifras no son comparables entre slides sin
 aclararlo.
+
+## H20 — Auditoría de duplicados en Slides 1 y 2 (2026-10-06)
+
+Pedido tras resolver el 299 en Slide 12. **Resultado: no hay cursos duplicados en
+ninguna de las dos.**
+
+| Slide | Asignaciones | Cursos distintos | En más de un grupo |
+|---|---|---|---|
+| Slide 1 (5 categorías) | 101 | 101 | **0** |
+| Slide 2 (7 sectores) | 37 | 37 | **0** |
+
+Tampoco hay repetidos dentro de un mismo array. No había nada que deduplicar.
+
+### Los `compartidos` de Slide 1 NO están fabricados
+
+Primera sospecha descartada: los literales `compartidos` (0, 2, 7, 0, 3 = 12) no
+corresponden a cursos repetidos en los arrays, porque no hay ninguno. Pero no son un
+invento: el caveat del curso **342** lo explica — *"pertenece SOLO a desastres para no
+duplicar certificados; alimentos no lo incluye"*.
+
+O sea que el solapamiento **ya se resolvió asignando cada curso a una sola categoría**, y
+los `compartidos` son un conteo **editorial** de cuántos cursos de cada categoría
+pertenecen conceptualmente a otra. `Cursos totales = 101 + 12 = 113`. Es el mismo modelo
+que el deck usa para Slide 12 (102 + 16 = 118 en H7).
+
+Quedó fijado en `test_slide1_shared_course_literals_are_editorial`, porque son números
+que **no se pueden derivar del SQL**: si alguien los mueve, la columna "Cursos totales"
+del deck cambia sin que ninguna query lo explique.
+
+### Lo que SÍ encontré: el TOTAL infla personas en las dos slides
+
+Esto no es un duplicado de cursos, es inherente a sumar `COUNT(DISTINCT userId)` por
+grupo. Una persona certificada en dos categorías cuenta dos veces.
+
+| Slide | TOTAL publicado | Personas reales | Inflado |
+|---|---|---|---|
+| Slide 1 | 237,691 | **208,815** | +28,876 (**13.8%**) |
+| Slide 2 | 54,145 | **43,461** | +10,684 (**24.6%**) |
+
+Medido en la ventana `2025-09-01 .. 2026-10-01` con los mismos filtros de la métrica.
+
+Slide 2 se infla más porque su grano es **por curso**, no por sector: alguien certificado
+en 3 cursos del mismo sector cuenta 3 veces. Slide 1 agrupa por categoría, así que solo
+se duplica quien cruza categorías.
+
+**No se cambió nada**: el grano por curso/categoría es el que pidió el deck y está
+documentado en los caveats ("Grano por curso: una persona certificada en dos cursos del
+mismo sector cuenta en ambos"). Pero si alguna de esas cifras se presenta como "personas
+beneficiadas", el número correcto es el de la columna "Personas reales".
+
+### Guardas nuevas
+
+- `test_slide1_assigns_each_course_to_one_category` — 101/101, cero cruces, y el 342 solo
+  en desastres.
+- `test_slide1_shared_course_literals_are_editorial` — fija los 5 literales, su suma 12 y
+  el 113 resultante.
+- `test_slide2_assigns_each_course_to_one_sector` ya existía desde H16 (37/37).
