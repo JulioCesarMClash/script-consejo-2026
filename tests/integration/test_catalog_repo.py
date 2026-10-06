@@ -208,24 +208,20 @@ class TestCatalogRepo:
         b = catalog_repo.list_metrics()
         assert a is b  # misma instancia cacheada
 
-    # Cursos que pertenecen a más de una ruta de slide 12, con las rutas que
-    # los comparten. Declarado por el usuario 2026-10-02 al alinear el
-    # catálogo con la hoja "Slide12_Sep2025 - Sep2026". Cada entrada infla el
-    # TOTAL de la slide (suma de subtotales por sección), así que la lista se
-    # mantiene explícita para que un duplicado accidental no pase inadvertido.
-    SLIDE12_SHARED_COURSES = {
-        299: {"¿Cómo mejorar mi entorno?", "Convive mejor con otros"},
-    }
-
-    def test_slide12_course_assignments_match_the_declared_sharing(
+    def test_slide12_assigns_each_course_to_one_route(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
-        """Slide 12 — solo los cursos declarados pertenecen a varias rutas.
+        """Slide 12 — cada curso pertenece a UNA sola ruta.
 
         El TOTAL de la slide es la suma de los subtotales por sección, así que
-        un curso en dos rutas se cuenta dos veces tanto en inscripciones como
-        en certificados. Por eso el reparto se fija acá: 114 asignaciones
-        sobre 113 cursos distintos, y el único compartido es 299.
+        un curso en dos rutas se contaría dos veces tanto en inscripciones
+        como en certificados y el total dejaría de ser el de los cursos.
+
+        El 299 (Cultura urbana) estuvo en dos rutas entre el 2026-10-02 y el
+        2026-10-06 y por eso el total daba 2,307,998 en vez de 2,302,728. El
+        usuario decidió dejarlo solo en "¿Cómo mejorar mi entorno?", así que
+        la invariante vuelve a ser estricta: 113 asignaciones sobre 113 cursos
+        distintos, cero compartidos.
         """
         metric = next(
             m for m in catalog_repo.list_metrics()
@@ -245,15 +241,45 @@ class TestCatalogRepo:
                 por_curso.setdefault(int(i), set()).add(ruta)
 
         asignaciones = sum(len(v) for v in por_curso.values())
-        assert asignaciones == 114
+        assert asignaciones == 113
         assert len(por_curso) == 113
-
-        compartidos = {c: r for c, r in por_curso.items() if len(r) > 1}
-        assert compartidos == self.SLIDE12_SHARED_COURSES
+        assert {c: r for c, r in por_curso.items() if len(r) > 1} == {}
 
         assert "Compras y pagos digitales" not in sql
         assert "curso_ids_conteo" not in sql
         assert 'ANY(r.curso_ids)' in sql
+
+    def test_slide12_keeps_cultura_urbana_only_in_mi_entorno(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """El 299 vive en "¿Cómo mejorar mi entorno?" y en ninguna otra ruta.
+
+        Decisión del usuario 2026-10-06: el total real de certificados de
+        pobreza extrema es 2,302,728, el de los 113 cursos distintos. Dejar el
+        299 en dos rutas lo inflaba a 2,307,998 porque sus 5,270
+        certificaciones entraban dos veces en la suma de subtotales.
+
+        Sigue contándose en slide 1 y en el sector "Convivir mejor con otros"
+        de slide 2: son slides distintas y no comparten total.
+        """
+        metricas = {m.key: m.db_mapping for m in catalog_repo.list_metrics()}
+        rutas = re.findall(
+            r"\(\d+, '[^']+', '([^']+)', ARRAY\[([\d,\s]+)\]::bigint\[\]\)",
+            metricas["slide12_rutas_aprendizaje"],
+        )
+        con_299 = [
+            ruta for ruta, ids in rutas
+            if 299 in [int(i) for i in ids.split(",")]
+        ]
+
+        assert con_299 == ["¿Cómo mejorar mi entorno?"]
+
+        # No se tocaron las otras slides.
+        assert re.search(r"(?<!\d)299(?!\d)", metricas["slide1_herramientas_pobreza"])
+        assert re.search(
+            r"(?<!\d)299(?!\d)",
+            metricas["slide2_empleo_incluyente_por_sector"],
+        )
 
     def test_slide12_has_empleabilidad_and_convivencia_routes(
         self, catalog_repo: YamlMetricRepo
@@ -292,7 +318,7 @@ class TestCatalogRepo:
         convive = by_ruta["Convive mejor con otros"]
         assert convive[1] == "Capacitación básica"
         assert [int(i) for i in convive[3].split(",")] == [
-            100330, 100380, 100381, 305, 100070, 100063, 299,
+            100330, 100380, 100381, 305, 100070, 100063,
         ]
 
         # Los IDs retirados no entran.
@@ -512,9 +538,11 @@ class TestCatalogRepo:
         convive = by_ruta["Convive mejor con otros"]
         assert int(convive[0]) == 12
         assert convive[1] == "Capacitación básica"
-        # Orden exacto de la hoja: los 3 originales y después los 4 nuevos.
+        # Orden de la hoja: los 3 originales y después los nuevos. El 299
+        # salió el 2026-10-06 para no duplicarlo contra "¿Cómo mejorar mi
+        # entorno?" (ver test_slide12_keeps_cultura_urbana_only_in_mi_entorno).
         assert [int(i) for i in convive[3].split(",")] == [
-            100330, 100380, 100381, 305, 100070, 100063, 299,
+            100330, 100380, 100381, 305, 100070, 100063,
         ]
 
         # Las secciones ocupan órdenes consecutivos: el bloque de la hoja

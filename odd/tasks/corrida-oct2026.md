@@ -174,3 +174,14 @@ since the `CASE` silently prefers the first matching branch.
       now derived from the `*_TABLE_HEADERS` constants.
 - [x] T15 — Re-ran production (`bundle_hash e16ddcf4`): 37 metrics, 94 rows,
       DQS 0 issues, 0 stale cells. Slide 2 TOTAL 54,145 across 7 sectors.
+
+## T18 — Course 299 leaves the Convive route (2026-10-06)
+
+The real pobreza-extrema certificate total is 2,302,728 (the 113 distinct
+courses), not the 2,307,998 the sheet showed: course 299 sat in two routes and
+its 5,270 certifications entered the section-subtotal sum twice. It now lives
+only in "¿Cómo mejorar mi entorno?" and the strict no-duplicates invariant is
+back: 113 assignments over 113 distinct courses. Write-up in H19.
+
+- [x] T18 — 299 removed from "Convive mejor con otros" (6 courses now)
+- [ ] T19 — Re-run production so the sheet TOTAL reads 2,302,728

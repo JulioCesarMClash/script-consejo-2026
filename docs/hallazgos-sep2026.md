@@ -622,3 +622,50 @@ el ancho de cada fila por prefijo del `metric_id` con `startswith`, y
 clasificaban como slide 1, y su novena columna legítima (`Fuente`) se contaba como
 basura. Hay que resolver por el prefijo **más largo** que coincide, o usar `slide1_` con
 guion bajo. Los prefijos `slide1`/`slide12`, `slide2`/`slide20` son ambiguos.
+
+## H19 — El 299 sale de "Convive mejor con otros": el total real es 2,302,728 (2026-10-06)
+
+El usuario preguntó si los certificados de pobreza extrema al corte de octubre eran
+2,307,998. **No exactamente**, y la medición lo dejó claro:
+
+| | Valor |
+|---|---|
+| TOTAL de la hoja (suma de subtotales por sección) | 2,307,998 |
+| Certificaciones de los **113 cursos distintos** | **2,302,728** |
+| El curso 299 contado dos veces | +5,270 |
+| Personas distintas certificadas | 1,320,279 |
+
+`2,302,728 + 5,270 = 2,307,998`, exacto.
+
+El 299 ("Cultura urbana") estaba en dos rutas desde el 2026-10-02 (H11), cuando se
+alineó el catálogo con la hoja de control. El TOTAL de la slide es la suma de los
+subtotales por sección, así que sus certificaciones entraban dos veces.
+
+**Decisión: el 299 queda solo en "¿Cómo mejorar mi entorno?".** "Convive mejor con
+otros" baja de 7 a 6 cursos y el total de la hoja pasa a ser **2,302,728**, el real.
+
+### Vuelve la invariante estricta
+
+Reparto vigente: **113 asignaciones sobre 113 cursos distintos, cero compartidos.** Con
+eso el TOTAL de la hoja es otra vez exactamente el total de los cursos de la slide.
+
+La guarda `test_slide12_course_assignments_match_the_declared_sharing` — que llevaba una
+allowlist de compartidos — se reemplazó por
+`test_slide12_assigns_each_course_to_one_route`, que exige cero duplicados. Más un test
+dedicado, `test_slide12_keeps_cultura_urbana_only_in_mi_entorno`, que fija que el 299
+está en esa ruta **y en ninguna otra**.
+
+### El 299 NO sale de las otras slides
+
+Sigue contándose en **Slide 1** (`slide1_alimentos`) y en el sector **"Convivir mejor con
+otros" de Slide 2**, que el usuario fijó el 2026-10-05 con sus 37 cursos. Son slides
+distintas, no comparten total, y no hay doble conteo. El test verifica que siguen ahí,
+para que un "arreglo" por simetría rompa.
+
+### Advertencia que conviene repetir antes del deck
+
+Los certificados de slide 12 son **CERTIFICACIONES**, no personas: `COUNT` sin
+`DISTINCT`. Al corte `< 2026-10-01` son **2,302,728 certificaciones** sobre **1,320,279
+personas distintas** — menos de la mitad. Slides 1 y 2 sí cuentan
+`COUNT(DISTINCT userId)`, así que las cifras no son comparables entre slides sin
+aclararlo.

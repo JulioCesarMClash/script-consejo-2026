@@ -364,7 +364,7 @@ metrics:
     \ básica', 'Entendiendo mi situación económica', ARRAY[100147,291,100322,89,100861]::bigint[]),\n  (9, 'Capacitación básica',\
     \ '¿Cómo mejorar mi entorno?', ARRAY[142,299,364,348,100918]::bigint[]),\n  (10, 'Capacitación básica', 'Alimentos desde\
     \ casa', ARRAY[410,282,241,33]::bigint[]),\n  (11, 'Capacitación básica', 'Actuar en caso de desastres naturales', ARRAY[387,95,100098,120,314,354,281,57,393,276]::bigint[]),\n\
-    \  (12, 'Capacitación básica', 'Convive mejor con otros', ARRAY[100330,100380,100381,305,100070,100063,299]::bigint[]),\n\
+    \  (12, 'Capacitación básica', 'Convive mejor con otros', ARRAY[100330,100380,100381,305,100070,100063]::bigint[]),\n\
     \  (13, 'Emprendimiento', 'Planea tu negocio', ARRAY[93,100092,100149,157,156,158,100327]::bigint[]),\n  (14, 'Emprendimiento',\
     \ 'Planea los gastos y ganancias de tu negocio', ARRAY[169,159,167,100105]::bigint[]),\n  (15, 'Emprendimiento', '¿Cómo\
     \ preparar mis productos para venderlos?', ARRAY[100074,106,107,117,153]::bigint[]),\n  (16, 'Emprendimiento', 'Servicio\
@@ -399,14 +399,24 @@ metrics:
   - 'Alineado el 2026-10-02 con la hoja de control "Slide12_Sep2025 - Sep2026" del spreadsheet 1K6aej9AFJGBkttvqYWuGVoDqFlJa1mbo7fm1uk6NY0w.
     Las 18 rutas ya coincidían en orden y 17 de 18 en cursos; el único cambio fue "Convive mejor con otros", que pasa de 3
     a 7 cursos: entran 305 (Prácticas de cortesía), 100070 (Juego limpio), 100063 (Solidaridad) y 299 (Cultura urbana).'
-  - 'El curso 299 (Cultura urbana) queda en DOS rutas: "¿Cómo mejorar mi entorno?" y "Convive mejor con otros". Es el primer
-    curso compartido del slide: sus inscripciones y certificados se cuentan una vez por ruta, así que el TOTAL de la hoja
-    (suma de subtotales por sección) lo incluye dos veces. Reparto: 114 asignaciones sobre 113 cursos distintos.'
+  - 'El curso 299 (Cultura urbana) estuvo en DOS rutas entre el 2026-10-02 y el 2026-10-06 ("¿Cómo mejorar mi entorno?" y
+    "Convive mejor con otros"). Eso inflaba el total: la hoja daba 2,307,998 certificados porque sus 5,270 certificaciones
+    entraban dos veces en la suma de subtotales por sección. El usuario fijó el 2026-10-06 que el total real es 2,302,728
+    — el de los 113 cursos distintos — y que el 299 queda solo en "¿Cómo mejorar mi entorno?". "Convive mejor con otros" baja
+    a 6 cursos.'
   - 'La hoja de control traía "Convive mejor con otros" escrita dos veces: un bloque con los 3 cursos originales en su posición
     y otro al final con esos 3 más los 4 nuevos. El usuario confirmó que el de abajo era un agregado, no un reordenamiento,
     así que la ruta se queda en el orden 12 dentro de Capacitación básica y las secciones siguen contiguas.'
   - 'PENDIENTE: la hoja de control lista "Busca tu primer trabajo" en "Preparación para buscar trabajo" SIN ID de curso. Es
     la diferencia entre las 118 filas de la hoja y los 117 IDs; falta resolverlo para que esa ruta pase de 7 a 8 cursos.'
+  - 'Reparto vigente: 113 asignaciones sobre 113 cursos distintos, CERO compartidos. Con eso el TOTAL de la hoja (suma de
+    subtotales por sección) vuelve a ser exactamente el total de los cursos de la slide, sin inflarse. La invariante la cuida
+    `test_slide12_assigns_each_course_to_one_route`.'
+  - El 299 sigue contándose en slide 1 (slide1_alimentos) y en el sector "Convivir mejor con otros" de slide 2, que el usuario
+    fijó el 2026-10-05 con 37 cursos. Son slides distintas y no comparten total, así que no hay doble conteo.
+  - 'ATENCIÓN para quien compare cifras: los certificados de slide 12 son CERTIFICACIONES (COUNT sin DISTINCT), no personas.
+    Al corte < ''2026-10-01'' son 2,302,728 certificaciones sobre 1,320,279 personas distintas. Slides 1 y 2 sí cuentan COUNT(DISTINCT
+    userId).'
 - key: slide13_penitenciarios_inscripciones
   name: Slide 13 — Inscripciones totales (Centros Penitenciarios)
   description: 'Métrica de Slide 13 ''Formación en Centros Penitenciarios'': total acumulado de inscripciones a los 99 cursos
