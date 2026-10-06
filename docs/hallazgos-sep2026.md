@@ -771,3 +771,49 @@ Una vez en cada slide. El test
 `test_slide12_keeps_cultura_urbana_only_in_convivencia` fija la ruta nueva, verifica que
 "¿Cómo mejorar mi entorno?" quedó exactamente en `[142, 364, 348, 100918]`, y que el 299
 **sigue** en slides 1 y 2.
+
+## H22 — Slide 2 con los datos de verdad: 36 cursos (2026-10-06)
+
+Lista definitiva del usuario. Dos cambios contra la versión anterior, los dos en el
+sector de convivencia:
+
+**1. Sale el curso 348 "Seguridad para todas y todos".** El sector baja de 8 a 7 cursos
+y Slide 2 de 37 a **36**. No es un curso retirado — la exclusión es editorial y vale
+solo para Slide 2.
+
+**2. El sector se renombra de "ConvivIR" a "ConvivE mejor con otros"**, unificándose con
+el nombre de la ruta de Slide 12. La diferencia infinitivo/imperativo que había quedado
+anotada en H16 como deliberada se terminó resolviendo a favor del imperativo.
+
+Reparto final:
+
+| Sector | Cursos |
+|---|---|
+| Construcción y mantenimiento | 12 |
+| Limpieza y mantenimiento | 5 |
+| Servicios en transporte | 3 |
+| Alimentos y atención | 4 |
+| Actividades agropecuarias | 2 |
+| Educación financiera | 3 |
+| Convive mejor con otros | 7 |
+| **TOTAL** | **36** |
+
+Verificado: 36 asignaciones sobre 36 cursos distintos, cero repetidos.
+
+### Los tests de Slide 2 se desacoplaron de las demás slides
+
+Los primeros tests que escribí para los cursos excluidos (27 y 348) verificaban también
+que **siguieran** en Slides 1 y 12, para que un "arreglo" por simetría rompiera. Buena
+intención, mal lugar: el usuario avisó que las otras slides van a cambiar, así que esas
+aserciones habrían roto los tests de Slide 2 por motivos ajenos a Slide 2.
+
+Ahora los cuatro tests de Slide 2 leen **solo** `slide2_empleo_incluyente_por_sector`.
+La exclusión editorial se documenta en el docstring y en los caveats, no con una
+aserción sobre una lista que se mueve por su cuenta.
+
+También se descartó `test_convivencia_sector_and_route_share_the_name`, que comparaba el
+sector de Slide 2 contra la ruta de Slide 12. Antes de borrarlo dejó algo útil: la
+escribí asumiendo que las dos listas diferían porque Slide 12 tenía el 348, y el test
+falló — en Slide 12 el 348 está en "¿Cómo mejorar mi entorno?", no en convivencia. Tras
+quitar el 348 de Slide 2 las dos listas quedaron **idénticas** (los mismos 7 cursos).
+Coincidencia a tener en cuenta: mismo nombre y misma lista en dos slides distintas.

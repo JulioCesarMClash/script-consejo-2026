@@ -213,3 +213,17 @@ convivencia goes to 7. Invariant holds: 113/113/0. Write-up in H21.
 
 - [x] T22 — 299 moved to "Convive mejor con otros"
 - [ ] T23 — Re-run production so the two route rows reflect the move
+
+## T24 — Slide 2 final data: 36 courses (2026-10-06)
+
+Course 348 leaves the convivencia sector (8 -> 7 courses, slide 2 37 -> 36) and
+the sector is renamed "Convivir" -> "Convive", matching slide 12's route name.
+36 assignments over 36 distinct courses.
+
+Slide 2's tests were decoupled from the other slides: the excluded-course guards
+(27 and 348) used to assert those courses still appeared in slides 1 and 12,
+which would break slide 2's tests when those lists change. All four slide-2
+tests now read only `slide2_empleo_incluyente_por_sector`. Write-up in H22.
+
+- [x] T24 — Slide 2: 348 removed, sector renamed, tests decoupled
+- [ ] T25 — Re-run production for the slide 2 change

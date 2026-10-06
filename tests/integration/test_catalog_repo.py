@@ -265,8 +265,9 @@ class TestCatalogRepo:
           NO cambia — es una mudanza, no una duplicación — y las dos rutas son
           de Capacitación básica, así que el subtotal de la sección tampoco.
 
-        Sigue contándose en slide 1 y en el sector "Convivir mejor con otros"
-        de slide 2: son slides distintas y no comparten total.
+        Sigue contándose en slide 1 y en el sector "Convive mejor con otros"
+        de slide 2: son slides distintas y no comparten total. Desde el
+        2026-10-06 las dos se llaman igual, pero son métricas separadas.
         """
         metricas = {m.key: m.db_mapping for m in catalog_repo.list_metrics()}
         rutas = re.findall(
@@ -564,12 +565,16 @@ class TestCatalogRepo:
     def test_slide2_has_convivencia_sector(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
-        """Slide 2 — sector "Convivir mejor con otros" con 8 cursos.
+        """Slide 2 — sector "Convive mejor con otros" con 7 cursos.
 
-        Declarado por el usuario el 2026-10-05. De los cursos con nombre
-        duplicado en `course` se toma el ID dominante y vivo: 305 "Prácticas
-        de cortesía" (186,558 inscripciones contra 9,911 del siguiente) y
-        100063 "Solidaridad" (43,920 contra 340).
+        Declarado el 2026-10-05 con 8 cursos y ajustado el 2026-10-06: sale el
+        348 (Seguridad para todas y todos) y el sector se renombra de
+        "ConvivIR" a "ConvivE", unificándose con el nombre de la ruta de slide
+        12. El 348 sigue contándose en slide 1 y en slide 12.
+
+        De los cursos con nombre duplicado en `course` se toma el ID dominante
+        y vivo: 305 "Prácticas de cortesía" (186,558 inscripciones contra
+        9,911 del siguiente) y 100063 "Solidaridad" (43,920 contra 340).
 
         Importa que no haya nombres repetidos: slide 2 agrupa por `c.name`,
         así que dos IDs con el mismo nombre se fusionarían en una sola fila
@@ -587,9 +592,10 @@ class TestCatalogRepo:
         assert len(sectores) == 7
 
         por_sector = {s: [int(i) for i in ids.split(",")] for ids, s in sectores}
-        assert "Convivir mejor con otros" in por_sector
-        assert por_sector["Convivir mejor con otros"] == [
-            100330, 100380, 100381, 305, 100070, 100063, 299, 348,
+        assert "Convive mejor con otros" in por_sector
+        assert "Convivir mejor con otros" not in por_sector
+        assert por_sector["Convive mejor con otros"] == [
+            100330, 100380, 100381, 305, 100070, 100063, 299,
         ]
 
         # Los 6 sectores previos siguen intactos salvo Construcción, que el
@@ -609,7 +615,7 @@ class TestCatalogRepo:
 
         El `CASE` toma la primera rama que coincide, así que un curso repetido
         se asignaría silenciosamente al sector de arriba y desaparecería del
-        otro. Con 37 cursos en 7 sectores el reparto tiene que ser exacto.
+        otro. Con 36 cursos en 7 sectores el reparto tiene que ser exacto.
         """
         metric = next(
             m for m in catalog_repo.list_metrics()
@@ -621,8 +627,8 @@ class TestCatalogRepo:
         )
         todos = [int(i) for ids, _ in sectores for i in ids.split(",")]
 
-        assert len(todos) == 37
-        assert len(set(todos)) == 37
+        assert len(todos) == 36
+        assert len(set(todos)) == 36
 
     def test_slide2_excludes_aire_acondicionado(
         self, catalog_repo: YamlMetricRepo
@@ -635,21 +641,21 @@ class TestCatalogRepo:
 
         No es un curso retirado: tiene 254,823 inscripciones y actividad al
         2026-10-03, así que la exclusión es una decisión de negocio y hay que
-        poder notarla si alguien lo vuelve a meter. Sigue contándose en slide 1
-        (vivienda) y en slide 12 ("Proyectos constructivos y mantenimiento").
+        poder notarla si alguien lo vuelve a meter. Otras slides lo siguen
+        contando, pero eso no se verifica acá para no acoplar este test a
+        listas que cambian por su cuenta.
         """
-        metricas = {m.key: m.db_mapping for m in catalog_repo.list_metrics()}
-
-        s2 = metricas["slide2_empleo_incluyente_por_sector"]
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "slide2_empleo_incluyente_por_sector"
+        )
         sectores = re.findall(
-            r"WHEN fi\.\"courseId\" IN \(([\d,\s]+)\) THEN '([^']+)'", s2
+            r"WHEN fi\.\"courseId\" IN \(([\d,\s]+)\) THEN '([^']+)'",
+            metric.db_mapping,
         )
         todos = {int(i) for ids, _ in sectores for i in ids.split(",")}
-        assert 27 not in todos
 
-        # Pero sigue en las otras dos slides de pobreza.
-        assert re.search(r"(?<!\d)27(?!\d)", metricas["slide1_herramientas_pobreza"])
-        assert re.search(r"(?<!\d)27(?!\d)", metricas["slide12_rutas_aprendizaje"])
+        assert 27 not in todos
 
     def test_slide1_assigns_each_course_to_one_category(
         self, catalog_repo: YamlMetricRepo
@@ -727,3 +733,25 @@ class TestCatalogRepo:
         assert sum(compartidos.values()) == 12
         assert sum(cursos.values()) == 101
         assert sum(cursos.values()) + sum(compartidos.values()) == 113
+
+    def test_slide2_excludes_seguridad_para_todas(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Slide 2 no cuenta el curso 348 (Seguridad para todas y todos).
+
+        El usuario lo quitó el 2026-10-06 al fijar la lista de 36 cursos. No
+        es un curso retirado: la exclusión es editorial y vale SOLO para slide
+        2 — otras slides lo siguen contando, pero eso no se verifica acá para
+        no acoplar este test a listas que cambian por su cuenta.
+        """
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "slide2_empleo_incluyente_por_sector"
+        )
+        sectores = re.findall(
+            r"WHEN fi\.\"courseId\" IN \(([\d,\s]+)\) THEN '([^']+)'",
+            metric.db_mapping,
+        )
+        todos = {int(i) for ids, _ in sectores for i in ids.split(",")}
+
+        assert 348 not in todos

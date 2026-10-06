@@ -738,8 +738,8 @@ metrics:
     slide.
 - key: slide2_empleo_incluyente_por_sector
   name: Certificados por sector — empleo incluyente y convivencia (Slide 2)
-  description: 'Personas certificadas en los 7 sectores (37 cursos) de la slide 2 (construcción y mantenimiento, limpieza
-    y mantenimiento, transporte, alimentos y atención, agropecuarias, educación financiera y convivir mejor con otros). Grano
+  description: 'Personas certificadas en los 7 sectores (36 cursos) de la slide 2 (construcción y mantenimiento, limpieza
+    y mantenimiento, transporte, alimentos y atención, agropecuarias, educación financiera y convive mejor con otros). Grano
     por curso: una persona certificada en dos cursos del mismo sector cuenta en ambos. Fuente original: PerfilesFemeninos.sql
     (período certificación septiembre a septiembre); el sector de convivencia lo declaró el usuario el 2026-10-05. Regla:
     advance = 100, único, plataforma 1 o 2.'
@@ -756,12 +756,12 @@ metrics:
     \      WHEN fi.\"courseId\" IN (6,57,8,100214,128) THEN 'Limpieza y mantenimiento'\n      WHEN fi.\"courseId\" IN (77,100310,41)\
     \ THEN 'Servicios en transporte'\n      WHEN fi.\"courseId\" IN (39,5,38,58) THEN 'Alimentos y atención'\n      WHEN fi.\"\
     courseId\" IN (52,33) THEN 'Actividades agropecuarias'\n      WHEN fi.\"courseId\" IN (100322,100128,100325) THEN 'Educación\
-    \ financiera'\n      WHEN fi.\"courseId\" IN (100330,100380,100381,305,100070,100063,299,348) THEN 'Convivir mejor con\
-    \ otros'\n      ELSE NULL\n    END AS grupo\n  FROM public.fact_inscription fi\n  JOIN public.dim_user u ON u.\"userId\"\
-    \ = fi.\"userId\"\n  JOIN public.dim_local l ON l.\"localId\" = u.\"localId\"\n  JOIN public.course c ON c.id = fi.\"\
-    courseId\"\n  WHERE fi.advance = 100\n    AND fi.\"certificationDate\" >= %(period_start)s\n    AND fi.\"certificationDate\"\
-    \ <= %(period_end)s\n    AND u.\"plataformaId\" IN (1,2)\n    AND l.\"countryName\" = 'México'\n) detalle WHERE grupo\
-    \ IS NOT NULL GROUP BY grupo, curso ORDER BY grupo, curso ASC\n"
+    \ financiera'\n      WHEN fi.\"courseId\" IN (100330,100380,100381,305,100070,100063,299) THEN 'Convive mejor con otros'\n\
+    \      ELSE NULL\n    END AS grupo\n  FROM public.fact_inscription fi\n  JOIN public.dim_user u ON u.\"userId\" = fi.\"\
+    userId\"\n  JOIN public.dim_local l ON l.\"localId\" = u.\"localId\"\n  JOIN public.course c ON c.id = fi.\"courseId\"\
+    \n  WHERE fi.advance = 100\n    AND fi.\"certificationDate\" >= %(period_start)s\n    AND fi.\"certificationDate\" <=\
+    \ %(period_end)s\n    AND u.\"plataformaId\" IN (1,2)\n    AND l.\"countryName\" = 'México'\n) detalle WHERE grupo IS\
+    \ NOT NULL GROUP BY grupo, curso ORDER BY grupo, curso ASC\n"
   caveats:
   - 'Grano por curso: una persona en dos cursos del mismo sector cuenta en ambos.'
   - 'Regla certificación: advance = 100 AND certificationDate IS NOT NULL.'
@@ -769,14 +769,12 @@ metrics:
   - 'Fuente original: Perfiles_Femeninos.sql (IDs exactos por sector).'
   - 'Orden de filas: alfabético por curso dentro de cada sector (no por valor DESC). El sheet repo emite un bloque con subtotales
     por sector y TOTAL general.'
-  - 'Sector "Convivir mejor con otros" agregado el 2026-10-05 por pedido del usuario, con 8 cursos: 100330 (Actitud más humana),
-    100380 (Momentos significativos), 100381 (El arte de acompañar), 305 (Prácticas de cortesía), 100070 (Juego limpio), 100063
-    (Solidaridad), 299 (Cultura urbana) y 348 (Seguridad para todas y todos). Slide 2 pasa de 6 a 7 sectores y de 30 a 38
-    cursos.'
-  - 'Los primeros 7 cursos son los mismos de la ruta "Convive mejor con otros" de slide 12; el 8vo (348, Seguridad para todas
-    y todos) solo está acá y en la ruta "¿Cómo mejorar mi entorno?" de slide 12. OJO con el nombre: slide 2 usa "ConvivIR
-    mejor con otros" (infinitivo) y slide 12 "ConvivE mejor con otros" (imperativo), tal como los declaró el usuario. No es
-    un typo nuestro.'
+  - 'Sector "Convive mejor con otros" agregado el 2026-10-05 y ajustado el 2026-10-06. Quedó con 7 cursos: 100330 (Actitud
+    más humana), 100380 (Momentos significativos), 100381 (El arte de acompañar), 305 (Prácticas de cortesía), 100070 (Juego
+    limpio), 100063 (Solidaridad) y 299 (Cultura urbana). Slide 2 pasa de 6 a 7 sectores y de 30 a 36 cursos.'
+  - El 2026-10-06 salió el curso 348 (Seguridad para todas y todos) del sector, y el sector se renombró de "ConvivIR" a "ConvivE
+    mejor con otros", unificándose con el nombre de la ruta de slide 12. Entre el 2026-10-05 y el 2026-10-06 las dos slides
+    usaban nombres distintos (infinitivo en slide 2, imperativo en slide 12) por declaración del usuario; ya no.
   - 'De los cursos con nombre duplicado en `course` se tomó el ID dominante y vivo: "Prácticas de cortesía" existe como 297/305/331/100109/100711/100907
     y se usa 305 (186,558 inscripciones contra 9,911 del siguiente, activo al 2026-10-04); "Solidaridad" existe como 100063/100704
     y se usa 100063 (43,920 contra 340). Mismos IDs que slide 12.'
@@ -793,6 +791,11 @@ metrics:
     pobreza ya NO comparten el mismo universo de construcción.'
   - 'El orden dentro de cada lista `IN` es irrelevante para la hoja: la SQL cierra con `ORDER BY grupo, curso ASC`, así que
     las filas salen alfabéticas por nombre de curso sin importar cómo esté escrito el IN.'
+  - 'CUIDADO: el sector de slide 2 y la ruta de slide 12 ahora se llaman IGUAL pero NO tienen los mismos cursos. Slide 12
+    incluye el 348 y slide 2 no. El nombre compartido invita a asumir que son la misma lista, así que `test_convivencia_sector_and_route_share_the_name`
+    verifica explícitamente que difieren.'
+  - 'El 348 NO es un curso retirado: la exclusión de slide 2 es editorial. Sigue contándose en slide 1 (slide1_alimentos)
+    y en slide 12 ("¿Cómo mejorar mi entorno?"). Misma situación que el curso 27.'
 - key: slide3_capacitate_carso
   name: Capacítate Carso — usuarios registrados por ventana fija (Slide 3)
   description: 'Usuarios únicos registrados en carso_analisis.user con registrationDate dentro de CUATRO ventanas de tiempo
