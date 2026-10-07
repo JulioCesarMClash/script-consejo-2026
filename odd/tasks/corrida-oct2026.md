@@ -240,3 +240,16 @@ over 227,064 unique people. Write-up in H23.
 
 - [x] T26 — Slide 1: new distribution, compartidos -> 0, `orden` column
 - [ ] T27 — Re-run production for the slide 1 and slide 2 changes
+
+## T28 — Slide 12 follows the deck layout (2026-10-07)
+
+18 routes / 113 courses -> 16 / 103, in the deck's 4-section order. "Convive
+mejor con otros" and "Preparación para buscar trabajo" are gone; "Compras y
+pagos digitales" and "Actívate para encontrar empleo" did not enter (the user
+asked to drop the first; the second is absent from the deck layout). Course 373
+therefore leaves slide 12, and 100928 — the long-missing "Busca tu primer
+trabajo" ID — is now known but stays out. SQL executed against Postgres: 16
+rows, 103/103, sections contiguous, 1,897,458 certificates. Write-up in H24.
+
+- [x] T28 — Slide 12: deck layout, 16 routes, 103 courses
+- [ ] T29 — Re-run production for slides 1, 2 and 12

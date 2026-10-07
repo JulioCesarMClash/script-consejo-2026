@@ -885,3 +885,72 @@ para buscar trabajo" queda en **8** cursos en vez de 9. Mismo caso que en Slide 
 264,870 es la suma de las 6 categorías. Las **personas únicas reales son 227,064**
 (+16.6% de inflado), porque quien certifica en dos categorías cuenta en las dos. Con 6
 categorías en vez de 5 el inflado subió: era 13.8% con la distribución anterior.
+
+## H24 — Slide 12 con el layout del deck: 16 rutas, 103 cursos (2026-10-07)
+
+El usuario pasó el layout real de la slide física, con sus 4 secciones y el orden de las
+rutas. Slide 12 pasa de **18 rutas / 113 cursos** a **16 / 103**.
+
+| Sección | Rutas | Cursos | Inscripciones | Certificados |
+|---|---|---|---|---|
+| Construcción | 1 | 19 | 1,452,710 | 175,116 |
+| Habilidades digitales | 4 | 19 | 1,427,259 | 405,219 |
+| Capacitación básica | 6 | 37 | 2,546,892 | 789,030 |
+| Emprendimiento | 5 | 28 | 1,941,006 | 528,093 |
+| **TOTAL** | **16** | **103** | **7,367,867** | **1,897,458** |
+
+Verificado ejecutando la SQL contra Postgres. 103 asignaciones sobre 103 cursos
+distintos, cero compartidos, y las 4 secciones ocupan órdenes consecutivos.
+
+### Salen dos rutas completas
+
+- **"Convive mejor con otros"** (6 cursos: 305, 100063, 100070, 100330, 100380, 100381).
+  El 299 que vivía ahí se queda en "¿Cómo mejorar mi entorno?".
+- **"Preparación para buscar trabajo"** (7 cursos: 67, 212, 216, 227, 228, 100059,
+  100853).
+
+### Dos rutas que el usuario pasó y NO entraron
+
+**"Compras y pagos digitales"** figuraba en su lista de cursos (con 373 y 100129) **y en
+el layout del deck**, pero al pasar el layout pidió explícitamente quitarla. Se siguió
+esa instrucción, que es la más reciente. Consecuencia:
+
+- El curso **373** (Regulación de la interacción digital) **sale de Slide 12** — estaba
+  en "Interacción con el mundo digital", que baja de 9 a 8 cursos.
+- El **100129** no entra.
+- Los dos siguen contándose en Slide 1 (`slide1_digital`).
+
+Es una línea revertirlo si la intención era otra.
+
+**"Actívate para encontrar empleo"** venía con 9 cursos en la lista pero no figura en el
+layout del deck, así que no entró. Por eso quedan fuera el 100919 y el **100928**.
+
+### El 100928 existe: "Busca tu primer trabajo" ya tiene ID
+
+Durante días figuró como el curso sin ID que bloqueaba el conteo (H11, y descartado en
+su momento). Resuelto: **100928**, único con ese nombre en `course`, 51 inscripciones y
+4 certificados al 2026-10-06 — un curso recién lanzado. No entra a Slide 12 porque su
+ruta no está en el layout, pero el ID queda registrado.
+
+### Entran 4 cursos
+
+| ID | Curso | Ruta |
+|---|---|---|
+| 77 | Bodeguero (Restaurante) | ¿Cómo preparar mis productos para venderlos? |
+| 205 | Guía de autoconstrucción | Proyectos constructivos y mantenimiento |
+| 206 | Guía de reparación vivienda rural | Proyectos constructivos y mantenimiento |
+| 100214 | Controlador de plagas en espacios urbanos | Actuar en caso de desastres naturales |
+
+### El 118 del deck no es comparable
+
+La slide física muestra `Total 118 / 7,117,053 / 1,850,389`. El 118 viene del modelo
+viejo de 102 cursos distintos + 16 apariciones repetidas (H7). Con este layout son
+**103 cursos sin repetir**, así que la cifra baja por definición, no porque falten
+cursos. Las inscripciones y certificados suben porque el corte se movió a octubre.
+
+### Redacción pendiente
+
+El deck dice **"¿Cómo puedo mejorar mi entorno?"** y **"Planea los gastos y ganancia de
+tu negocio"** (singular). El catálogo mantiene "¿Cómo mejorar mi entorno?" y
+"...ganancias..." (plural), que es como el usuario las nombró al pasar los cursos con
+sus IDs. Sin resolver.

@@ -208,141 +208,6 @@ class TestCatalogRepo:
         b = catalog_repo.list_metrics()
         assert a is b  # misma instancia cacheada
 
-    def test_slide12_assigns_each_course_to_one_route(
-        self, catalog_repo: YamlMetricRepo
-    ) -> None:
-        """Slide 12 — cada curso pertenece a UNA sola ruta.
-
-        El TOTAL de la slide es la suma de los subtotales por sección, así que
-        un curso en dos rutas se contaría dos veces tanto en inscripciones
-        como en certificados y el total dejaría de ser el de los cursos.
-
-        El 299 (Cultura urbana) estuvo en dos rutas entre el 2026-10-02 y el
-        2026-10-06 y por eso el total daba 2,307,998 en vez de 2,302,728. El
-        usuario decidió dejarlo solo en "¿Cómo mejorar mi entorno?", así que
-        la invariante vuelve a ser estricta: 113 asignaciones sobre 113 cursos
-        distintos, cero compartidos.
-        """
-        metric = next(
-            m for m in catalog_repo.list_metrics()
-            if m.key == "slide12_rutas_aprendizaje"
-        )
-        sql = metric.db_mapping
-
-        rutas = re.findall(
-            r"\(\d+, '[^']+', '([^']+)', ARRAY\[([\d,\s]+)\]::bigint\[\]\)",
-            sql,
-        )
-        assert len(rutas) == 18
-
-        por_curso: dict[int, set[str]] = {}
-        for ruta, ids in rutas:
-            for i in ids.split(","):
-                por_curso.setdefault(int(i), set()).add(ruta)
-
-        asignaciones = sum(len(v) for v in por_curso.values())
-        assert asignaciones == 113
-        assert len(por_curso) == 113
-        assert {c: r for c, r in por_curso.items() if len(r) > 1} == {}
-
-        assert "Compras y pagos digitales" not in sql
-        assert "curso_ids_conteo" not in sql
-        assert 'ANY(r.curso_ids)' in sql
-
-    def test_slide12_keeps_cultura_urbana_only_in_convivencia(
-        self, catalog_repo: YamlMetricRepo
-    ) -> None:
-        """El 299 vive en "Convive mejor con otros" y en ninguna otra ruta.
-
-        Historia de esta asignación:
-        - 2026-10-02: entró en "Convive mejor con otros" al alinear con la hoja
-          de control, pero quedó TAMBIÉN en "¿Cómo mejorar mi entorno?". El
-          total se infló a 2,307,998 porque sus 5,270 certificaciones entraban
-          dos veces en la suma de subtotales.
-        - 2026-10-06: se quitó de convivencia para dejarlo solo en mi entorno,
-          y el total volvió al real, 2,302,728.
-        - 2026-10-06 (después): el usuario lo reubicó a convivencia. El total
-          NO cambia — es una mudanza, no una duplicación — y las dos rutas son
-          de Capacitación básica, así que el subtotal de la sección tampoco.
-
-        Sigue contándose en slide 1 y en el sector "Convive mejor con otros"
-        de slide 2: son slides distintas y no comparten total. Desde el
-        2026-10-06 las dos se llaman igual, pero son métricas separadas.
-        """
-        metricas = {m.key: m.db_mapping for m in catalog_repo.list_metrics()}
-        rutas = re.findall(
-            r"\(\d+, '[^']+', '([^']+)', ARRAY\[([\d,\s]+)\]::bigint\[\]\)",
-            metricas["slide12_rutas_aprendizaje"],
-        )
-        con_299 = [
-            ruta for ruta, ids in rutas
-            if 299 in [int(i) for i in ids.split(",")]
-        ]
-
-        assert con_299 == ["Convive mejor con otros"]
-
-        # Y ya no está en la ruta de la que salió.
-        por_ruta = {r: [int(i) for i in ids.split(",")] for r, ids in rutas}
-        assert por_ruta["¿Cómo mejorar mi entorno?"] == [142, 364, 348, 100918]
-
-        # No se tocaron las otras slides.
-        assert re.search(r"(?<!\d)299(?!\d)", metricas["slide1_herramientas_pobreza"])
-        assert re.search(
-            r"(?<!\d)299(?!\d)",
-            metricas["slide2_empleo_incluyente_por_sector"],
-        )
-
-    def test_slide12_has_empleabilidad_and_convivencia_routes(
-        self, catalog_repo: YamlMetricRepo
-    ) -> None:
-        """Slide 12 — rutas "Preparación para buscar trabajo" (Emprendimiento)
-        y "Convive mejor con otros" (Capacitación básica).
-
-        De los cursos duplicados en la tabla `course` se toma el ID vivo: 67
-        (Guía para entrevistas) y 212 (Disciplina en el trabajo); 329 y 330
-        quedaron sin inscripciones nuevas.
-
-        El reparto exacto de cursos compartidos vive en
-        `test_slide12_course_assignments_match_the_declared_sharing`: desde el
-        2026-10-02 Convive comparte 299 con "¿Cómo mejorar mi entorno?".
-
-        Las secciones se mantienen contiguas por `orden` porque el bloque de
-        la hoja emite un subtotal al detectar un cambio de sección.
-        """
-        metric = next(
-            m for m in catalog_repo.list_metrics()
-            if m.key == "slide12_rutas_aprendizaje"
-        )
-        rutas = re.findall(
-            r"\((\d+), '([^']+)', '([^']+)', ARRAY\[([\d,\s]+)\]::bigint\[\]\)",
-            metric.db_mapping,
-        )
-        assert len(rutas) == 18
-
-        by_ruta = {r[2]: r for r in rutas}
-        buscar = by_ruta["Preparación para buscar trabajo"]
-        assert buscar[1] == "Emprendimiento"
-        assert [int(i) for i in buscar[3].split(",")] == [
-            67, 212, 216, 227, 228, 100059, 100853,
-        ]
-
-        convive = by_ruta["Convive mejor con otros"]
-        assert convive[1] == "Capacitación básica"
-        assert [int(i) for i in convive[3].split(",")] == [
-            100330, 100380, 100381, 305, 100070, 100063, 299,
-        ]
-
-        # Los IDs retirados no entran.
-        assert "329" not in buscar[3] and "330" not in buscar[3]
-
-        # Cada sección ocupa órdenes consecutivos (requisito de los subtotales).
-        secciones = [r[1] for r in sorted(rutas, key=lambda r: int(r[0]))]
-        assert secciones == list(dict.fromkeys(secciones)) or all(
-            secciones.index(s) + secciones.count(s) - 1
-            == len(secciones) - 1 - secciones[::-1].index(s)
-            for s in set(secciones)
-        )
-
     def test_no_metric_keeps_the_previous_run_cutoff(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
@@ -523,44 +388,6 @@ class TestCatalogRepo:
             re.findall(r'IN \(([\d,\s]+)\)', unicas.db_mapping)
         )
         assert "fi.\"inscripcionDate\" < '2026-10-01'" in ofertados.db_mapping
-
-    def test_slide12_convivencia_matches_the_control_sheet(
-        self, catalog_repo: YamlMetricRepo
-    ) -> None:
-        """"Convive mejor con otros" sigue el orden de la hoja de control.
-
-        La hoja "Slide12_Sep2025 - Sep2026" la trae escrita dos veces: un
-        bloque viejo con 3 cursos en su posición y uno nuevo al final con los
-        3 originales más 4 agregados. El usuario confirmó el 2026-10-02 que el
-        bloque de abajo era un agregado, no un reordenamiento: la ruta se queda
-        en el orden 12 dentro de Capacitación básica para que las secciones
-        sigan contiguas y los subtotales de la hoja no se dupliquen.
-        """
-        metric = next(
-            m for m in catalog_repo.list_metrics()
-            if m.key == "slide12_rutas_aprendizaje"
-        )
-        rutas = re.findall(
-            r"\((\d+), '([^']+)', '([^']+)', ARRAY\[([\d,\s]+)\]::bigint\[\]\)",
-            metric.db_mapping,
-        )
-        by_ruta = {r[2]: r for r in rutas}
-
-        convive = by_ruta["Convive mejor con otros"]
-        assert int(convive[0]) == 12
-        assert convive[1] == "Capacitación básica"
-        # Orden de la hoja: los 3 originales y después los nuevos. El 299
-        # cierra la lista: se reubicó acá desde "¿Cómo mejorar mi entorno?"
-        # (ver test_slide12_keeps_cultura_urbana_only_in_convivencia).
-        assert [int(i) for i in convive[3].split(",")] == [
-            100330, 100380, 100381, 305, 100070, 100063, 299,
-        ]
-
-        # Las secciones ocupan órdenes consecutivos: el bloque de la hoja
-        # emite un subtotal cada vez que cambia de sección.
-        secciones = [r[1] for r in sorted(rutas, key=lambda r: int(r[0]))]
-        bloques = [s for i, s in enumerate(secciones) if i == 0 or s != secciones[i - 1]]
-        assert len(bloques) == len(set(bloques))
 
     def test_slide2_has_convivencia_sector(
         self, catalog_repo: YamlMetricRepo
@@ -790,3 +617,119 @@ class TestCatalogRepo:
         todos = {int(i) for ids, _ in sectores for i in ids.split(",")}
 
         assert 348 not in todos
+
+    # Orden, sección y cantidad de cursos de las 16 rutas de slide 12, tal
+    # como el usuario pasó el layout del deck el 2026-10-07. El orden importa:
+    # `_build_slide12_block` emite un subtotal al detectar un cambio de
+    # sección, así que cada sección tiene que ocupar órdenes consecutivos.
+    SLIDE12_PLAN = [
+        ("Construcción", "Proyectos constructivos y mantenimiento", 19),
+        ("Habilidades digitales", "¿Cómo utilizar un celular?", 2),
+        ("Habilidades digitales", "¿Cómo utilizar la computadora?", 4),
+        ("Habilidades digitales", "Preparación para usar internet", 5),
+        ("Habilidades digitales", "Interacción con el mundo digital", 8),
+        ("Capacitación básica", "Seguridad, higiene y cuidado de la salud", 7),
+        ("Capacitación básica", "Uso eficiente de recursos", 5),
+        ("Capacitación básica", "Entendiendo mi situación económica", 5),
+        ("Capacitación básica", "¿Cómo mejorar mi entorno?", 5),
+        ("Capacitación básica", "Alimentos desde casa", 4),
+        ("Capacitación básica", "Actuar en caso de desastres naturales", 11),
+        ("Emprendimiento", "Planea tu negocio", 7),
+        ("Emprendimiento", "Planea los gastos y ganancias de tu negocio", 4),
+        ("Emprendimiento", "¿Cómo preparar mis productos para venderlos?", 6),
+        ("Emprendimiento", "Servicio y ventas de tu negocio", 6),
+        ("Emprendimiento", "Mi negocio en internet", 5),
+    ]
+
+    @staticmethod
+    def _slide12_rutas(sql: str) -> list[tuple[int, str, str, list[int]]]:
+        return [
+            (int(o), sec, ruta, [int(i) for i in ids.split(",")])
+            for o, sec, ruta, ids in re.findall(
+                r"\((\d+), '([^']+)', '([^']+)', ARRAY\[([\d,\s]+)\]::bigint\[\]\)",
+                sql,
+            )
+        ]
+
+    def test_slide12_follows_the_deck_layout(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Slide 12 — 16 rutas en el orden y las secciones del deck.
+
+        Layout pasado por el usuario el 2026-10-07. Salieron "Convive mejor
+        con otros" y "Preparación para buscar trabajo", y no entró "Compras y
+        pagos digitales" (el usuario pidió quitarla aunque figuraba en el
+        layout). Tampoco entró "Actívate para encontrar empleo", que no está
+        en la slide.
+        """
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "slide12_rutas_aprendizaje"
+        )
+        rutas = self._slide12_rutas(metric.db_mapping)
+
+        assert [(r[1], r[2], len(r[3])) for r in rutas] == self.SLIDE12_PLAN
+        assert [r[0] for r in rutas] == list(range(1, 17))
+
+        for ausente in (
+            "Compras y pagos digitales",
+            "Convive mejor con otros",
+            "Preparación para buscar trabajo",
+            "Actívate para encontrar empleo",
+        ):
+            assert ausente not in metric.db_mapping
+
+    def test_slide12_sections_stay_contiguous(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Cada sección ocupa órdenes consecutivos.
+
+        `_build_slide12_block` emite un subtotal cada vez que cambia la
+        sección. Si una sección apareciera en dos bloques separados, la hoja
+        sacaría dos subtotales con el mismo nombre y sumas parciales.
+        """
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "slide12_rutas_aprendizaje"
+        )
+        rutas = sorted(self._slide12_rutas(metric.db_mapping), key=lambda r: r[0])
+        secciones = [r[1] for r in rutas]
+
+        bloques = [
+            s for i, s in enumerate(secciones) if i == 0 or s != secciones[i - 1]
+        ]
+        assert bloques == [
+            "Construcción",
+            "Habilidades digitales",
+            "Capacitación básica",
+            "Emprendimiento",
+        ]
+        assert len(bloques) == len(set(bloques))
+
+    def test_slide12_assigns_each_course_to_one_route(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Slide 12 — 103 cursos, cada uno en UNA sola ruta.
+
+        El TOTAL de la hoja es la suma de los subtotales por sección, así que
+        un curso en dos rutas se contaría dos veces en inscripciones y en
+        certificados.
+        """
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "slide12_rutas_aprendizaje"
+        )
+        sql = metric.db_mapping
+        rutas = self._slide12_rutas(sql)
+
+        por_curso: dict[int, set[str]] = {}
+        for _, _, ruta, ids in rutas:
+            for i in ids:
+                por_curso.setdefault(i, set()).add(ruta)
+
+        assert sum(len(v) for v in por_curso.values()) == 103
+        assert len(por_curso) == 103
+        assert {c: r for c, r in por_curso.items() if len(r) > 1} == {}
+
+        assert "curso_ids_conteo" not in sql
+        assert 'ANY(r.curso_ids)' in sql
