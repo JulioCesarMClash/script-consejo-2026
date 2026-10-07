@@ -265,3 +265,13 @@ end of Emprendimiento. 18 routes / 114 courses, sections contiguous, TOTAL
 
 - [x] T30 — Slide 12: 18 routes, 114 courses
 - [ ] T31 — Re-run production for the restored routes
+
+## T32 — Course 348 back in slide 2 (2026-10-07)
+
+The user spotted the missing course and restored 348 in "Convive mejor con
+otros": sector back to 8 courses, slide 2 to 37. Reverts the H22 trim but keeps
+the ConvivIR -> ConvivE rename. The guard test was inverted rather than deleted,
+since 348 is the one course that entered, left and returned. Write-up in H27.
+
+- [x] T32 — Slide 2: 348 restored, 37 courses
+- [ ] T33 — Re-run production for the restored course

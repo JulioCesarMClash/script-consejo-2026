@@ -1066,3 +1066,49 @@ trabajo" devolvería ~642,100 / ~328,472, y la ruta renombrada con sus 2 cursos 
 - Sigue fuera **"Convive mejor con otros"**; su curso 299 permanece en "¿Cómo mejorar mi
   entorno?".
 - Reparto: 114 asignaciones sobre 114 cursos distintos, cero compartidos.
+
+## H27 — Vuelve el curso 348 a Slide 2 (2026-10-07)
+
+El usuario detectó que faltaba un curso en "Convive mejor con otros" y repuso el **348
+(Seguridad para todas y todos)**. El sector vuelve a 8 cursos y Slide 2 a **37**.
+
+Revierte el recorte del 2026-10-06 (H22), donde el 348 había salido con la "lista de
+verdad" de 36 cursos. El renombre de "ConvivIR" a "ConvivE" de ese mismo día **se
+mantiene**.
+
+| | Antes de H22 | H22 | Ahora |
+|---|---|---|---|
+| Sector | 8 cursos | 7 | **8** |
+| Slide 2 | 37 cursos | 36 | **37** |
+
+Efecto esperado en la hoja: el subtotal del sector vuelve de 14,755 a **16,778**
+certificados (los 2,023 del 348) y el TOTAL de Slide 2 de 52,122 a **54,145**.
+
+### El 348 se cuenta en las tres slides de pobreza
+
+| Slide | Grupo |
+|---|---|
+| Slide 1 | `slide1_alimentos` |
+| Slide 2 | Convive mejor con otros |
+| Slide 12 | ¿Cómo mejorar mi entorno? |
+
+Son métricas separadas y no comparten total, así que no hay doble conteo.
+
+### El test se invirtió, no se borró
+
+`test_slide2_excludes_seguridad_para_todas` pasó a
+`test_slide2_includes_seguridad_para_todas`. El 348 es el único curso que entró, salió y
+volvió a entrar en esta corrida, así que conviene que un cambio accidental rompa en
+cualquiera de las dos direcciones. El test también verifica que no aparezca en otro
+sector.
+
+### Nota de proceso: el splice casi se llevó los tests de Slide 12
+
+Al reemplazar el test del 348 por posición de texto, el corte se comió el
+`@staticmethod` de `_slide12_rutas` y la constante `SLIDE12_PLAN` completa, y rompió 3
+tests de Slide 12 que no tenían nada que ver con el cambio. Se detectó porque la suite
+los marcó en rojo y se restauraron antes de seguir.
+
+Lección: editar tests por posición de texto es frágil cuando hay helpers compartidos
+entre clases de tests. Conviene anclar en el contenido exacto del bloque a reemplazar, o
+verificar qué más cayó antes de dar el cambio por bueno.
