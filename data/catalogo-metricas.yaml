@@ -365,41 +365,42 @@ metrics:
     \ '¿Cómo utilizar un celular?', ARRAY[254,399]::bigint[]),\n  (3, 'Habilidades digitales', '¿Cómo utilizar la computadora?',\
     \ ARRAY[213,379,285,258]::bigint[]),\n  (4, 'Habilidades digitales', 'Preparación para usar internet', ARRAY[43,100002,375,321,374]::bigint[]),\n\
     \  (5, 'Habilidades digitales', 'Interacción con el mundo digital', ARRAY[100897,100006,394,380,100003,345,368,372]::bigint[]),\n\
-    \  (6, 'Capacitación básica', 'Seguridad, higiene y cuidado de la salud', ARRAY[362,342,382,242,145,103,100900]::bigint[]),\n\
-    \  (7, 'Capacitación básica', 'Uso eficiente de recursos', ARRAY[129,141,347,128,130]::bigint[]),\n  (8, 'Capacitación\
-    \ básica', 'Entendiendo mi situación económica', ARRAY[100147,291,100322,89,100861]::bigint[]),\n  (9, 'Capacitación básica',\
-    \ '¿Cómo mejorar mi entorno?', ARRAY[142,299,364,348,100918]::bigint[]),\n  (10, 'Capacitación básica', 'Alimentos desde\
-    \ casa', ARRAY[410,282,241,33]::bigint[]),\n  (11, 'Capacitación básica', 'Actuar en caso de desastres naturales', ARRAY[387,100214,95,100098,120,314,354,281,57,393,276]::bigint[]),\n\
-    \  (12, 'Emprendimiento', 'Planea tu negocio', ARRAY[93,100092,100149,157,156,158,100327]::bigint[]),\n  (13, 'Emprendimiento',\
-    \ 'Planea los gastos y ganancias de tu negocio', ARRAY[169,159,167,100105]::bigint[]),\n  (14, 'Emprendimiento', '¿Cómo\
-    \ preparar mis productos para venderlos?', ARRAY[100074,106,107,117,153,77]::bigint[]),\n  (15, 'Emprendimiento', 'Servicio\
-    \ y ventas de tu negocio', ARRAY[100320,118,301,234,100310,100101]::bigint[]),\n  (16, 'Emprendimiento', 'Mi negocio en\
-    \ internet', ARRAY[170,320,143,358,343]::bigint[])\n) AS RECORDS(orden, seccion, ruta, curso_ids) ) SELECT r.seccion,\
-    \ r.ruta, array_length(r.curso_ids, 1) AS value,\n       COUNT(fi.\"userId\") FILTER (WHERE fi.\"inscripcionDate\" < '2026-10-01')\
-    \ AS inscripciones,\n       COUNT(fi.\"userId\") FILTER (WHERE fi.advance = 100 AND fi.\"certificationDate\" < '2026-10-01')\
-    \ AS certificados,\n       'Acumulado' AS periodo_inicio,\n       '2026-10-01' AS periodo_fin,\n       'fact_inscription'\
-    \ AS source\nFROM rutas r JOIN fact_inscription fi ON fi.\"courseId\" = ANY(r.curso_ids) JOIN dim_user u ON u.\"userId\"\
-    \ = fi.\"userId\" JOIN dim_local l ON l.\"localId\" = u.\"localId\" WHERE u.\"plataformaId\" IN (1,2)\n  AND l.\"countryName\"\
-    \ = 'México'\nGROUP BY r.orden, r.seccion, r.ruta, r.curso_ids ORDER BY r.orden\n"
+    \  (6, 'Habilidades digitales', 'Compras y pagos digitales', ARRAY[373,100129]::bigint[]),\n  (7, 'Capacitación básica',\
+    \ 'Seguridad, higiene y cuidado de la salud', ARRAY[362,342,382,242,145,103,100900]::bigint[]),\n  (8, 'Capacitación básica',\
+    \ 'Uso eficiente de recursos', ARRAY[129,141,347,128,130]::bigint[]),\n  (9, 'Capacitación básica', 'Entendiendo mi situación\
+    \ económica', ARRAY[100147,291,100322,89,100861]::bigint[]),\n  (10, 'Capacitación básica', '¿Cómo mejorar mi entorno?',\
+    \ ARRAY[142,299,364,348,100918]::bigint[]),\n  (11, 'Capacitación básica', 'Alimentos desde casa', ARRAY[410,282,241,33]::bigint[]),\n\
+    \  (12, 'Capacitación básica', 'Actuar en caso de desastres naturales', ARRAY[387,100214,95,100098,120,314,354,281,57,393,276]::bigint[]),\n\
+    \  (13, 'Emprendimiento', 'Planea tu negocio', ARRAY[93,100092,100149,157,156,158,100327]::bigint[]),\n  (14, 'Emprendimiento',\
+    \ 'Planea los gastos y ganancias de tu negocio', ARRAY[169,159,167,100105]::bigint[]),\n  (15, 'Emprendimiento', '¿Cómo\
+    \ preparar mis productos para venderlos?', ARRAY[100074,106,107,117,153,77]::bigint[]),\n  (16, 'Emprendimiento', 'Servicio\
+    \ y ventas de tu negocio', ARRAY[100320,118,301,234,100310,100101]::bigint[]),\n  (17, 'Emprendimiento', 'Mi negocio en\
+    \ internet', ARRAY[170,320,143,358,343]::bigint[]),\n  (18, 'Emprendimiento', 'Actívate para encontrar empleo', ARRAY[100928,100853,100919,212,228,67,216,227,100059]::bigint[])\n\
+    ) AS RECORDS(orden, seccion, ruta, curso_ids) ) SELECT r.seccion, r.ruta, array_length(r.curso_ids, 1) AS value,\n   \
+    \    COUNT(fi.\"userId\") FILTER (WHERE fi.\"inscripcionDate\" < '2026-10-01') AS inscripciones,\n       COUNT(fi.\"userId\"\
+    ) FILTER (WHERE fi.advance = 100 AND fi.\"certificationDate\" < '2026-10-01') AS certificados,\n       'Acumulado' AS\
+    \ periodo_inicio,\n       '2026-10-01' AS periodo_fin,\n       'fact_inscription' AS source\nFROM rutas r JOIN fact_inscription\
+    \ fi ON fi.\"courseId\" = ANY(r.curso_ids) JOIN dim_user u ON u.\"userId\" = fi.\"userId\" JOIN dim_local l ON l.\"localId\"\
+    \ = u.\"localId\" WHERE u.\"plataformaId\" IN (1,2)\n  AND l.\"countryName\" = 'México'\nGROUP BY r.orden, r.seccion,\
+    \ r.ruta, r.curso_ids ORDER BY r.orden\n"
   caveats:
-  - 'Layout del deck pasado por el usuario el 2026-10-07: 16 rutas en 4 secciones (Construcción 1, Habilidades digitales 2-5,
-    Capacitación básica 6-11, Emprendimiento 12-16) y 103 cursos. Las secciones ocupan órdenes consecutivos porque el bloque
-    de la hoja emite un subtotal al detectar un cambio de sección.'
-  - 'SALEN dos rutas completas respecto de la versión anterior: "Convive mejor con otros" (6 cursos: 305, 100063, 100070,
-    100330, 100380, 100381) y "Preparación para buscar trabajo" (7 cursos: 67, 212, 216, 227, 228, 100059, 100853). El 299
-    que estaba en Convive se queda en "¿Cómo mejorar mi entorno?".'
-  - 'NO entró la ruta "Compras y pagos digitales". El usuario la incluyó en su lista de cursos con 373 y 100129, y en el layout
-    del deck, pero al pasar el layout pidió explícitamente quitarla. Consecuencia: el curso 373 (Regulación de la interacción
-    digital) sale de slide 12 — estaba en "Interacción con el mundo digital" — y el 100129 no entra. Los dos siguen contándose
-    en slide 1 (slide1_digital). Es una línea revertirlo si la intención era otra.'
-  - 'Tampoco entró "Actívate para encontrar empleo", que el usuario había pasado con 9 cursos pero no figura en el layout
-    del deck. Por eso el curso 100928 (Busca tu primer trabajo) y el 100919 (Comienza a ganar con tus habilidades) no están
-    en slide 12. El 100928 es el ID que durante días figuró como faltante (hallazgos H11 y H19): existe, es único con ese
-    nombre y tiene 51 inscripciones al 2026-10-06.'
+  - 'Layout del deck pasado por el usuario el 2026-10-07, con las 2 rutas que reafirmó después de ver la reconciliación de
+    la baja (hallazgo H25): 18 rutas en 4 secciones (Construcción 1, Habilidades digitales 2-6, Capacitación básica 7-12,
+    Emprendimiento 13-18) y 114 cursos. Las secciones ocupan órdenes consecutivos porque el bloque de la hoja emite un subtotal
+    al detectar un cambio de sección.'
+  - 'SALE una sola ruta respecto de la versión de 18 rutas anterior: "Convive mejor con otros" (6 cursos: 305, 100063, 100070,
+    100330, 100380, 100381). Su curso 299 se queda en "¿Cómo mejorar mi entorno?".'
+  - '"Preparación para buscar trabajo" se renombró a "Actívate para encontrar empleo" y pasó de 7 a 9 cursos: conserva 67,
+    212, 216, 227, 228, 100059 y 100853, y suma 100919 (Comienza a ganar con tus habilidades) y 100928 (Busca tu primer trabajo).
+    Va al final de Emprendimiento para no partir la sección.'
+  - La ruta "Compras y pagos digitales" (373 Regulación de la interacción digital y 100129 Manejo correcto de las tarjetas
+    de crédito) vuelve al catálogo tras el revert del hallazgo H10. Va en Habilidades digitales, después de "Interacción con
+    el mundo digital", que es donde la ubica el layout del deck. El 373 sale de "Interacción con el mundo digital", que queda
+    en 8 cursos.
   - 'ENTRAN 4 cursos: 77 (Bodeguero) en "¿Cómo preparar mis productos para venderlos?", 205 (Guía de autoconstrucción) y 206
     (Guía de reparación vivienda rural) en "Proyectos constructivos y mantenimiento", y 100214 (Controlador de plagas en espacios
     urbanos) en "Actuar en caso de desastres naturales".'
-  - 'Reparto: 103 asignaciones sobre 103 cursos distintos, cero compartidos. El TOTAL de la hoja (suma de subtotales por sección)
+  - 'Reparto: 114 asignaciones sobre 114 cursos distintos, cero compartidos. El TOTAL de la hoja (suma de subtotales por sección)
     es exactamente el total de los cursos de la slide, sin inflarse.'
   - 'Métrica ACUMULADA: sin límite inferior, corte < ''2026-10-01''. El resto del script usa la ventana 2025-09-01..2026-10-01
     vía .env; slide 12 no.'
@@ -409,7 +410,7 @@ metrics:
     "Planea los gastos y ganancia de tu negocio" (singular); el catálogo mantiene "¿Cómo mejorar mi entorno?" y "...ganancias..."
     (plural), que es como el usuario las nombró al pasar los cursos con sus IDs.'
   - El total de 118 cursos que muestra la slide física corresponde al modelo viejo de 102 distintos + 16 apariciones repetidas
-    (hallazgo H7). Con este layout son 103 cursos sin repetir.
+    (hallazgo H7). Con este layout son 114 cursos sin repetir.
 - key: slide13_penitenciarios_inscripciones
   name: Slide 13 — Inscripciones totales (Centros Penitenciarios)
   description: 'Métrica de Slide 13 ''Formación en Centros Penitenciarios'': total acumulado de inscripciones a los 99 cursos

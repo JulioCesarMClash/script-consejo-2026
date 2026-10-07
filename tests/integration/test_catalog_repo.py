@@ -628,6 +628,7 @@ class TestCatalogRepo:
         ("Habilidades digitales", "¿Cómo utilizar la computadora?", 4),
         ("Habilidades digitales", "Preparación para usar internet", 5),
         ("Habilidades digitales", "Interacción con el mundo digital", 8),
+        ("Habilidades digitales", "Compras y pagos digitales", 2),
         ("Capacitación básica", "Seguridad, higiene y cuidado de la salud", 7),
         ("Capacitación básica", "Uso eficiente de recursos", 5),
         ("Capacitación básica", "Entendiendo mi situación económica", 5),
@@ -639,6 +640,7 @@ class TestCatalogRepo:
         ("Emprendimiento", "¿Cómo preparar mis productos para venderlos?", 6),
         ("Emprendimiento", "Servicio y ventas de tu negocio", 6),
         ("Emprendimiento", "Mi negocio en internet", 5),
+        ("Emprendimiento", "Actívate para encontrar empleo", 9),
     ]
 
     @staticmethod
@@ -654,13 +656,20 @@ class TestCatalogRepo:
     def test_slide12_follows_the_deck_layout(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
-        """Slide 12 — 16 rutas en el orden y las secciones del deck.
+        """Slide 12 — 18 rutas en el orden y las secciones del deck.
 
-        Layout pasado por el usuario el 2026-10-07. Salieron "Convive mejor
-        con otros" y "Preparación para buscar trabajo", y no entró "Compras y
-        pagos digitales" (el usuario pidió quitarla aunque figuraba en el
-        layout). Tampoco entró "Actívate para encontrar empleo", que no está
-        en la slide.
+        Layout pasado por el usuario el 2026-10-07, más las dos rutas que
+        reafirmó después de ver la reconciliación de la baja del TOTAL (H25):
+        "Compras y pagos digitales" (2 cursos) y "Actívate para encontrar
+        empleo" (9), que reemplaza a "Preparación para buscar trabajo" con sus
+        mismos 7 cursos más el 100919 y el 100928.
+
+        "Convive mejor con otros" sigue fuera; su único curso que se queda es
+        el 299, en "¿Cómo mejorar mi entorno?".
+
+        Las dos rutas van en la sección que mantiene los bloques contiguos:
+        Compras en Habilidades digitales (donde la ubica el layout del deck) y
+        Actívate al final de Emprendimiento.
         """
         metric = next(
             m for m in catalog_repo.list_metrics()
@@ -669,15 +678,16 @@ class TestCatalogRepo:
         rutas = self._slide12_rutas(metric.db_mapping)
 
         assert [(r[1], r[2], len(r[3])) for r in rutas] == self.SLIDE12_PLAN
-        assert [r[0] for r in rutas] == list(range(1, 17))
+        assert [r[0] for r in rutas] == list(range(1, 19))
 
-        for ausente in (
-            "Compras y pagos digitales",
-            "Convive mejor con otros",
-            "Preparación para buscar trabajo",
-            "Actívate para encontrar empleo",
-        ):
+        for ausente in ("Convive mejor con otros", "Preparación para buscar trabajo"):
             assert ausente not in metric.db_mapping
+
+        por_ruta = {r[2]: r[3] for r in rutas}
+        assert por_ruta["Compras y pagos digitales"] == [373, 100129]
+        assert por_ruta["Actívate para encontrar empleo"] == [
+            100928, 100853, 100919, 212, 228, 67, 216, 227, 100059,
+        ]
 
     def test_slide12_sections_stay_contiguous(
         self, catalog_repo: YamlMetricRepo
@@ -709,7 +719,7 @@ class TestCatalogRepo:
     def test_slide12_assigns_each_course_to_one_route(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
-        """Slide 12 — 103 cursos, cada uno en UNA sola ruta.
+        """Slide 12 — 114 cursos, cada uno en UNA sola ruta.
 
         El TOTAL de la hoja es la suma de los subtotales por sección, así que
         un curso en dos rutas se contaría dos veces en inscripciones y en
@@ -727,8 +737,8 @@ class TestCatalogRepo:
             for i in ids:
                 por_curso.setdefault(i, set()).add(ruta)
 
-        assert sum(len(v) for v in por_curso.values()) == 103
-        assert len(por_curso) == 103
+        assert sum(len(v) for v in por_curso.values()) == 114
+        assert len(por_curso) == 114
         assert {c: r for c, r in por_curso.items() if len(r) > 1} == {}
 
         assert "curso_ids_conteo" not in sql

@@ -253,3 +253,15 @@ rows, 103/103, sections contiguous, 1,897,458 certificates. Write-up in H24.
 
 - [x] T28 — Slide 12: deck layout, 16 routes, 103 courses
 - [ ] T29 — Re-run production for slides 1, 2 and 12
+
+## T30 — Slide 12 regains the two missing routes (2026-10-07)
+
+The user resent the full list; 16 of 18 routes already matched exactly and
+nothing was extra. Added "Compras y pagos digitales" (373, 100129) in
+Habilidades digitales and "Actívate para encontrar empleo" (9 courses) at the
+end of Emprendimiento. 18 routes / 114 courses, sections contiguous, TOTAL
+8,066,244 inscriptions and 2,236,418 certificates. The two routes contribute
+698,377 / 338,960, matching the H25 projection. Write-up in H26.
+
+- [x] T30 — Slide 12: 18 routes, 114 courses
+- [ ] T31 — Re-run production for the restored routes

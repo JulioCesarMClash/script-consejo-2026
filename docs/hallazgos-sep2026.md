@@ -1016,3 +1016,53 @@ inscripciones y ~328,472 certificados**, más lo que aporten los dos cursos nuev
 | 100214 | Controlador de plagas en espacios urbanos | 18,169 | 2,691 |
 | 205 | Guía de autoconstrucción | 16,089 | 882 |
 | | **SUMA** | **141,152** | **19,062** |
+
+## H26 — Slide 12 recupera las 2 rutas faltantes: 18 rutas, 114 cursos (2026-10-07)
+
+El usuario reenvió su lista completa y pidió revisar qué faltaba. **16 de las 18 rutas
+estaban idénticas y no sobraba nada**; faltaban exactamente 2 rutas con 11 cursos.
+
+| Ruta agregada | Sección | Cursos |
+|---|---|---|
+| Compras y pagos digitales | Habilidades digitales (orden 6) | `373`, `100129` |
+| Actívate para encontrar empleo | Emprendimiento (orden 18) | `100928, 100853, 100919, 212, 228, 67, 216, 227, 100059` |
+
+Las dos van en la sección que mantiene los bloques contiguos: Compras donde la ubica el
+layout del deck, y Actívate al final de Emprendimiento.
+
+### Resultado
+
+| Sección | Rutas | Cursos | Inscripciones | Certificados |
+|---|---|---|---|---|
+| Construcción | 1 | 19 | 1,452,710 | 175,116 |
+| Habilidades digitales | 5 | 21 | 1,479,759 | 415,467 |
+| Capacitación básica | 6 | 37 | 2,546,892 | 789,030 |
+| Emprendimiento | 6 | 37 | 2,586,883 | 856,805 |
+| **TOTAL** | **18** | **114** | **8,066,244** | **2,236,418** |
+
+Aporte de las dos rutas nuevas:
+
+| Ruta | Inscripciones | Certificados |
+|---|---|---|
+| Actívate para encontrar empleo | 645,877 | 328,712 |
+| Compras y pagos digitales | 52,500 | 10,248 |
+| **suma** | **698,377** | **338,960** |
+
+Coincide con lo proyectado en H25: ahí estimé que recuperar "Preparación para buscar
+trabajo" devolvería ~642,100 / ~328,472, y la ruta renombrada con sus 2 cursos extra dio
+645,877 / 328,712.
+
+### Notas
+
+- **"Actívate para encontrar empleo" reemplaza a "Preparación para buscar trabajo"**:
+  conserva sus 7 cursos y suma el 100919 y el 100928.
+- **El 100928 entra al catálogo por primera vez.** Es el "Busca tu primer trabajo" que
+  figuró como ID faltante desde H11; aporta poco (51 inscripciones) porque es un curso
+  recién lanzado, pero cierra el pendiente.
+- **"Compras y pagos digitales" vuelve** tras el revert de H10. El 100129, que había
+  quedado completamente fuera del catálogo en ese revert, vuelve a slide 12 y además
+  sigue en slide 1.
+- El 373 sale de "Interacción con el mundo digital", que queda en 8 cursos.
+- Sigue fuera **"Convive mejor con otros"**; su curso 299 permanece en "¿Cómo mejorar mi
+  entorno?".
+- Reparto: 114 asignaciones sobre 114 cursos distintos, cero compartidos.
