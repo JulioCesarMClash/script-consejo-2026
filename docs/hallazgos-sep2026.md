@@ -954,3 +954,65 @@ El deck dice **"¿Cómo puedo mejorar mi entorno?"** y **"Planea los gastos y ga
 tu negocio"** (singular). El catálogo mantiene "¿Cómo mejorar mi entorno?" y
 "...ganancias..." (plural), que es como el usuario las nombró al pasar los cursos con
 sus IDs. Sin resolver.
+
+## H25 — De dónde viene la baja de Slide 12 (2026-10-07)
+
+Reconciliación de la caída del TOTAL tras aplicar el layout del deck.
+
+| | Inscripciones | Certificados |
+|---|---|---|
+| TOTAL antes (18 rutas, 113 cursos) | 8,039,757 | 2,302,728 |
+| − salen 14 cursos | −813,472 | −424,316 |
+| + entran 4 cursos | +141,152 | +19,062 |
+| = esperado | 7,367,437 | 1,897,474 |
+| **TOTAL ahora (real)** | **7,367,867** | **1,897,458** |
+| residuo | +430 | −16 |
+
+El residuo es drift de la base entre las dos corridas (un día de diferencia), no un
+error de reparto. **La baja está explicada al 100%.**
+
+### Los 14 cursos que salieron
+
+| ID | Curso | Inscripciones | Certificados | Ruta de origen |
+|---|---|---|---|---|
+| 212 | Disciplina en el trabajo | 224,266 | 144,271 | Preparación para buscar trabajo |
+| 228 | Estructura de un CV | 140,338 | 63,743 | Preparación para buscar trabajo |
+| 67 | Guía para entrevistas de trabajo | 119,151 | 50,640 | Preparación para buscar trabajo |
+| 305 | Prácticas de cortesía | 101,724 | 59,557 | Convive mejor con otros |
+| 227 | Razones por las que te elige o descarta una empresa | 61,568 | 31,664 | Preparación para buscar trabajo |
+| 216 | Investigación empresarial | 51,353 | 17,616 | Preparación para buscar trabajo |
+| 100059 | Responsabilidad social | 30,132 | 19,268 | Preparación para buscar trabajo |
+| 100070 | Juego limpio | 26,976 | 13,377 | Convive mejor con otros |
+| 100063 | Solidaridad | 26,161 | 17,105 | Convive mejor con otros |
+| 100853 | Búsqueda de empleo en internet | 15,292 | 1,270 | Preparación para buscar trabajo |
+| 373 | Regulación de la interacción digital | 13,631 | 4,105 | Interacción con el mundo digital |
+| 100330 | Actitud más humana | 2,793 | 1,664 | Convive mejor con otros |
+| 100381 | El arte de acompañar | 59 | 20 | Convive mejor con otros |
+| 100380 | Momentos significativos | 28 | 16 | Convive mejor con otros |
+| | **SUMA** | **813,472** | **424,316** |
+
+Agrupados por ruta de origen:
+
+| Ruta que salió | Inscripciones | Certificados |
+|---|---|---|
+| Preparación para buscar trabajo (7 cursos) | 642,100 | 328,472 |
+| Convive mejor con otros (6 cursos) | 157,741 | 91,739 |
+| Interacción con el mundo digital (solo el 373) | 13,631 | 4,105 |
+
+**El 79% de la baja viene de "Preparación para buscar trabajo"**, y casi la mitad de eso
+de un solo curso: el 212 "Disciplina en el trabajo", con 144,271 certificados.
+
+Vale notar que esa ruta reaparecía como "Actívate para encontrar empleo" en la lista de
+cursos del usuario, con esos mismos 7 cursos más el 100919 y el 100928. No entró porque
+no figura en el layout del deck. **Si se agrega, el TOTAL recupera ~642,100
+inscripciones y ~328,472 certificados**, más lo que aporten los dos cursos nuevos.
+
+### Los 4 que entraron
+
+| ID | Curso | Inscripciones | Certificados |
+|---|---|---|---|
+| 77 | Bodeguero (Restaurante) | 76,643 | 12,583 |
+| 206 | Guía de reparación vivienda rural | 30,251 | 2,906 |
+| 100214 | Controlador de plagas en espacios urbanos | 18,169 | 2,691 |
+| 205 | Guía de autoconstrucción | 16,089 | 882 |
+| | **SUMA** | **141,152** | **19,062** |
