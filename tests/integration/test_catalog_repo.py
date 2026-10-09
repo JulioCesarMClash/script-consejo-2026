@@ -495,7 +495,7 @@ class TestCatalogRepo:
         ("slide1_alimentos", 26),           # Alimentos desde casa, seguridad e higiene
         ("slide1_desastres", 11),           # Formación para actuar ante desastres naturales
         ("slide1_autoempleo", 28),          # Crea tu propio empleo
-        ("slide1_buscar_trabajo", 8),       # Activate para buscar trabajo
+        ("slide1_buscar_trabajo", 9),       # Activate para buscar trabajo
     ]
 
     @staticmethod
@@ -538,8 +538,11 @@ class TestCatalogRepo:
             107, 117, 153, 100074, 118, 234, 301, 100101, 100310, 100320,
             143, 170, 320, 343, 358, 100327, 77,
         ]
+        # El 100928 va segundo, donde el usuario lo listó. Entró el 2026-10-09:
+        # cuando se armó la distribución todavía no tenía ID y por eso no se
+        # contaba. No mueve la cifra de certificados (ver su caveat).
         assert por_key["slide1_buscar_trabajo"] == [
-            100919, 228, 100853, 216, 227, 67, 212, 100059,
+            100919, 100928, 228, 100853, 216, 227, 67, 212, 100059,
         ]
 
     def test_slide1_assigns_each_course_to_one_category(
@@ -551,9 +554,9 @@ class TestCatalogRepo:
         `COUNT(DISTINCT userId)` dentro de sus cursos. Un curso en dos
         categorías metería a sus certificados en las dos.
 
-        Son 113 cursos, el mismo número que la slide ya publicaba como
-        "Cursos totales" cuando eran 101 en los arrays más 12 declarados como
-        compartidos.
+        Son 114 cursos: los 113 de la distribución del 2026-10-06 más el
+        100928 (Busca tu primer trabajo), que entró el 2026-10-09 cuando se
+        resolvió su ID.
         """
         metric = next(
             m for m in catalog_repo.list_metrics()
@@ -567,8 +570,8 @@ class TestCatalogRepo:
             for i in ids:
                 por_curso.setdefault(i, set()).add(key)
 
-        assert sum(len(v) for v in por_curso.values()) == 113
-        assert len(por_curso) == 113
+        assert sum(len(v) for v in por_curso.values()) == 114
+        assert len(por_curso) == 114
         assert {c: r for c, r in por_curso.items() if len(r) > 1} == {}
 
         # El 342 sigue solo en desastres (ver su caveat).
@@ -584,9 +587,8 @@ class TestCatalogRepo:
         Antes eran 0/2/7/0/3 = 12 sobre 101 cursos en los arrays, porque el
         solapamiento se resolvía asignando cada curso a una categoría y los
         12 restantes se declaraban aparte. La distribución del 2026-10-06 trae
-        los 113 cursos explícitos, así que no queda nada que declarar: la
-        columna del deck sigue dando 113, pero ahora respaldada por cursos
-        reales en vez de un literal.
+        los cursos explícitos, así que no queda nada que declarar: la columna
+        del deck se respalda con cursos reales en vez de un literal.
         """
         metric = next(
             m for m in catalog_repo.list_metrics()
@@ -595,8 +597,8 @@ class TestCatalogRepo:
         cats = self._slide1_categorias(metric.db_mapping)
 
         assert [c[3] for c in cats] == [0, 0, 0, 0, 0, 0]
-        assert sum(len(c[2]) for c in cats) == 113
-        assert sum(len(c[2]) + c[3] for c in cats) == 113
+        assert sum(len(c[2]) for c in cats) == 114
+        assert sum(len(c[2]) + c[3] for c in cats) == 114
     def test_slide2_includes_seguridad_para_todas(
         self, catalog_repo: YamlMetricRepo
     ) -> None:

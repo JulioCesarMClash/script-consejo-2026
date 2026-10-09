@@ -1112,3 +1112,46 @@ los marcó en rojo y se restauraron antes de seguir.
 Lección: editar tests por posición de texto es frágil cuando hay helpers compartidos
 entre clases de tests. Conviene anclar en el contenido exacto del bloque a reemplazar, o
 verificar qué más cayó antes de dar el cambio por bueno.
+
+## H28 — Revisión de Slide 1 contra el deck y entrada del 100928 (2026-10-09)
+
+Comparadas las cifras de la slide física contra lo publicado. **Los beneficiarios
+coinciden al número en las 6 categorías y en el total (264,860).** Solo diferían dos
+conteos de cursos, y por motivos opuestos.
+
+| Categoría | Cursos deck | Cursos catálogo | Beneficiarios |
+|---|---|---|---|
+| Formación para mejorar tu vivienda | 19 | 19 ✓ | 16,644 ✓ |
+| **Desarrollo de habilidades digitales básicas** | **19** | **21** | 52,901 ✓ |
+| Alimentos desde casa, seguridad e higiene | 26 | 26 ✓ | 64,662 ✓ |
+| Formación para actuar ante desastres naturales | 11 | 11 ✓ | 49,351 ✓ |
+| **Actívate para encontrar empleo** | **9** | 8 → **9** | 24,891 ✓ |
+| Crea tu propio empleo | 28 | 28 ✓ | 56,411 ✓ |
+| **TOTAL** | **112** | **114** | **264,860 ✓** |
+
+### El 19 de digitales es un error del deck, demostrado
+
+Se midió el aporte de personas únicas de cada uno de los 21 cursos quitándolo de la
+lista: **ninguno aporta cero**. El menor es `380` Operación de banca en línea con +159
+y el mayor `213` Cómputo básico con +13,404.
+
+Como todos aportan, **ninguna combinación de 19 cursos puede dar 52,901** — sacar
+cualquiera baja la cifra. El 52,901 que el deck publica corresponde a los 21, así que el
+conteo correcto es 21 y el total de la slide 114, no 112.
+
+Los 2 de diferencia son probablemente `100129` (Manejo correcto de las tarjetas de
+crédito, +1,635) y `373` (Regulación de la interacción digital, +510), que en Slide 12
+forman la ruta "Compras y pagos digitales". Si se descontaran, la cifra caería ~2,145.
+
+### El 9 de Actívate era correcto: entra el 100928
+
+Acá el deck tenía razón. Cuando se armó la distribución (H23) el usuario listó "Busca tu
+primer trabajo" **sin ID** y pidió no contarlo, así que la categoría quedó en 8. El ID se
+resolvió después, al pasar el layout de Slide 12: es el **100928**.
+
+**Verificado antes de agregarlo: no mueve ninguna cifra.** Con 8 o con 9 cursos la
+categoría da los mismos **24,891** beneficiarios, porque los 4 certificados del 100928
+caen fuera de la ventana o son de gente que ya certificó otro curso de la categoría.
+
+Ejecutada la SQL nueva contra Postgres: 114 cursos y las 6 cifras de certificados
+idénticas a las publicadas, incluido el total 264,860.

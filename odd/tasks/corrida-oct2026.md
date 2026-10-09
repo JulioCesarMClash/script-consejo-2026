@@ -275,3 +275,15 @@ since 348 is the one course that entered, left and returned. Write-up in H27.
 
 - [x] T32 — Slide 2: 348 restored, 37 courses
 - [ ] T33 — Re-run production for the restored course
+
+## T34 — Course 100928 enters slide 1 (2026-10-09)
+
+Review against the deck: beneficiary figures match exactly in all 6 categories
+and the total. Two course counts differed. The deck's 19 for digitales is wrong
+(all 21 courses contribute unique certifiers, so no 19-subset yields 52,901);
+the deck's 9 for Actívate was right, so 100928 was added — verified beforehand
+that it leaves every figure unchanged at 24,891. Slide 1 now has 114 courses.
+Write-up in H28.
+
+- [x] T34 — Slide 1: 100928 added, 114 courses
+- [ ] T35 — Re-run production (not executed yet, by user request)

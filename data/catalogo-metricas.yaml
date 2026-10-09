@@ -285,7 +285,7 @@ metrics:
   - No incluye tablas agregadas (agg_*). Consulta directa a fact_inscription.
 - key: slide1_herramientas_pobreza
   name: Certificados por categoría — herramientas contra la pobreza (Slide 1)
-  description: 'Personas certificadas en las 6 categorías de la slide 1 (113 cursos). Distribución declarada por el usuario
+  description: 'Personas certificadas en las 6 categorías de la slide 1 (114 cursos). Distribución declarada por el usuario
     el 2026-10-06. Grano por categoría: COUNT(DISTINCT userId) dentro de los cursos de cada una, así que quien certifica en
     dos categorías cuenta en las dos y el TOTAL de la hoja (=SUM) no son personas únicas. Regla: advance = 100, período oficial
     de certificados, plataforma 1 o 2, México.'
@@ -301,7 +301,7 @@ metrics:
     \ 0),\n  (3, 'slide1_alimentos',\n   ARRAY[33,241,282,410,103,145,242,362,382,128,129,130,141,347,89,291,100147,100322,142,299,348,364,100900,100861,100918,100214]::bigint[],\
     \ 0),\n  (4, 'slide1_desastres',\n   ARRAY[57,95,120,276,281,314,342,354,387,393,100098]::bigint[], 0),\n  (5, 'slide1_autoempleo',\n\
     \   ARRAY[93,156,157,158,100092,100149,159,167,169,100105,106,107,117,153,100074,118,234,301,100101,100310,100320,143,170,320,343,358,100327,77]::bigint[],\
-    \ 0),\n  (6, 'slide1_buscar_trabajo',\n   ARRAY[100919,228,100853,216,227,67,212,100059]::bigint[], 0)\n) AS RECORDS(orden,\
+    \ 0),\n  (6, 'slide1_buscar_trabajo',\n   ARRAY[100919,100928,228,100853,216,227,67,212,100059]::bigint[], 0)\n) AS RECORDS(orden,\
     \ metric_id, categoria_ids, compartidos) ) SELECT c.metric_id,\n       'fact_inscription' AS source,\n       array_length(c.categoria_ids,\
     \ 1) AS value,\n       c.compartidos,\n       array_length(c.categoria_ids, 1) + c.compartidos AS cursos_totales,\n  \
     \     (SELECT COUNT(DISTINCT fi.\"userId\")\n         FROM fact_inscription fi\n         JOIN dim_user u ON u.\"userId\"\
@@ -315,16 +315,16 @@ metrics:
     = "Formación para mejorar tu vivienda" (19); slide1_digital = "Desarrollo de habilidades digitales básicas" (21); slide1_alimentos
     = "Alimentos desde casa, seguridad e higiene elemental" (26); slide1_desastres = "Formación para actuar ante desastres
     naturales" (11); slide1_autoempleo = "Crea tu propio empleo" (28); slide1_buscar_trabajo = "Activate para buscar trabajo"
-    (8). La hoja publica la clave corta en su columna Categoría.'
+    (9). La hoja publica la clave corta en su columna Categoría.'
   - 'La vieja `slide1_empleo` (26 cursos) se partió en dos: slide1_autoempleo y slide1_buscar_trabajo. Las otras 4 claves
     se conservan para que el histórico siga siendo legible.'
   - 'Columna `orden` nueva: la SQL ordenaba por `metric_id` y la hoja salía alfabética. Ahora `ORDER BY c.orden` respeta el
     orden de la lista del usuario (vivienda, digital, alimentos, desastres, autoempleo, buscar trabajo).'
   - 'Los `compartidos` quedaron en 0 en las 6 categorías. Antes eran 0/2/7/0/3 = 12 sobre 101 cursos en los arrays: el solapamiento
     se resolvía asignando cada curso a una categoría y los 12 restantes se declaraban como literal. La distribución nueva
-    trae los 113 cursos explícitos, así que no queda nada que declarar y la columna "Cursos totales" del deck sigue dando
-    113 — ahora respaldada por cursos reales.'
-  - 'Reparto: 113 asignaciones sobre 113 cursos distintos, cero compartidos entre categorías.'
+    trae los cursos explícitos, así que no queda nada que declarar y la columna "Cursos totales" del deck se respalda por
+    cursos reales.'
+  - 'Reparto: 114 asignaciones sobre 114 cursos distintos, cero compartidos entre categorías.'
   - 'Entran 14 cursos respecto de la versión anterior: 67, 77, 205, 206, 212, 216, 227, 228, 100059, 100129, 100214, 100327,
     100853 y 100919. El 100129 (Manejo correcto de las tarjetas de crédito) vuelve al catálogo: había quedado afuera en el
     revert de la ruta "Compras y pagos digitales" (hallazgo H10).'
@@ -332,8 +332,11 @@ metrics:
     de blockchain, 25,499), los que un caveat anterior llamaba "cursos IA". La exclusión es editorial.'
   - El curso 342 (Introducción a Primer Respondiente) sigue SOLO en desastres para no duplicar certificados; alimentos no
     lo incluye.
-  - '"Busca tu primer trabajo" aparece en la lista del usuario SIN ID de curso y por indicación suya NO se cuenta. "Activate
-    para buscar trabajo" queda en 8 cursos en vez de 9. Mismo caso que en slide 12 (hallazgo H11).'
+  - 'El curso 100928 (Busca tu primer trabajo) entró el 2026-10-09. Cuando se armó esta distribución el usuario lo listó SIN
+    ID y pidió no contarlo, así que "Activate para buscar trabajo" quedó en 8 cursos; el ID se resolvió al pasar el layout
+    de slide 12 y el deck ya declaraba 9. Verificado antes de agregarlo: NO mueve la cifra de certificados — con 8 o con 9
+    cursos la categoría da 24,891 personas, porque los 4 certificados del 100928 caen fuera de la ventana o son de gente que
+    ya certificó otro curso de la categoría.'
   - Excluye IDs 100433/100436 (sector 81) con 0 certificados/inscripciones en fact_inscription.
   - 'El total (cursos únicos y certificados) se compone en la hoja Slide 1 con fórmula =SUM, no en SQL. Como cada categoría
     es COUNT(DISTINCT) dentro de sus cursos, ese TOTAL NO son personas únicas: en la corrida del 2026-10-05 la suma daba 237,691
@@ -342,6 +345,11 @@ metrics:
     filtrado por México (l.countryName = ''México'' vía JOIN a dim_local).'
   - OBSOLETO — no usar como referencia. El TOTAL=352,206 registrado el 2026-08-17 se midió SIN el filtro de México y con 96
     cursos. Ver hallazgo H12.
+  - 'ATENCIÓN con el conteo del deck: la slide física declara 19 cursos en "Desarrollo de habilidades digitales básicas" y
+    el catálogo tiene 21. El 52,901 que publica el deck corresponde a los 21: medido el 2026-10-09, los 21 cursos aportan
+    personas únicas (el menor es 380 con +159 y el mayor 213 con +13,404), así que ninguna combinación de 19 puede dar esa
+    cifra. Los 2 de diferencia son probablemente 100129 (+1,635) y 373 (+510), que en slide 12 forman la ruta "Compras y pagos
+    digitales". El conteo correcto es 21 y el total de la slide 114, no 112.'
 - key: slide12_rutas_aprendizaje
   name: Rutas de aprendizaje (Slide 12)
   description: 'Tabla slide 12: 18 rutas de aprendizaje en 4 secciones (Construcción, Habilidades digitales, Capacitación
