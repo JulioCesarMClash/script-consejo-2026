@@ -1155,3 +1155,54 @@ caen fuera de la ventana o son de gente que ya certificó otro curso de la categ
 
 Ejecutada la SQL nueva contra Postgres: 114 cursos y las 6 cifras de certificados
 idénticas a las publicadas, incluido el total 264,860.
+
+## H29 — Reconciliación completa de Slide 12 contra el deck (2026-10-09)
+
+Verificada la slide física contra la corrida publicada. **Todo cierra.**
+
+### Las 18 rutas, exactas
+
+Inscripciones y certificados coinciden al número en las 18 rutas, y los totales también:
+**8,066,244** inscripciones y **2,236,418** certificados.
+
+### Los cursos: 114 únicos + 14 compartidos = 128
+
+| Ruta | Únicos | Compartidos | Total |
+|---|---|---|---|
+| Interacción con el mundo digital | 8 | 1 | 9 |
+| Compras y pagos digitales | 2 | 4 | 6 |
+| Uso eficiente de recursos | 5 | 3 | 8 |
+| ¿Cómo puedo mejorar mi entorno? | 5 | 1 | 6 |
+| Alimentos desde casa | 4 | 2 | 6 |
+| Actuar en caso de desastres naturales | 11 | 1 | 12 |
+| Mi negocio en internet | 5 | **2** | 7 |
+| (las otras 11 rutas) | 74 | 0 | 74 |
+| **TOTAL** | **114** | **14** | **128** |
+
+El `2` de "Mi negocio en internet" es una corrección: la versión anterior de la slide
+declaraba `1` ahí, con lo que los compartidos sumaban 13 y `114 + 13 = 127` no llegaba
+al 128 que la propia columna totalizaba. El usuario lo ajustó en la presentación el
+2026-10-09.
+
+Fue la única celda que no cerraba de las 18 rutas.
+
+### El total general de la slide
+
+La slide combina dos tablas: "Educación y empleo" (la del pipeline) y "Educación básica
+y media" (que no está en el pipeline).
+
+| | Educación y empleo | Educación básica y media | Suma | Declara |
+|---|---|---|---|---|
+| Cursos | 128 | 96 | 224 | **224 ✓** |
+| Inscripciones | 8,066,244 | 4,939,166 | 13,005,410 | **13,005,410 ✓** |
+| Certificados | 2,236,418 | 2,438,374 | 4,674,792 | **4,674,792 ✓** |
+
+### Los 14 compartidos siguen fuera del pipeline
+
+La hoja de Slide 12 publica `Cursos | Inscripciones | Certificados`; no tiene columnas
+de compartidos ni de cursos totales. El 128 lo administra el usuario a mano en el deck.
+
+Slide 1 sí las tiene en el SQL (`compartidos` y `cursos_totales`), aunque ahí quedaron
+en 0 porque su distribución trae los cursos explícitos. Si se quisiera que Slide 12
+publique el 128, bastaría agregar la columna `compartidos` a su CTE con estos 14 valores
+y un test que los fije — quedarían versionados en vez de depender de un recálculo manual.
