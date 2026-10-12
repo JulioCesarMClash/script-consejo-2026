@@ -1206,3 +1206,56 @@ Slide 1 sí las tiene en el SQL (`compartidos` y `cursos_totales`), aunque ahí 
 en 0 porque su distribución trae los cursos explícitos. Si se quisiera que Slide 12
 publique el 128, bastaría agregar la columna `compartidos` a su CTE con estos 14 valores
 y un test que los fije — quedarían versionados en vez de depender de un recálculo manual.
+
+## H30 — Por qué Slides 1 y 2 no se pueden sumar (2026-10-12)
+
+Medido contra la base en la ventana `2025-09-01 .. 2026-10-01`.
+
+| | Cursos | Suma de filas | Personas reales | Inflado |
+|---|---|---|---|---|
+| Slide 1 (6 categorías) | 114 | 264,860 | **227,056** | +16.6% |
+| Slide 2 (7 sectores) | 37 | 54,145 | **43,461** | +24.6% |
+| Slide 2 sin construcción (6) | 25 | 38,906 | 33,786 | +15.2% |
+| **Las dos juntas** | **130** | 319,005 | **239,963** | **+32.9%** |
+
+**30,554 personas están en las dos slides.** Decisión tomada: presentarlas por separado.
+
+### Cuatro razones por las que sumarlas no da personas
+
+**1. No cuentan la misma unidad.** Slide 1 agrupa por categoría
+(`COUNT(DISTINCT userId)` por categoría); Slide 2 agrupa por `grupo, curso`, así que
+alguien con 3 cursos de un sector aparece 3 veces. No son unidades comparables.
+
+**2. Cada slide ya se infla por dentro** (+16.6% y +24.6%) al sumar sus propias filas.
+
+**3. Comparten 21 cursos.** De 151 asignaciones (114 + 37) hay solo **130 cursos
+distintos**: `4, 9, 11, 12, 23, 24, 29, 30, 33, 57, 77, 128, 187, 205, 206, 299, 348,
+367, 100214, 100310, 100322`.
+
+**4. Las ventanas difieren por un día.** Slide 1 usa
+`certificationDate < %(period_end)s` y Slide 2 `<= %(period_end)s`.
+
+### Slide 1 y Slide 12 tienen los mismos 114 cursos
+
+Verificado: conjuntos **idénticos**, cero diferencia en ninguna dirección. La única razón
+por la que sus totales difieren (114 contra 128) son los 14 compartidos que Slide 12
+declara en el deck y Slide 1 no.
+
+### El sector "Construcción y mantenimiento" era 100% duplicación
+
+Sus 12 cursos estaban **los 12** en "Formación para mejorar tu vivienda" de Slide 1.
+Quitarlo de la vista baja la suma en **−15,239** y el universo real de personas en
+**0**: sigue en 239,963. La fila mostraba los mismos cursos y la misma gente dos veces.
+
+### El `<` contra `<=` no afecta ninguna cifra actual
+
+Medido: **0 personas de diferencia** en los cuatro conjuntos. No hubo certificaciones el
+2026-10-01, así que la inconsistencia entre las dos queries es latente, no activa. No
+requiere corrección urgente, pero conviene no olvidarla: si una corrida futura cae en un
+día con certificaciones, las dos slides dejarían de cubrir la misma ventana.
+
+### Regla práctica
+
+El total de cada slide **no es "personas beneficiadas"**, es la suma de sus grupos. Una
+cifra de personas tiene que salir de su propia query con `COUNT(DISTINCT userId)` sobre
+el universo de cursos que se quiera reportar, no de sumar filas.
