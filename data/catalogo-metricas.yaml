@@ -293,7 +293,7 @@ metrics:
     en período AND plataformaId IN (1,2) AND Mexico.
   type: count_distinct
   source: fact_inscription
-  platform_scope:
+  platform_scope: &id001
   - cpe
   - aprende
   db_mapping: "WITH categorias AS (\n  SELECT * FROM (VALUES\n  (1, 'slide1_vivienda',\n   ARRAY[9,187,4,389,390,367,11,205,206,30,140,23,29,24,12,100157,244,240,27]::bigint[],\
@@ -797,6 +797,63 @@ metrics:
     verifica explícitamente que difieren.'
   - 'El 348 se cuenta en las tres slides de pobreza: slide 1 (slide1_alimentos), slide 2 (Convive mejor con otros) y slide
     12 ("¿Cómo mejorar mi entorno?"). Son métricas separadas y no comparten total, así que no hay doble conteo.'
+- key: slide21_pobreza_consolidada
+  name: Personas beneficiadas por grupo — pobreza consolidada (slide nueva)
+  description: 'Fusiona el universo de cursos de las slides 1 y 2 en 12 grupos, repartiendo cada curso en UN SOLO grupo para
+    que las cifras no se inflen por cursos duplicados. 130 cursos únicos que miden las queries más 9 compartidos declarados
+    = 139, el total que publica el deck. Distribución y asignación de los 9 duplicados fijadas por el usuario el 2026-10-12.
+    Regla: advance = 100, período oficial de certificados, plataforma 1 o 2, México.'
+  formula: 'Por grupo: value = array_length(IDs cursos), compartidos = literal declarado, cursos_totales = value + compartidos,
+    certificaciones = COUNT(userId) y certificados = COUNT(DISTINCT userId), ambas WHERE advance = 100 AND certificationDate
+    en período AND plataformaId IN (1,2) AND Mexico.'
+  type: count_distinct
+  source: fact_inscription
+  platform_scope: *id001
+  db_source: postgres
+  db_mapping: "WITH grupos AS (\n  SELECT * FROM (VALUES\n  (1, 'Formación para mejorar tu vivienda',\n   ARRAY[9,187,4,389,390,367,11,205,206,30,140,23,29,24,12,100157,244,240,27]::bigint[],\
+    \ 0),\n  (2, 'Desarrollo de habilidades digitales básicas',\n   ARRAY[254,399,213,258,285,379,43,321,374,375,100002,100006,394,380,100003,345,100897,368,372,100129,373]::bigint[],\
+    \ 0),\n  (3, 'Alimentos desde casa, seguridad e higiene elemental',\n   ARRAY[33,241,282,410,103,145,242,362,382,128,129,130,141,347,89,291,100147,142,364,100900,100861,100918]::bigint[],\
+    \ 4),\n  (4, 'Formación para actuar ante desastres naturales',\n   ARRAY[95,120,276,281,314,342,354,387,393,100098]::bigint[],\
+    \ 1),\n  (5, 'Actívate para encontrar empleo',\n   ARRAY[100919,100928,228,100853,216,227,67,212,100059]::bigint[], 0),\n\
+    \  (6, 'Crea tu propio empleo',\n   ARRAY[93,156,157,158,100092,100149,159,167,169,100105,106,107,117,153,100074,118,234,301,100101,100320,143,170,320,343,358,100327]::bigint[],\
+    \ 2),\n  (7, 'Servicios de limpieza y mantenimiento',\n   ARRAY[6,57,8,100214]::bigint[], 1),\n  (8, 'Actividades agropecuarias',\n\
+    \   ARRAY[52]::bigint[], 1),\n  (9, 'Servicios de alimentos y atención',\n   ARRAY[39,5,38,58]::bigint[], 0),\n  (10,\
+    \ 'Educación financiera básica',\n   ARRAY[100322,100128,100325]::bigint[], 0),\n  (11, 'Servicios en transporte',\n \
+    \  ARRAY[77,100310,41]::bigint[], 0),\n  (12, 'Convivir mejor con otros',\n   ARRAY[100330,100380,100381,305,100070,100063,299,348]::bigint[],\
+    \ 0)\n) AS RECORDS(orden, grupo, curso_ids, compartidos) ) SELECT g.grupo,\n       array_length(g.curso_ids, 1) AS value,\n\
+    \       g.compartidos,\n       array_length(g.curso_ids, 1) + g.compartidos AS cursos_totales,\n       (SELECT COUNT(fi.\"\
+    userId\")\n          FROM fact_inscription fi\n          JOIN dim_user u  ON u.\"userId\"  = fi.\"userId\"\n         \
+    \ JOIN dim_local l ON l.\"localId\" = u.\"localId\"\n         WHERE fi.\"courseId\" = ANY(g.curso_ids)\n           AND\
+    \ fi.advance = 100\n           AND fi.\"certificationDate\" >= %(period_start)s\n           AND fi.\"certificationDate\"\
+    \ < %(period_end)s\n           AND u.\"plataformaId\" IN (1,2)\n           AND l.\"countryName\" = 'México'\n       )\
+    \ AS certificaciones,\n       (SELECT COUNT(DISTINCT fi.\"userId\")\n          FROM fact_inscription fi\n          JOIN\
+    \ dim_user u  ON u.\"userId\"  = fi.\"userId\"\n          JOIN dim_local l ON l.\"localId\" = u.\"localId\"\n        \
+    \ WHERE fi.\"courseId\" = ANY(g.curso_ids)\n           AND fi.advance = 100\n           AND fi.\"certificationDate\" >=\
+    \ %(period_start)s\n           AND fi.\"certificationDate\" < %(period_end)s\n           AND u.\"plataformaId\" IN (1,2)\n\
+    \           AND l.\"countryName\" = 'México'\n       ) AS certificados,\n       %(period_start)s AS periodo_inicio,\n\
+    \       %(period_end)s AS periodo_fin,\n       'fact_inscription' AS source\nFROM grupos g ORDER BY g.orden\n"
+  caveats:
+  - 'Slide NUEVA, sin número asignado todavía: la key usa slide21 por ser el siguiente libre. Si el deck le da otro número,
+    hay que renombrar la key y su rama en _build_slide_block.'
+  - 'Los 130 cursos son exactamente la unión de slides 1 (114) y 2 (37): comparten 21, así que la unión da 130 distintos.
+    `test_slide21_covers_the_universe_of_slides_1_and_2` fija ese acoplamiento — si una de las dos cambia su lista, esta slide
+    queda desincronizada y el test lo marca.'
+  - 'Los 9 cursos que estaban en dos grupos los asignó el usuario el 2026-10-12: 33 y 128 -> "Alimentos desde casa"; 57 y
+    100214 -> "Servicios de limpieza y mantenimiento"; 77 y 100310 -> "Servicios en transporte"; 299 y 348 -> "Convivir mejor
+    con otros"; 100322 -> "Educación financiera básica".'
+  - El literal `compartidos` (4/1/2/1/1 = 9) registra los cursos que cada grupo CEDE a otro en la query pero sigue mostrando
+    en el deck. Mismo modelo que slide 12 (114 únicos + 14 = 128) y que la columna `compartidos` de slide 1. No se puede derivar
+    del SQL, así que `test_slide21_shared_courses_close_the_deck_total` lo fija.
+  - 'Dos métricas por grupo a propósito: `certificaciones` es COUNT (suma exacta al total) y `certificados` es COUNT(DISTINCT
+    userId) (personas, NO aditivo). La suma de la columna de personas da 291,349 contra 239,963 reales (+21.4%): ese inflado
+    es estructural, porque una persona pertenece a todos los grupos donde certificó y ningún reparto de cursos lo arregla.
+    Ver hallazgo H30.'
+  - Si el deck publica una cifra de personas, el número honesto es el de personas únicas sobre los 130 cursos (239,963 al
+    2026-10-12), que va como línea aparte y NO como suma de la columna.
+  - '"Actividades agropecuarias" quedó con 1 solo curso (52, Granjero de lechería) porque su otro curso, el 33, se asignó
+    a "Alimentos desde casa". Su fila muestra 2 cursos totales pero su cifra sale de 1.'
+  - 'Resultado al 2026-10-12 (ventana 2025-09-01..2026-10-01): 130 cursos, 372,199 certificaciones y 291,349 en la suma de
+    personas por grupo, sobre 239,963 personas únicas reales.'
 - key: slide3_capacitate_carso
   name: Capacítate Carso — usuarios registrados por ventana fija (Slide 3)
   description: 'Usuarios únicos registrados en carso_analisis.user con registrationDate dentro de CUATRO ventanas de tiempo

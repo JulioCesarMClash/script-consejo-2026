@@ -1259,3 +1259,86 @@ día con certificaciones, las dos slides dejarían de cubrir la misma ventana.
 El total de cada slide **no es "personas beneficiadas"**, es la suma de sus grupos. Una
 cifra de personas tiene que salir de su propia query con `COUNT(DISTINCT userId)` sobre
 el universo de cursos que se quiera reportar, no de sumar filas.
+
+## H31 — Slide consolidada de pobreza: 12 grupos, 130 cursos únicos (2026-10-13)
+
+Métrica nueva `slide21_pobreza_consolidada`. Fusiona el universo de cursos de Slides 1 y
+2 en 12 grupos, repartiendo **cada curso en un solo grupo** para que las cifras no se
+inflen por duplicación.
+
+| # | Grupo | Únicos | Compart. | Totales |
+|---|---|---|---|---|
+| 1 | Formación para mejorar tu vivienda | 19 | 0 | 19 |
+| 2 | Desarrollo de habilidades digitales básicas | 21 | 0 | 21 |
+| 3 | Alimentos desde casa, seguridad e higiene elemental | 22 | 4 | 26 |
+| 4 | Formación para actuar ante desastres naturales | 10 | 1 | 11 |
+| 5 | Actívate para encontrar empleo | 9 | 0 | 9 |
+| 6 | Crea tu propio empleo | 26 | 2 | 28 |
+| 7 | Servicios de limpieza y mantenimiento | 4 | 1 | 5 |
+| 8 | Actividades agropecuarias | 1 | 1 | 2 |
+| 9 | Servicios de alimentos y atención | 4 | 0 | 4 |
+| 10 | Educación financiera básica | 3 | 0 | 3 |
+| 11 | Servicios en transporte | 3 | 0 | 3 |
+| 12 | Convivir mejor con otros | 8 | 0 | 8 |
+| | **TOTAL** | **130** | **9** | **139** |
+
+Los 130 son exactamente la unión de Slide 1 (114) y Slide 2 (37), que comparten 21.
+
+### Asignación de los 9 duplicados
+
+Decidida por el usuario el 2026-10-12:
+
+| ID | Curso | Va a | Sale de |
+|---|---|---|---|
+| 33 | Técnico procesador de frutas y verduras | Alimentos desde casa | Actividades agropecuarias |
+| 128 | Técnico en manejo de residuos sólidos | Alimentos desde casa | Limpieza y mantenimiento |
+| 57 | Trabajador doméstico | Limpieza y mantenimiento | Desastres naturales |
+| 100214 | Controlador de plagas | Limpieza y mantenimiento | Alimentos desde casa |
+| 77 | Bodeguero | Servicios en transporte | Crea tu propio empleo |
+| 100310 | Repartidor a domicilio | Servicios en transporte | Crea tu propio empleo |
+| 299 | Cultura urbana | Convivir mejor con otros | Alimentos desde casa |
+| 348 | Seguridad para todas y todos | Convivir mejor con otros | Alimentos desde casa |
+| 100322 | Manejo de dinero | Educación financiera básica | Alimentos desde casa |
+
+### Dos métricas de gente, a propósito
+
+- **Certificaciones** (`COUNT`): 372,199. **Suma exacta al total**, porque cada
+  certificación pertenece a un curso y ese curso a un solo grupo.
+- **Personas** (`COUNT(DISTINCT userId)`): la columna suma 291,349 pero las personas
+  reales son **239,963** (+21.4%). Ese inflado es **estructural**: una persona pertenece
+  a todos los grupos donde certificó y ningún reparto de cursos lo arregla (demostrado
+  en H30 sobre Slide 12, que ya tiene cero cursos repetidos y aun así infla 42.3% en
+  personas).
+
+Si el deck publica una cifra de personas, va el **239,963** como línea aparte, nunca la
+suma de la columna.
+
+### El despacho casi publicó basura en silencio
+
+`"slide21_pobreza_consolidada".startswith("slide2")` es `True`, así que sin una rama
+explícita **antes** del check de `slide2`, el bloque habría salido con el layout de 3
+columnas Sector/Curso/Certificados de Slide 2. Mismo riesgo que ya existía entre
+`slide12` y `slide1`, y que ya me había mordido midiendo celdas sucias (H18).
+
+Cubierto con `test_routes_to_its_own_block_not_slide2`, que compara la cabecera contra
+`SLIDE21_TABLE_HEADERS` **y** verifica que no sea la de Slide 2.
+
+De paso: `_datos_block_width()` pasó de 9 a **10** columnas solo, sin tocar nada, porque
+deriva el ancho de las constantes `*_TABLE_HEADERS` (H18). El arreglo de la limpieza
+absorbió la slide nueva.
+
+### Acoplamiento deliberado
+
+`test_slide21_covers_the_universe_of_slides_1_and_2` exige que los 130 sean exactamente
+la unión de Slides 1 y 2. Es el único test que cruza slides a propósito: esta slide no
+existe sin ellas, y si una cambia su lista hay que rebalancear los grupos. El test lo
+marca en vez de dejar que el total se desincronice en silencio.
+
+### Listas de control
+
+`~/Developer/Daily task/exports_csv/control-slide-consolidada-pobreza.xlsx`, dos hojas:
+
+- **"130 - queries"**: los 130 cursos que miden las queries, con `Ruta | Curso | ID |
+  ¿Era compartido?`.
+- **"139 - deck"**: las 139 apariciones, con `Ruta | Curso | ID | Estado | Grupo que lo
+  mide`, para poder rastrear qué grupo mide cada compartido.

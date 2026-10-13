@@ -287,3 +287,18 @@ Write-up in H28.
 
 - [x] T34 — Slide 1: 100928 added, 114 courses
 - [ ] T35 — Re-run production (not executed yet, by user request)
+
+## T36 — Consolidated poverty slide (2026-10-13)
+
+New metric `slide21_pobreza_consolidada`: 12 groups, 130 unique courses (the
+union of slides 1 and 2) plus 9 declared shared = 139, the deck's total. The 9
+duplicate assignments were decided by the user. Two people metrics on purpose:
+certificaciones (COUNT, sums exactly to 372,199) and personas (COUNT DISTINCT,
+column sums 291,349 against 239,963 real — structural, see H30).
+
+The dispatch needed an explicit `slide21` branch before the `slide2` check,
+otherwise the block would have published slide 2's 3-column layout silently.
+`_datos_block_width()` picked up the 10th column on its own. Write-up in H31.
+
+- [x] T36 — slide21 metric, block builder, dispatch and control lists
+- [ ] T37 — Run production so the consolidated slide publishes

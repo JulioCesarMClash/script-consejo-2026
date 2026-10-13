@@ -144,6 +144,20 @@ def _build_row_sequence() -> Sequence[Sequence[Mapping]]:
         [{"value": 68271, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"}],  # slide20_crecimiento_integral_inscripciones (PG canónica)
         [{"value": 41455, "periodo_inicio": "Acumulado", "periodo_fin": "2026-10-01", "source": "fact_inscription"}],  # slide20_crecimiento_integral_personas_unicas_inscritas (PG canónica)
         [{"count": 42}],  # slide2_empleo_incluyente_por_sector
+        [  # slide21_pobreza_consolidada — 12 grupos, 130 cursos únicos + 9 compartidos
+            {"grupo": "Formación para mejorar tu vivienda", "value": 19, "compartidos": 0, "cursos_totales": 19, "certificaciones": 27302, "certificados": 16644, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"grupo": "Desarrollo de habilidades digitales básicas", "value": 21, "compartidos": 0, "cursos_totales": 21, "certificaciones": 73790, "certificados": 52901, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"grupo": "Alimentos desde casa, seguridad e higiene elemental", "value": 22, "compartidos": 4, "cursos_totales": 26, "certificaciones": 79233, "certificados": 60992, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"grupo": "Formación para actuar ante desastres naturales", "value": 10, "compartidos": 1, "cursos_totales": 11, "certificaciones": 54586, "certificados": 49185, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"grupo": "Actívate para encontrar empleo", "value": 9, "compartidos": 0, "cursos_totales": 9, "certificaciones": 32149, "certificados": 24891, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"grupo": "Crea tu propio empleo", "value": 26, "compartidos": 2, "cursos_totales": 28, "certificaciones": 70250, "certificados": 55144, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"grupo": "Servicios de limpieza y mantenimiento", "value": 4, "compartidos": 1, "cursos_totales": 5, "certificaciones": 2695, "certificados": 2495, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"grupo": "Actividades agropecuarias", "value": 1, "compartidos": 1, "cursos_totales": 2, "certificaciones": 1002, "certificados": 1002, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"grupo": "Servicios de alimentos y atención", "value": 4, "compartidos": 0, "cursos_totales": 4, "certificaciones": 6702, "certificados": 6481, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"grupo": "Educación financiera básica", "value": 3, "compartidos": 0, "cursos_totales": 3, "certificaciones": 5712, "certificados": 5361, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"grupo": "Servicios en transporte", "value": 3, "compartidos": 0, "cursos_totales": 3, "certificaciones": 2000, "certificados": 1988, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+            {"grupo": "Convivir mejor con otros", "value": 8, "compartidos": 0, "cursos_totales": 8, "certificaciones": 16778, "certificados": 14265, "periodo_inicio": "2025-09-01", "periodo_fin": "2026-10-01", "source": "fact_inscription"},
+        ],
         [  # slide4_cultura_salud_aprende
             {"2025": 104736, "sep2026": 102916, "dic2026": 134327, "acumulado": 1413528},
         ],
@@ -168,7 +182,7 @@ class TestPipelineDry:
     def fake_sheets(self) -> FakeSheetRepo:
         return FakeSheetRepo()
 
-    def test_extract_produces_23_manifests(
+    def test_extract_produces_all_manifests(
         self, catalog_path: Path, fake_conn: FakeSourceConn
     ) -> None:
         """La extracción debe producir 23 manifiestos."""
@@ -185,7 +199,7 @@ class TestPipelineDry:
             cut=cut,
         )
 
-        assert len(manifests) == 37
+        assert len(manifests) == 38
 
     def test_extract_beneficiaries_is_derived_not_manual(
         self, catalog_path: Path, fake_conn: FakeSourceConn
@@ -298,7 +312,7 @@ class TestPipelineDry:
         assert bundle.run_id == run_id
         assert bundle.attempt_id == attempt_id
         assert bundle.catalog_hash == catalog_hash
-        assert len(bundle.manifests) == 37
+        assert len(bundle.manifests) == 38
         assert str(bundle.hash) != "0" * 64
 
     def test_validate_blocks_with_empty_manifests(
@@ -450,7 +464,7 @@ class TestPipelineDry:
             cut=cut,
             fetched_at=fetched_at,
         )
-        assert len(manifests) == 37
+        assert len(manifests) == 38
 
         # Validate
         bundle = validate_bundle(
@@ -528,7 +542,7 @@ class TestPipelineDry:
             mode=PipelineMode.PRODUCTION,
         )
 
-        assert len(bundle.manifests) == len(catalog) == 37
+        assert len(bundle.manifests) == len(catalog) == 38
         assert bundle.dqs == ()
         assert create_snapshot(bundle, fake_sheets, "fake-spreadsheet-id", catalogo=catalog) == "fake-spreadsheet-id"
         assert len(fake_sheets._snapshots) == 1

@@ -785,6 +785,34 @@ SLIDE20_FUENTE_INSCRIPCION = "fact_inscription"
 # originales / 53 vigentes. El valor sigue sin confirmar contra las listas
 # nuevas. Fuente mysql.
 SLIDE20_CONTENIDO = 73
+# Layout de la slide consolidada de pobreza: fusiona el universo de cursos
+# de slides 1 y 2 en 12 grupos, repartiendo cada curso en UN SOLO grupo para
+# que las cifras no se inflen. 130 cursos únicos que miden las queries más 9
+# compartidos declarados = 139, el total que publica el deck (mismo modelo
+# que slide 12: 114 + 14 = 128).
+#
+# Dos columnas de personas a propósito: "Certificaciones" es COUNT y suma
+# exacto al total; "Personas" es COUNT(DISTINCT userId) y NO es aditiva —
+# sumar la columna da 291,349 contra 239,963 reales. Ver hallazgo H30.
+SLIDE21_METRIC_ID = "slide21_pobreza_consolidada"
+SLIDE21_TABLE_HEADERS = [
+    "Categoría",
+    "Grupo",
+    "Cursos únicos",
+    "Compartidos",
+    "Cursos totales",
+    "Certificaciones",
+    "Personas",
+    "Período inicio",
+    "Período fin",
+    "Fuente",
+]
+# Columnas 1-indexadas con =SUM en la fila TOTAL: cursos únicos,
+# compartidos, cursos totales, certificaciones y personas. La de personas
+# lleva =SUM porque la hoja es un snapshot técnico y el lector necesita ver
+# la suma; el caveat de la métrica advierte que no son personas distintas.
+SLIDE21_SUM_COLUMNS = (3, 4, 5, 6, 7)
+
 SLIDE20_TABLE_HEADERS = [
     "Categoría",
     "Métrica",
@@ -921,6 +949,12 @@ def _build_slide_block(
         )
     if key.startswith("slide1"):
         return _build_slide1_block(manifest, row_0based)
+    # 'slide21_*' empieza con 'slide2', así que debe rutearse ANTES del check
+    # de slide2 (si no, la slide consolidada saldría con el layout de 3
+    # columnas Sector/Curso/Certificados y publicaría basura en silencio).
+    # Mismo riesgo que slide12 contra slide1.
+    if key.startswith("slide21"):
+        return _build_slide21_block(manifest, row_0based)
     if key.startswith("slide2"):
         return _build_slide2_block(manifest, row_0based)
     if key.startswith("slide3"):
@@ -944,6 +978,60 @@ def _build_slide1_block(
         row_0based += 1
 
     rows.append(_slide_total_row(header_0, row_0based))
+    row_0based += 1
+    return rows, row_0based
+
+
+def _build_slide21_block(
+    manifest: SourceManifest, row_0based: int
+) -> tuple[list[dict], int]:
+    """Bloque de la slide consolidada: 10 columnas y un TOTAL con =SUM.
+
+    Una fila por grupo (las filas llegan ordenadas por la columna `orden` de
+    la SQL) y una fila TOTAL que suma las 5 columnas numéricas con =SUM sobre
+    el rango de filas de datos. No hay subtotales por sección: los 12 grupos
+    son planos.
+
+    El TOTAL de "Cursos únicos" da 130 y el de "Cursos totales" 139, que es
+    el número que administra el deck. El de "Personas" suma la columna, pero
+    esa suma NO son personas distintas (ver SLIDE21_SUM_COLUMNS).
+    """
+    rows: list[dict] = []
+    rows.append(_text_row(SLIDE21_TABLE_HEADERS))
+    header_0 = row_0based
+    row_0based += 1
+
+    categoria = str(manifest.metric_id)
+    for r in manifest.rows:
+        cells = [
+            _value_cell(categoria),
+            _value_cell(r.get("grupo", "")),
+            _value_cell(r.get("value", "")),
+            _value_cell(r.get("compartidos", "")),
+            _value_cell(r.get("cursos_totales", "")),
+            _value_cell(r.get("certificaciones", "")),
+            _value_cell(r.get("certificados", "")),
+            _value_cell(r.get("periodo_inicio", "")),
+            _value_cell(r.get("periodo_fin", "")),
+            _value_cell(r.get("source", "")),
+        ]
+        rows.append({"values": cells})
+        row_0based += 1
+
+    first_data_1 = header_0 + 2
+    last_data_1 = row_0based
+    total = [
+        {"userEnteredValue": {"stringValue": categoria}},
+        {"userEnteredValue": {"stringValue": "TOTAL"}},
+    ]
+    for col in SLIDE21_SUM_COLUMNS:
+        letter = chr(ord("A") + col - 1)
+        total.append({
+            "userEnteredValue": {
+                "formulaValue": f"=SUM({letter}{first_data_1}:{letter}{last_data_1})"
+            }
+        })
+    rows.append({"values": total})
     row_0based += 1
     return rows, row_0based
 

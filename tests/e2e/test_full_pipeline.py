@@ -172,13 +172,13 @@ class TestFullPipelineE2E:
 
     # ── 5.1.a: 16 manifests ──────────────────────────────────────────────
 
-    def test_pipeline_produces_22_manifests(
+    def test_pipeline_produces_all_manifests(
         self, catalog_path: Path, fake_conn: E2EFakeSourceConn,
         fake_sheets: E2EFakeSheetRepo,
     ) -> None:
         """El pipeline completo produce exactamente 37 manifiestos."""
         result = _run_full_pipeline(catalog_path, fake_conn, fake_sheets)
-        assert result["manifests_len"] == 37
+        assert result["manifests_len"] == 38
         # 10 SQL-fetched EXTRACTED + 6 derived sums built on their parts = 16;
         # slide1, slide12_rutas_aprendizaje, slide2_empleo_incluyente_por_sector,
         # las 2 de Slide 3 (MySQL, sin mysql_conn en el fake), las 3 de

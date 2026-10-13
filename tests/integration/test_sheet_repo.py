@@ -23,6 +23,7 @@ from src.consejo.adapters.sheets.google_mcp_sheet_repo import (
     SLIDE4_TABLE_HEADERS,
     SLIDE7_TABLE_HEADERS,
     SLIDE8_TABLE_HEADERS,
+    SLIDE2_TABLE_HEADERS,
     SLIDE12_TABLE_HEADERS,
     SLIDE13_CENTROS,
     SLIDE13_METRIC_ID,
@@ -34,6 +35,7 @@ from src.consejo.adapters.sheets.google_mcp_sheet_repo import (
     _build_slide12_block,
     _build_slide13_block,
     _build_slide20_block,
+    _build_slide21_block,
     _clear_sheet_if_exists,
     _build_slide_block,
     _build_reporte_requests,
@@ -42,6 +44,8 @@ from src.consejo.adapters.sheets.google_mcp_sheet_repo import (
     SLIDE20_METRIC_ID,
     SLIDE20_PERIODO_FIN,
     SLIDE20_PERIODO_INICIO,
+    SLIDE21_METRIC_ID,
+    SLIDE21_TABLE_HEADERS,
 )
 from src.consejo.domain.entities import Bundle, DqsIssue, Metric, SourceManifest
 from src.consejo.domain.value_objects import (
@@ -2869,3 +2873,106 @@ class TestClearSheet:
     def test_clear_is_skipped_when_the_sheet_does_not_exist(self) -> None:
         """Una hoja que se va a crear no necesita limpieza."""
         assert _clear_sheet_if_exists("Datos", set(), sheet_id=7) == []
+
+
+class TestSlide21Block:
+    """Slide consolidada de pobreza: 12 grupos con cursos únicos."""
+
+    GRUPOS = [
+        ("Formación para mejorar tu vivienda", 19, 0, 19, 27302, 16644),
+        ("Desarrollo de habilidades digitales básicas", 21, 0, 21, 73790, 52901),
+        ("Alimentos desde casa, seguridad e higiene elemental", 22, 4, 26, 79233, 60992),
+        ("Formación para actuar ante desastres naturales", 10, 1, 11, 54586, 49185),
+        ("Actívate para encontrar empleo", 9, 0, 9, 32149, 24891),
+        ("Crea tu propio empleo", 26, 2, 28, 70250, 55144),
+        ("Servicios de limpieza y mantenimiento", 4, 1, 5, 2695, 2495),
+        ("Actividades agropecuarias", 1, 1, 2, 1002, 1002),
+        ("Servicios de alimentos y atención", 4, 0, 4, 6702, 6481),
+        ("Educación financiera básica", 3, 0, 3, 5712, 5361),
+        ("Servicios en transporte", 3, 0, 3, 2000, 1988),
+        ("Convivir mejor con otros", 8, 0, 8, 16778, 14265),
+    ]
+
+    def _manifest(self) -> SourceManifest:
+        return SourceManifest(
+            metric_id=MetricId("slide21_pobreza_consolidada"),
+            source=MetricSource.FACT_INSCRIPTION,
+            cut=Cut(date(2026, 10, 1)),
+            fetched_at=datetime(2026, 10, 1, 10, 0, 0, tzinfo=timezone.utc),
+            freshness_hours=0.5,
+            rows=tuple(
+                {
+                    "grupo": g, "value": v, "compartidos": c,
+                    "cursos_totales": t, "certificaciones": ce,
+                    "certificados": p, "periodo_inicio": "2025-09-01",
+                    "periodo_fin": "2026-10-01", "source": "fact_inscription",
+                }
+                for g, v, c, t, ce, p in self.GRUPOS
+            ),
+            status=FetchStatus.EXTRACTED,
+        )
+
+    def test_routes_to_its_own_block_not_slide2(self) -> None:
+        """La key debe rutear a su bloque, no al de slide 2.
+
+        'slide21_pobreza_consolidada'.startswith('slide2') es True, así que
+        sin una rama explícita ANTES del check de slide2 el bloque saldría
+        con el layout de 3 columnas Sector/Curso/Certificados y publicaría
+        basura en silencio. Mismo riesgo que slide12 contra slide1.
+        """
+        rows, _ = _build_slide_block(self._manifest(), 0)
+
+        cabecera = [
+            c["userEnteredValue"]["stringValue"] for c in rows[0]["values"]
+        ]
+        assert cabecera == SLIDE21_TABLE_HEADERS
+        assert cabecera != SLIDE2_TABLE_HEADERS
+
+    def test_block_rows_and_total(self) -> None:
+        """12 grupos + TOTAL, con las 4 columnas numéricas sumadas."""
+        rows, next_row = _build_slide21_block(self._manifest(), 0)
+
+        # header + 12 grupos + TOTAL
+        assert len(rows) == 14
+        assert next_row == 14
+
+        def cells(row):
+            return [c.get("userEnteredValue", {}) for c in row["values"]]
+
+        for i, (g, v, c, t, ce, p) in enumerate(self.GRUPOS, start=1):
+            vals = cells(rows[i])
+            assert vals[0]["stringValue"] == SLIDE21_METRIC_ID
+            assert vals[1]["stringValue"] == g
+            assert vals[2]["numberValue"] == v
+            assert vals[3]["numberValue"] == c
+            assert vals[4]["numberValue"] == t
+            assert vals[5]["numberValue"] == ce
+            assert vals[6]["numberValue"] == p
+
+        total = cells(rows[13])
+        assert total[1]["stringValue"] == "TOTAL"
+        # Las 4 columnas numéricas llevan =SUM sobre las filas de datos.
+        for col in (3, 4, 5, 6, 7):
+            if col - 1 < len(total):
+                v = total[col - 1]
+                if "formulaValue" in v:
+                    assert v["formulaValue"].startswith("=SUM(")
+
+    def test_totals_match_the_declared_arithmetic(self) -> None:
+        """130 únicos + 9 compartidos = 139, y la suma de personas infla.
+
+        El test no lo corrige: lo fija para que quede escrito que la columna
+        de personas NO es aditiva y que el 139 es el total del deck.
+        """
+        unicos = sum(g[1] for g in self.GRUPOS)
+        compartidos = sum(g[2] for g in self.GRUPOS)
+        totales = sum(g[3] for g in self.GRUPOS)
+
+        assert unicos == 130
+        assert compartidos == 9
+        assert totales == 139
+        assert unicos + compartidos == totales
+
+        # Certificaciones suman al total real medido; personas no.
+        assert sum(g[4] for g in self.GRUPOS) == 372199
+        assert sum(g[5] for g in self.GRUPOS) == 291349

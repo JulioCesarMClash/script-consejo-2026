@@ -22,9 +22,10 @@ def catalog_repo(sample_catalog_path: Path) -> YamlMetricRepo:
 class TestCatalogRepo:
     """Verifica la lectura del catálogo YAML real."""
 
-    def test_returns_20_metrics(self, catalog_repo: YamlMetricRepo) -> None:
+    def test_returns_all_catalog_metrics(self, catalog_repo: YamlMetricRepo) -> None:
+        """38 métricas: 37 más la slide consolidada de pobreza (2026-10-13)."""
         metrics = list(catalog_repo.list_metrics())
-        assert len(metrics) == 37
+        assert len(metrics) == 38
 
     def test_metrics_have_unique_keys(
         self, catalog_repo: YamlMetricRepo
@@ -128,14 +129,22 @@ class TestCatalogRepo:
             for m in metrics
             if m.source == MetricSource.FACT_INSCRIPTION
         ]
-        assert len(fact) == 29  # 17 + slide12 + 3 slide13 (insc,cert,cursos; usuarios ahora dim_user) + 1 slide15 + 4 slide19 + 3 slide20 (insc, personas, cursos_ofertados) + 1 slide4_aprende(PG)
+        # 17 + slide12 + 3 slide13 (insc, cert, cursos; usuarios ahora
+        # dim_user) + 1 slide15 + 4 slide19 + 3 slide20 (insc, personas,
+        # cursos_ofertados) + 1 slide4_aprende(PG) + la slide consolidada.
+        assert len(fact) == 30
 
     def test_platform_scope_cpe(
         self, catalog_repo: YamlMetricRepo
     ) -> None:
         metrics = list(catalog_repo.list_metrics())
         cpe = [m for m in metrics if "cpe" in m.platform_scope]
-        assert len(cpe) == 23  # 23 de 38 incluyen cpe; las 2 MySQL, 2 slide4, 4 slide13, slide15_vistas, registered_aprende y las 2 slide20 (scope=[aprende] desde 2026-08-19 tras la query buena sin filtro de platformId del curso) no
+        # 24 de 39 incluyen cpe. No lo incluyen: las 2 MySQL, 2 slide4, 4
+        # slide13, slide15_vistas, registered_aprende y las 3 slide20
+        # (scope=[aprende] desde 2026-08-19, tras la query buena sin filtro de
+        # platformId del curso). La slide consolidada sí, porque hereda el
+        # scope de slide1.
+        assert len(cpe) == 24
 
     def test_metric_has_db_mapping(
         self, catalog_repo: YamlMetricRepo
@@ -751,3 +760,132 @@ class TestCatalogRepo:
 
         assert "curso_ids_conteo" not in sql
         assert 'ANY(r.curso_ids)' in sql
+
+    # Los 12 grupos de la slide consolidada de pobreza, en el orden que el
+    # usuario fijó el 2026-10-12. (grupo, cursos únicos, compartidos).
+    # únicos = lo que mide la query; compartidos = lo que el deck suma encima.
+    SLIDE21_PLAN = [
+        ("Formación para mejorar tu vivienda", 19, 0),
+        ("Desarrollo de habilidades digitales básicas", 21, 0),
+        ("Alimentos desde casa, seguridad e higiene elemental", 22, 4),
+        ("Formación para actuar ante desastres naturales", 10, 1),
+        ("Actívate para encontrar empleo", 9, 0),
+        ("Crea tu propio empleo", 26, 2),
+        ("Servicios de limpieza y mantenimiento", 4, 1),
+        ("Actividades agropecuarias", 1, 1),
+        ("Servicios de alimentos y atención", 4, 0),
+        ("Educación financiera básica", 3, 0),
+        ("Servicios en transporte", 3, 0),
+        ("Convivir mejor con otros", 8, 0),
+    ]
+
+    @staticmethod
+    def _slide21_grupos(sql: str) -> list[tuple[int, str, list[int], int]]:
+        return [
+            (int(o), grupo, [int(i) for i in ids.replace("\n", "").split(",")], int(comp))
+            for o, grupo, ids, comp in re.findall(
+                r"\((\d+),\s*'([^']+)',\s*ARRAY\[([\d,\s]+)\]::bigint\[\],\s*(\d+)\)",
+                sql,
+            )
+        ]
+
+    def test_slide21_has_the_twelve_declared_groups(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Slide consolidada — 12 grupos, 130 cursos únicos, 9 compartidos.
+
+        Fusiona el universo de slides 1 y 2 repartiendo cada curso en UN solo
+        grupo, para que las cifras no se inflen por cursos duplicados. Los 9
+        que estaban en dos grupos los asignó el usuario el 2026-10-12.
+
+        El deck cuenta apariciones (139) y la query cuenta únicos (130); los
+        `compartidos` son la diferencia declarada, igual que en slide 12
+        (114 únicos + 14 = 128).
+        """
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "slide21_pobreza_consolidada"
+        )
+        grupos = self._slide21_grupos(metric.db_mapping)
+
+        assert [(g[1], len(g[2]), g[3]) for g in grupos] == self.SLIDE21_PLAN
+        assert [g[0] for g in grupos] == list(range(1, 13))
+        assert "ORDER BY g.orden" in metric.db_mapping
+
+    def test_slide21_assigns_each_course_to_one_group(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Ningún curso aparece en dos grupos: 130 sobre 130.
+
+        Es la invariante que da sentido a la slide. Si se rompe, las cifras
+        de personas y certificaciones vuelven a inflarse y el total deja de
+        ser auditable.
+        """
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "slide21_pobreza_consolidada"
+        )
+        grupos = self._slide21_grupos(metric.db_mapping)
+
+        por_curso: dict[int, set[str]] = {}
+        for _, grupo, ids, _c in grupos:
+            for i in ids:
+                por_curso.setdefault(i, set()).add(grupo)
+
+        assert sum(len(v) for v in por_curso.values()) == 130
+        assert len(por_curso) == 130
+        assert {c: g for c, g in por_curso.items() if len(g) > 1} == {}
+
+    def test_slide21_shared_courses_close_the_deck_total(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """130 únicos + 9 compartidos = 139, el total que publica el deck."""
+        metric = next(
+            m for m in catalog_repo.list_metrics()
+            if m.key == "slide21_pobreza_consolidada"
+        )
+        grupos = self._slide21_grupos(metric.db_mapping)
+
+        unicos = sum(len(g[2]) for g in grupos)
+        compartidos = sum(g[3] for g in grupos)
+
+        assert unicos == 130
+        assert compartidos == 9
+        assert unicos + compartidos == 139
+
+    def test_slide21_covers_the_universe_of_slides_1_and_2(
+        self, catalog_repo: YamlMetricRepo
+    ) -> None:
+        """Los 130 cursos son exactamente la unión de slides 1 y 2.
+
+        Si una de las dos slides cambia su lista, esta slide queda
+        desincronizada y el test lo marca. Es el único acoplamiento
+        deliberado: la slide consolidada no existe sin ellas.
+        """
+        metricas = {m.key: m.db_mapping for m in catalog_repo.list_metrics()}
+        c21 = {
+            i
+            for _, _, ids, _c in self._slide21_grupos(
+                metricas["slide21_pobreza_consolidada"]
+            )
+            for i in ids
+        }
+        c1 = {
+            int(i)
+            for ids in re.findall(
+                r"ARRAY\[([\d,\s]+)\]::bigint\[\]",
+                metricas["slide1_herramientas_pobreza"],
+            )
+            for i in ids.replace("\n", "").split(",")
+        }
+        c2 = {
+            int(i)
+            for ids, _ in re.findall(
+                r"IN \(([\d,\s]+)\) THEN '([^']+)'",
+                metricas["slide2_empleo_incluyente_por_sector"],
+            )
+            for i in ids.split(",")
+        }
+
+        assert c21 == c1 | c2
+        assert len(c21) == 130
