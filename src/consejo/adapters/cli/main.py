@@ -18,12 +18,14 @@ from typing import Optional
 
 import click
 
+from src.consejo.adapters.athena.source_conn import AthenaSourceConn
 from src.consejo.adapters.catalog.yaml_metric_repo import YamlMetricRepo
 from src.consejo.adapters.mysql.source_conn import MysqlSourceConn
 from src.consejo.adapters.postgres.source_conn import PostgresSourceConn
 from src.consejo.adapters.sheets.google_mcp_sheet_repo import (
     GoogleMcpSheetRepo,
 )
+from src.consejo.application.ports import SourceConn
 from src.consejo.application.use_cases.create_snapshot import (
     create_snapshot,
 )
@@ -41,6 +43,51 @@ def main() -> None:
     """Pipeline de snapshot — Consejo 2026."""
 
 
+# ── Selección de fuente de extracción ────────────────────────────────────────
+
+_SOURCE_CHOICES = ("postgres", "athena")
+
+
+def _source_option(fn):
+    """Decorador: agrega --source postgres|athena a un comando.
+
+    Default None: si no se pasa, se usa settings.source (SOURCE env),
+    que a su vez default a "postgres". El flag explícito tiene prioridad.
+    """
+    return click.option(
+        "--source",
+        "source",
+        type=click.Choice(_SOURCE_CHOICES),
+        default=None,
+        help="Fuente de extracción: postgres (default) o athena (Iceberg). "
+        "Sobrescribe SOURCE del entorno.",
+    )(fn)
+
+
+def _resolve_source(settings: Settings, source: Optional[str]) -> str:
+    """Resuelve la fuente efectiva: flag CLI > settings.source > postgres."""
+    effective = source or settings.source or "postgres"
+    if effective not in _SOURCE_CHOICES:
+        raise click.ClickException(
+            f"Fuente inválida '{effective}'. Opciones: "
+            f"{', '.join(_SOURCE_CHOICES)}."
+        )
+    return effective
+
+
+def _build_extract_conn(
+    settings: Settings, source: str
+) -> SourceConn:
+    """Construye el adaptador de extracción principal según la fuente.
+
+    Las métricas `db_source: mysql` siempre usan la conexión MySQL aparte
+    (el lake no las contiene); este adaptador cubre postgres/athena.
+    """
+    if source == "athena":
+        return AthenaSourceConn(settings)
+    return PostgresSourceConn(settings)
+
+
 @main.command()
 @click.option(
     "--cut",
@@ -48,13 +95,14 @@ def main() -> None:
     type=click.DateTime(formats=["%Y-%m-%d"]),
     help="Fecha de corte (YYYY-MM-DD).",
 )
+@_source_option
 @click.option(
     "--dry-run",
     is_flag=True,
     default=False,
     help="Emitir manifiestos por stdout sin DB.",
 )
-def extract(cut: datetime, dry_run: bool) -> None:
+def extract(cut: datetime, source: Optional[str], dry_run: bool) -> None:
     """Extrae métricas del catálogo y emite manifiestos JSON."""
     cut_date: Date = cut.date()
     fetched_at = datetime.now(timezone.utc)
@@ -62,14 +110,17 @@ def extract(cut: datetime, dry_run: bool) -> None:
     attempt_id = AttemptId.generate()
 
     settings = Settings()
+    effective_source = _resolve_source(settings, source)
     metric_repo = YamlMetricRepo(settings.catalog_path)
-    pg_conn = PostgresSourceConn(settings)
+    extract_conn = _build_extract_conn(settings, effective_source)
     mysql_conn = MysqlSourceConn(settings)
+
+    click.echo(f"# Fuente de extracción: {effective_source}", err=True)
 
     try:
         manifests = extract_data(
             metric_repo=metric_repo,
-            source_conn=pg_conn,
+            source_conn=extract_conn,
             run_id=run_id,
             attempt_id=attempt_id,
             cut=cut_date,
@@ -79,6 +130,7 @@ def extract(cut: datetime, dry_run: bool) -> None:
                 "period_end": settings.certificate_period_end.isoformat(),
             },
             mysql_conn=mysql_conn,
+            source=effective_source,
         )
     except ConnectionError as e:
         if dry_run:

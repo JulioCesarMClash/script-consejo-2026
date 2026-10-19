@@ -18,6 +18,9 @@ metrics:
   db_mapping: 'SELECT COUNT(DISTINCT "userId") FROM dim_user WHERE "plataformaId" = 1
 
     '
+  athena_mapping: 'SELECT COUNT(DISTINCT user_id) AS value FROM dim_user WHERE plataforma_id = 1
+
+    '
   caveats: []
 - key: registered_aprende
   name: Registrados Aprende
@@ -82,6 +85,7 @@ metrics:
     = fi."userId" WHERE c."platformId" = 1 AND du."plataformaId" = 1
 
     '
+  athena_mapping: "SELECT COUNT(*) AS value FROM fact_inscription fi\n  JOIN course c ON c.course_id = fi.course_id\n  JOIN dim_user du ON du.user_id = fi.user_id\n  WHERE c.platform_id = 1 AND du.plataforma_id = 1\n"
   caveats:
   - No usa tablas agregadas (agg_*). Consulta directa a fact_inscription.
   - 'Particionada por plataforma de usuario: inscriptions_cpe_total = inscriptions_cpe + inscriptions_cpe_from_aprende.'
@@ -310,6 +314,41 @@ metrics:
     \ < %(period_end)s\n           AND u.\"plataformaId\" IN (1,2)\n           AND l.\"countryName\" = 'México'\n        )\
     \ AS certificados,\n       %(period_start)s AS periodo_inicio,\n       %(period_end)s AS periodo_fin\nFROM categorias\
     \ c ORDER BY c.orden\n"
+  athena_mapping: |
+    WITH categorias AS (
+      SELECT * FROM (VALUES
+      (1, 'slide1_vivienda',
+       ARRAY[9,187,4,389,390,367,11,205,206,30,140,23,29,24,12,100157,244,240,27], 0),
+      (2, 'slide1_digital',
+       ARRAY[254,399,213,258,285,379,43,321,374,375,100002,100006,394,380,100003,345,100897,368,372,100129,373], 0),
+      (3, 'slide1_alimentos',
+       ARRAY[33,241,282,410,103,145,242,362,382,128,129,130,141,347,89,291,100147,100322,142,299,348,364,100900,100861,100918,100214], 0),
+      (4, 'slide1_desastres',
+       ARRAY[57,95,120,276,281,314,342,354,387,393,100098], 0),
+      (5, 'slide1_autoempleo',
+       ARRAY[93,156,157,158,100092,100149,159,167,169,100105,106,107,117,153,100074,118,234,301,100101,100310,100320,143,170,320,343,358,100327,77], 0),
+      (6, 'slide1_buscar_trabajo',
+       ARRAY[100919,100928,228,100853,216,227,67,212,100059], 0)
+    ) AS RECORDS(orden, metric_id, categoria_ids, compartidos) )
+    SELECT c.metric_id,
+           'fact_inscription' AS source,
+           cardinality(c.categoria_ids) AS value,
+           c.compartidos,
+           cardinality(c.categoria_ids) + c.compartidos AS cursos_totales,
+           (SELECT COUNT(DISTINCT fi.user_id)
+             FROM fact_inscription fi
+             JOIN dim_user u ON u.user_id = fi.user_id
+             JOIN dim_local l ON l.country_id = u.country_id
+             WHERE contains(c.categoria_ids, fi.course_id)
+               AND fi.advance = 100
+               AND fi.certification_date >= date(%(period_start)s)
+               AND fi.certification_date < date(%(period_end)s)
+               AND u.plataforma_id IN (1,2)
+               AND l.country_name = 'México'
+            ) AS certificados,
+           %(period_start)s AS periodo_inicio,
+           %(period_end)s AS periodo_fin
+    FROM categorias c ORDER BY c.orden
   caveats:
   - 'Distribución declarada por el usuario el 2026-10-06: 6 categorías y 113 cursos. Etiquetas del deck por clave: slide1_vivienda
     = "Formación para mejorar tu vivienda" (19); slide1_digital = "Desarrollo de habilidades digitales básicas" (21); slide1_alimentos
@@ -762,6 +801,33 @@ metrics:
     courseId\"\n  WHERE fi.advance = 100\n    AND fi.\"certificationDate\" >= %(period_start)s\n    AND fi.\"certificationDate\"\
     \ <= %(period_end)s\n    AND u.\"plataformaId\" IN (1,2)\n    AND l.\"countryName\" = 'México'\n) detalle WHERE grupo\
     \ IS NOT NULL GROUP BY grupo, curso ORDER BY grupo, curso ASC\n"
+  athena_mapping: |
+    SELECT grupo, curso, COUNT(DISTINCT user_id) AS value,
+           %(period_start)s AS periodo_inicio,
+           %(period_end)s AS periodo_fin,
+           'fact_inscription' AS source
+    FROM (
+      SELECT fi.user_id, c.name AS curso,
+        CASE
+          WHEN fi.course_id IN (9,187,4,367,205,206,11,30,23,29,24,12) THEN 'Construcción y mantenimiento'
+          WHEN fi.course_id IN (6,57,8,100214,128) THEN 'Limpieza y mantenimiento'
+          WHEN fi.course_id IN (77,100310,41) THEN 'Servicios en transporte'
+          WHEN fi.course_id IN (39,5,38,58) THEN 'Alimentos y atención'
+          WHEN fi.course_id IN (52,33) THEN 'Actividades agropecuarias'
+          WHEN fi.course_id IN (100322,100128,100325) THEN 'Educación financiera'
+          WHEN fi.course_id IN (100330,100380,100381,305,100070,100063,299,348) THEN 'Convive mejor con otros'
+          ELSE NULL
+        END AS grupo
+      FROM fact_inscription fi
+      JOIN dim_user u ON u.user_id = fi.user_id
+      JOIN dim_local l ON l.country_id = u.country_id
+      JOIN course c ON c.course_id = fi.course_id
+      WHERE fi.advance = 100
+        AND fi.certification_date >= date(%(period_start)s)
+        AND fi.certification_date <= date(%(period_end)s)
+        AND u.plataforma_id IN (1,2)
+        AND l.country_name = 'México'
+    ) detalle WHERE grupo IS NOT NULL GROUP BY grupo, curso ORDER BY grupo, curso ASC
   caveats:
   - 'Grano por curso: una persona en dos cursos del mismo sector cuenta en ambos.'
   - 'Regla certificación: advance = 100 AND certificationDate IS NOT NULL.'
