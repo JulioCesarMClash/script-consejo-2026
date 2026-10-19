@@ -64,6 +64,7 @@ def _parse_metric(raw: dict) -> Metric:
         platform_scope=platform_scope,
         grain=grain,
         db_source=raw.get("db_source", "postgres"),
+        athena_mapping=raw.get("athena_mapping", ""),
     )
 
 

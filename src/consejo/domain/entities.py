@@ -44,6 +44,11 @@ class Metric:
     platform_scope: list[str] = field(default_factory=list)
     grain: str = ""
     db_source: str = "postgres"
+    # SQL en dialecto Trino/Athena para la fuente Iceberg (S3 Tables).
+    # Paralelo a db_mapping (PostgreSQL) para no perder el SQL validado de
+    # PG: --source postgres usa db_mapping, --source athena usa athena_mapping.
+    # Vacío = métrica aún no traducida a Athena (el extractor la marca EMPTY).
+    athena_mapping: str = ""
 
     def __post_init__(self) -> None:
         if not self.name or not self.name.strip():
