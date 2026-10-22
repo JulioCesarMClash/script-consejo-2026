@@ -30,6 +30,7 @@ from src.consejo.application.use_cases.create_snapshot import (
     create_snapshot,
 )
 from src.consejo.application.use_cases.extract_data import extract_data
+from src.consejo.application.use_cases.reconcile import reconcile
 from src.consejo.application.use_cases.validate_bundle import (
     DqsBlockedError,
     validate_bundle,
@@ -382,7 +383,99 @@ def pipeline(cut: datetime, spreadsheet_id: str, dry_run: bool) -> None:
     click.echo(f"Pipeline completo. Hash: {bundle.hash}")
 
 
+@main.command(name="reconcile")
+@click.option(
+    "--cut",
+    required=True,
+    type=click.DateTime(formats=["%Y-%m-%d"]),
+    help="Fecha de corte (YYYY-MM-DD).",
+)
+@click.option(
+    "--tolerance-abs",
+    type=float,
+    default=0.0,
+    help="Diferencia absoluta tolerada antes de BLOCK (default 0 = exacto).",
+)
+@click.option(
+    "--tolerance-pct",
+    type=float,
+    default=0.0,
+    help="Diferencia porcentual tolerada (0..100) antes de BLOCK.",
+)
+@click.option(
+    "--only",
+    "only",
+    multiple=True,
+    help="Reconciliar solo estas keys (repetible). Vacío = todas las "
+    "métricas traducidas.",
+)
+def reconcile_cmd(
+    cut: datetime,
+    tolerance_abs: float,
+    tolerance_pct: float,
+    only: tuple[str, ...],
+) -> None:
+    """Reconcilia PostgreSQL vs Athena métrica por métrica.
+
+    Corre cada métrica traducida (athena_mapping no vacío) contra ambas
+    fuentes con los mismos parámetros y compara el valor agregado.
+    Si alguna diferencia queda fuera de tolerancia, el comando termina con
+    exit code 1 (BLOCK): el corte a Athena NO procede.
+    """
+    cut_date: Date = cut.date()
+    settings = Settings()
+    metric_repo = YamlMetricRepo(settings.catalog_path)
+    pg_conn = PostgresSourceConn(settings)
+    athena_conn = AthenaSourceConn(settings)
+
+    report = reconcile(
+        metric_repo=metric_repo,
+        pg_conn=pg_conn,
+        athena_conn=athena_conn,
+        cut=cut_date,
+        query_params={
+            "period_start": settings.certificate_period_start.isoformat(),
+            "period_end": settings.certificate_period_end.isoformat(),
+        },
+        tolerance_abs=tolerance_abs,
+        tolerance_pct=tolerance_pct,
+        only_keys=list(only) or None,
+    )
+
+    _print_reconcile_table(report)
+
+    counts = report.counts
+    click.echo(
+        f"\nResumen: {counts['OK']} OK · {counts['WARN']} WARN · "
+        f"{counts['BLOCK']} BLOCK",
+        err=True,
+    )
+    if report.blocked:
+        raise click.ClickException(
+            "Reconciliación BLOQUEADA: hay diferencias fuera de tolerancia. "
+            "El corte a Athena no procede hasta resolverlas."
+        )
+    click.echo("Reconciliación OK: Athena coincide con PG dentro de tolerancia.",
+               err=True)
+
+
 # ── Helpers ─────────────────────────────────────────────────────────────────
+
+
+def _print_reconcile_table(report) -> None:
+    """Imprime la tabla comparativa PG vs Athena por stdout."""
+    header = f"{'MÉTRICA':<42} {'PG':>14} {'ATHENA':>14} {'DIFF':>12} {'%':>8}  ESTADO"
+    click.echo(header)
+    click.echo("-" * len(header))
+    for r in report.rows:
+        pg = f"{r.pg_value:,.0f}" if r.pg_value is not None else "—"
+        ath = f"{r.athena_value:,.0f}" if r.athena_value is not None else "—"
+        diff = f"{r.diff_abs:,.0f}" if r.diff_abs is not None else "—"
+        pct = f"{r.diff_pct:.2f}" if r.diff_pct is not None else "—"
+        line = f"{r.metric_key:<42} {pg:>14} {ath:>14} {diff:>12} {pct:>8}  {r.status}"
+        click.echo(line)
+        if r.detail:
+            click.echo(f"    ↳ {r.detail}")
 
 
 def _serialize_manifests(

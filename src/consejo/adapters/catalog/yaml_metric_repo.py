@@ -65,6 +65,7 @@ def _parse_metric(raw: dict) -> Metric:
         grain=grain,
         db_source=raw.get("db_source", "postgres"),
         athena_mapping=raw.get("athena_mapping", ""),
+        reconcile_column=raw.get("reconcile_column", "value"),
     )
 
 

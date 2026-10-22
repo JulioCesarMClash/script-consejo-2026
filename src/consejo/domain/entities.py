@@ -49,6 +49,11 @@ class Metric:
     # PG: --source postgres usa db_mapping, --source athena usa athena_mapping.
     # Vacío = métrica aún no traducida a Athena (el extractor la marca EMPTY).
     athena_mapping: str = ""
+    # Columna numérica que la reconciliación agrega y compara entre PG y
+    # Athena. Default "value". Para slides multi-columna (slide1 expone
+    # cursos en 'value' y personas en 'certificados') se apunta a la columna
+    # que representa la métrica real a reconciliar.
+    reconcile_column: str = "value"
 
     def __post_init__(self) -> None:
         if not self.name or not self.name.strip():
