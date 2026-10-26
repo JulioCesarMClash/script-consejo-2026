@@ -18,7 +18,18 @@ metrics:
   db_mapping: 'SELECT COUNT(DISTINCT "userId") FROM dim_user WHERE "plataformaId" = 1
 
     '
-  caveats: []
+  athena_mapping: |
+    SELECT COUNT(DISTINCT user_id) AS value FROM (
+      SELECT userid AS user_id FROM reportado_cpe_202609.dim_user
+      WHERE plataformaid = 1
+        AND (registrationdate < TIMESTAMP '2026-10-01 00:00:00' OR registrationdate IS NULL)
+      UNION ALL
+      SELECT user_id FROM silver_cpe.dim_user
+      WHERE plataforma_id = 1
+        AND registration_date >= TIMESTAMP '2026-10-01 00:00:00'
+    ) u
+  caveats:
+  - 'Athena: registros con alta < 2026-10-01 salen de la copia congelada de PG (reportado_cpe_202609, cifras ya reportadas); desde 2026-10-01 salen de silver_cpe (vivo).'
 - key: registered_aprende
   name: Registrados Aprende
   description: Usuarios que generaron una cuenta con correo en la plataforma Aprende.
@@ -82,7 +93,22 @@ metrics:
     = fi."userId" WHERE c."platformId" = 1 AND du."plataformaId" = 1
 
     '
+  athena_mapping: |
+    SELECT SUM(n) AS value FROM (
+      SELECT COUNT(*) AS n FROM reportado_cpe_202609.fact_inscription fi
+        JOIN reportado_cpe_202609.course c ON c.id = fi.courseid
+        JOIN reportado_cpe_202609.dim_user du ON du.userid = fi.userid
+        WHERE c.platformid = 1 AND du.plataformaid = 1
+          AND (fi.inscripciondate < TIMESTAMP '2026-10-01 00:00:00' OR fi.inscripciondate IS NULL)
+      UNION ALL
+      SELECT COUNT(*) AS n FROM silver_cpe.fact_inscription fi
+        JOIN silver_cpe.course c ON c.course_id = fi.course_id
+        JOIN silver_cpe.dim_user du ON du.user_id = fi.user_id
+        WHERE c.platform_id = 1 AND du.plataforma_id = 1
+          AND fi.inscripcion_date >= TIMESTAMP '2026-10-01 00:00:00'
+    ) t
   caveats:
+  - 'Athena: inscripciones con fecha < 2026-10-01 salen de la copia congelada de PG (reportado_cpe_202609, cifras ya reportadas); desde 2026-10-01 salen de silver_cpe (vivo).'
   - No usa tablas agregadas (agg_*). Consulta directa a fact_inscription.
   - 'Particionada por plataforma de usuario: inscriptions_cpe_total = inscriptions_cpe + inscriptions_cpe_from_aprende.'
 - key: inscriptions_cpe_from_aprende
@@ -296,6 +322,7 @@ metrics:
   platform_scope: &id001
   - cpe
   - aprende
+  reconcile_column: certificados
   db_mapping: "WITH categorias AS (\n  SELECT * FROM (VALUES\n  (1, 'slide1_vivienda',\n   ARRAY[9,187,4,389,390,367,11,205,206,30,140,23,29,24,12,100157,244,240,27]::bigint[],\
     \ 0),\n  (2, 'slide1_digital',\n   ARRAY[254,399,213,258,285,379,43,321,374,375,100002,100006,394,380,100003,345,100897,368,372,100129,373]::bigint[],\
     \ 0),\n  (3, 'slide1_alimentos',\n   ARRAY[33,241,282,410,103,145,242,362,382,128,129,130,141,347,89,291,100147,100322,142,299,348,364,100900,100861,100918,100214]::bigint[],\
@@ -310,7 +337,56 @@ metrics:
     \ < %(period_end)s\n           AND u.\"plataformaId\" IN (1,2)\n           AND l.\"countryName\" = 'México'\n        )\
     \ AS certificados,\n       %(period_start)s AS periodo_inicio,\n       %(period_end)s AS periodo_fin\nFROM categorias\
     \ c ORDER BY c.orden\n"
+  athena_mapping: |
+    WITH categorias AS (
+      SELECT * FROM (VALUES
+      (1, 'slide1_vivienda',
+       ARRAY[9,187,4,389,390,367,11,205,206,30,140,23,29,24,12,100157,244,240,27], 0),
+      (2, 'slide1_digital',
+       ARRAY[254,399,213,258,285,379,43,321,374,375,100002,100006,394,380,100003,345,100897,368,372,100129,373], 0),
+      (3, 'slide1_alimentos',
+       ARRAY[33,241,282,410,103,145,242,362,382,128,129,130,141,347,89,291,100147,100322,142,299,348,364,100900,100861,100918,100214], 0),
+      (4, 'slide1_desastres',
+       ARRAY[57,95,120,276,281,314,342,354,387,393,100098], 0),
+      (5, 'slide1_autoempleo',
+       ARRAY[93,156,157,158,100092,100149,159,167,169,100105,106,107,117,153,100074,118,234,301,100101,100310,100320,143,170,320,343,358,100327,77], 0),
+      (6, 'slide1_buscar_trabajo',
+       ARRAY[100919,100928,228,100853,216,227,67,212,100059], 0)
+    ) AS RECORDS(orden, metric_id, categoria_ids, compartidos) ),
+    certs AS (
+      SELECT f.userid AS user_id, f.courseid AS course_id
+      FROM reportado_cpe_202609.fact_inscription f
+      JOIN reportado_cpe_202609.dim_user u ON u.userid = f.userid
+      JOIN reportado_cpe_202609.dim_local l ON l.localid = u.localid
+      WHERE f.advance = 100
+        AND f.certificationdate >= CAST(%(period_start)s AS timestamp)
+        AND f.certificationdate < CAST(%(period_end)s AS timestamp)
+        AND f.certificationdate < TIMESTAMP '2026-10-01 00:00:00'
+        AND u.plataformaid IN (1,2)
+        AND l.countryname = 'México'
+      UNION ALL
+      SELECT f.user_id, f.course_id
+      FROM silver_cpe.fact_inscription f
+      JOIN silver_cpe.dim_user u ON u.user_id = f.user_id
+      WHERE f.advance = 100
+        AND f.certification_date >= CAST(%(period_start)s AS timestamp)
+        AND f.certification_date < CAST(%(period_end)s AS timestamp)
+        AND f.certification_date >= TIMESTAMP '2026-10-01 00:00:00'
+        AND u.plataforma_id IN (1,2)
+        AND u.country_id = 'MX'
+    )
+    SELECT c.metric_id,
+           'fact_inscription' AS source,
+           cardinality(c.categoria_ids) AS value,
+           c.compartidos,
+           cardinality(c.categoria_ids) + c.compartidos AS cursos_totales,
+           (SELECT COUNT(DISTINCT x.user_id) FROM certs x
+             WHERE contains(c.categoria_ids, x.course_id)) AS certificados,
+           %(period_start)s AS periodo_inicio,
+           %(period_end)s AS periodo_fin
+    FROM categorias c ORDER BY c.orden
   caveats:
+  - 'Athena: certificados con fecha < 2026-10-01 salen de la copia congelada de PG (reportado_cpe_202609, México por dim_local.countryName como PG); desde 2026-10-01 salen de silver_cpe (vivo, México por country_id = MX).'
   - 'Distribución declarada por el usuario el 2026-10-06: 6 categorías y 113 cursos. Etiquetas del deck por clave: slide1_vivienda
     = "Formación para mejorar tu vivienda" (19); slide1_digital = "Desarrollo de habilidades digitales básicas" (21); slide1_alimentos
     = "Alimentos desde casa, seguridad e higiene elemental" (26); slide1_desastres = "Formación para actuar ante desastres
@@ -762,7 +838,50 @@ metrics:
     courseId\"\n  WHERE fi.advance = 100\n    AND fi.\"certificationDate\" >= %(period_start)s\n    AND fi.\"certificationDate\"\
     \ <= %(period_end)s\n    AND u.\"plataformaId\" IN (1,2)\n    AND l.\"countryName\" = 'México'\n) detalle WHERE grupo\
     \ IS NOT NULL GROUP BY grupo, curso ORDER BY grupo, curso ASC\n"
+  athena_mapping: |
+    SELECT grupo, curso, COUNT(DISTINCT user_id) AS value,
+           %(period_start)s AS periodo_inicio,
+           %(period_end)s AS periodo_fin,
+           'fact_inscription' AS source
+    FROM (
+      SELECT certs.user_id, certs.curso,
+        CASE
+          WHEN certs.course_id IN (9,187,4,367,205,206,11,30,23,29,24,12) THEN 'Construcción y mantenimiento'
+          WHEN certs.course_id IN (6,57,8,100214,128) THEN 'Limpieza y mantenimiento'
+          WHEN certs.course_id IN (77,100310,41) THEN 'Servicios en transporte'
+          WHEN certs.course_id IN (39,5,38,58) THEN 'Alimentos y atención'
+          WHEN certs.course_id IN (52,33) THEN 'Actividades agropecuarias'
+          WHEN certs.course_id IN (100322,100128,100325) THEN 'Educación financiera'
+          WHEN certs.course_id IN (100330,100380,100381,305,100070,100063,299,348) THEN 'Convive mejor con otros'
+          ELSE NULL
+        END AS grupo
+      FROM (
+        SELECT f.userid AS user_id, f.courseid AS course_id, c.name AS curso
+        FROM reportado_cpe_202609.fact_inscription f
+        JOIN reportado_cpe_202609.dim_user u ON u.userid = f.userid
+        JOIN reportado_cpe_202609.dim_local l ON l.localid = u.localid
+        JOIN reportado_cpe_202609.course c ON c.id = f.courseid
+        WHERE f.advance = 100
+          AND f.certificationdate >= CAST(%(period_start)s AS timestamp)
+          AND f.certificationdate <= CAST(%(period_end)s AS timestamp)
+          AND f.certificationdate < TIMESTAMP '2026-10-01 00:00:00'
+          AND u.plataformaid IN (1,2)
+          AND l.countryname = 'México'
+        UNION ALL
+        SELECT f.user_id, f.course_id, c.name AS curso
+        FROM silver_cpe.fact_inscription f
+        JOIN silver_cpe.dim_user u ON u.user_id = f.user_id
+        JOIN silver_cpe.course c ON c.course_id = f.course_id
+        WHERE f.advance = 100
+          AND f.certification_date >= CAST(%(period_start)s AS timestamp)
+          AND f.certification_date <= CAST(%(period_end)s AS timestamp)
+          AND f.certification_date >= TIMESTAMP '2026-10-01 00:00:00'
+          AND u.plataforma_id IN (1,2)
+          AND u.country_id = 'MX'
+      ) certs
+    ) detalle WHERE grupo IS NOT NULL GROUP BY grupo, curso ORDER BY grupo, curso ASC
   caveats:
+  - 'Athena: certificados con fecha < 2026-10-01 salen de la copia congelada de PG (reportado_cpe_202609, México por dim_local.countryName como PG); desde 2026-10-01 salen de silver_cpe (vivo, México por country_id = MX).'
   - 'Grano por curso: una persona en dos cursos del mismo sector cuenta en ambos.'
   - 'Regla certificación: advance = 100 AND certificationDate IS NOT NULL.'
   - 'Límite superior del período: INCLUSIVO (<=) para coincidir con Perfiles_Femeninos.sql original.'

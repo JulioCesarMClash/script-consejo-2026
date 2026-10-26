@@ -18,16 +18,19 @@ from typing import Optional
 
 import click
 
+from src.consejo.adapters.athena.source_conn import AthenaSourceConn
 from src.consejo.adapters.catalog.yaml_metric_repo import YamlMetricRepo
 from src.consejo.adapters.mysql.source_conn import MysqlSourceConn
 from src.consejo.adapters.postgres.source_conn import PostgresSourceConn
 from src.consejo.adapters.sheets.google_mcp_sheet_repo import (
     GoogleMcpSheetRepo,
 )
+from src.consejo.application.ports import SourceConn
 from src.consejo.application.use_cases.create_snapshot import (
     create_snapshot,
 )
 from src.consejo.application.use_cases.extract_data import extract_data
+from src.consejo.application.use_cases.reconcile import reconcile
 from src.consejo.application.use_cases.validate_bundle import (
     DqsBlockedError,
     validate_bundle,
@@ -41,6 +44,51 @@ def main() -> None:
     """Pipeline de snapshot — Consejo 2026."""
 
 
+# ── Selección de fuente de extracción ────────────────────────────────────────
+
+_SOURCE_CHOICES = ("postgres", "athena")
+
+
+def _source_option(fn):
+    """Decorador: agrega --source postgres|athena a un comando.
+
+    Default None: si no se pasa, se usa settings.source (SOURCE env),
+    que a su vez default a "postgres". El flag explícito tiene prioridad.
+    """
+    return click.option(
+        "--source",
+        "source",
+        type=click.Choice(_SOURCE_CHOICES),
+        default=None,
+        help="Fuente de extracción: postgres (default) o athena (Iceberg). "
+        "Sobrescribe SOURCE del entorno.",
+    )(fn)
+
+
+def _resolve_source(settings: Settings, source: Optional[str]) -> str:
+    """Resuelve la fuente efectiva: flag CLI > settings.source > postgres."""
+    effective = source or settings.source or "postgres"
+    if effective not in _SOURCE_CHOICES:
+        raise click.ClickException(
+            f"Fuente inválida '{effective}'. Opciones: "
+            f"{', '.join(_SOURCE_CHOICES)}."
+        )
+    return effective
+
+
+def _build_extract_conn(
+    settings: Settings, source: str
+) -> SourceConn:
+    """Construye el adaptador de extracción principal según la fuente.
+
+    Las métricas `db_source: mysql` siempre usan la conexión MySQL aparte
+    (el lake no las contiene); este adaptador cubre postgres/athena.
+    """
+    if source == "athena":
+        return AthenaSourceConn(settings)
+    return PostgresSourceConn(settings)
+
+
 @main.command()
 @click.option(
     "--cut",
@@ -48,13 +96,14 @@ def main() -> None:
     type=click.DateTime(formats=["%Y-%m-%d"]),
     help="Fecha de corte (YYYY-MM-DD).",
 )
+@_source_option
 @click.option(
     "--dry-run",
     is_flag=True,
     default=False,
     help="Emitir manifiestos por stdout sin DB.",
 )
-def extract(cut: datetime, dry_run: bool) -> None:
+def extract(cut: datetime, source: Optional[str], dry_run: bool) -> None:
     """Extrae métricas del catálogo y emite manifiestos JSON."""
     cut_date: Date = cut.date()
     fetched_at = datetime.now(timezone.utc)
@@ -62,14 +111,17 @@ def extract(cut: datetime, dry_run: bool) -> None:
     attempt_id = AttemptId.generate()
 
     settings = Settings()
+    effective_source = _resolve_source(settings, source)
     metric_repo = YamlMetricRepo(settings.catalog_path)
-    pg_conn = PostgresSourceConn(settings)
+    extract_conn = _build_extract_conn(settings, effective_source)
     mysql_conn = MysqlSourceConn(settings)
+
+    click.echo(f"# Fuente de extracción: {effective_source}", err=True)
 
     try:
         manifests = extract_data(
             metric_repo=metric_repo,
-            source_conn=pg_conn,
+            source_conn=extract_conn,
             run_id=run_id,
             attempt_id=attempt_id,
             cut=cut_date,
@@ -79,6 +131,7 @@ def extract(cut: datetime, dry_run: bool) -> None:
                 "period_end": settings.certificate_period_end.isoformat(),
             },
             mysql_conn=mysql_conn,
+            source=effective_source,
         )
     except ConnectionError as e:
         if dry_run:
@@ -330,7 +383,99 @@ def pipeline(cut: datetime, spreadsheet_id: str, dry_run: bool) -> None:
     click.echo(f"Pipeline completo. Hash: {bundle.hash}")
 
 
+@main.command(name="reconcile")
+@click.option(
+    "--cut",
+    required=True,
+    type=click.DateTime(formats=["%Y-%m-%d"]),
+    help="Fecha de corte (YYYY-MM-DD).",
+)
+@click.option(
+    "--tolerance-abs",
+    type=float,
+    default=0.0,
+    help="Diferencia absoluta tolerada antes de BLOCK (default 0 = exacto).",
+)
+@click.option(
+    "--tolerance-pct",
+    type=float,
+    default=0.0,
+    help="Diferencia porcentual tolerada (0..100) antes de BLOCK.",
+)
+@click.option(
+    "--only",
+    "only",
+    multiple=True,
+    help="Reconciliar solo estas keys (repetible). Vacío = todas las "
+    "métricas traducidas.",
+)
+def reconcile_cmd(
+    cut: datetime,
+    tolerance_abs: float,
+    tolerance_pct: float,
+    only: tuple[str, ...],
+) -> None:
+    """Reconcilia PostgreSQL vs Athena métrica por métrica.
+
+    Corre cada métrica traducida (athena_mapping no vacío) contra ambas
+    fuentes con los mismos parámetros y compara el valor agregado.
+    Si alguna diferencia queda fuera de tolerancia, el comando termina con
+    exit code 1 (BLOCK): el corte a Athena NO procede.
+    """
+    cut_date: Date = cut.date()
+    settings = Settings()
+    metric_repo = YamlMetricRepo(settings.catalog_path)
+    pg_conn = PostgresSourceConn(settings)
+    athena_conn = AthenaSourceConn(settings)
+
+    report = reconcile(
+        metric_repo=metric_repo,
+        pg_conn=pg_conn,
+        athena_conn=athena_conn,
+        cut=cut_date,
+        query_params={
+            "period_start": settings.certificate_period_start.isoformat(),
+            "period_end": settings.certificate_period_end.isoformat(),
+        },
+        tolerance_abs=tolerance_abs,
+        tolerance_pct=tolerance_pct,
+        only_keys=list(only) or None,
+    )
+
+    _print_reconcile_table(report)
+
+    counts = report.counts
+    click.echo(
+        f"\nResumen: {counts['OK']} OK · {counts['WARN']} WARN · "
+        f"{counts['BLOCK']} BLOCK",
+        err=True,
+    )
+    if report.blocked:
+        raise click.ClickException(
+            "Reconciliación BLOQUEADA: hay diferencias fuera de tolerancia. "
+            "El corte a Athena no procede hasta resolverlas."
+        )
+    click.echo("Reconciliación OK: Athena coincide con PG dentro de tolerancia.",
+               err=True)
+
+
 # ── Helpers ─────────────────────────────────────────────────────────────────
+
+
+def _print_reconcile_table(report) -> None:
+    """Imprime la tabla comparativa PG vs Athena por stdout."""
+    header = f"{'MÉTRICA':<42} {'PG':>14} {'ATHENA':>14} {'DIFF':>12} {'%':>8}  ESTADO"
+    click.echo(header)
+    click.echo("-" * len(header))
+    for r in report.rows:
+        pg = f"{r.pg_value:,.0f}" if r.pg_value is not None else "—"
+        ath = f"{r.athena_value:,.0f}" if r.athena_value is not None else "—"
+        diff = f"{r.diff_abs:,.0f}" if r.diff_abs is not None else "—"
+        pct = f"{r.diff_pct:.2f}" if r.diff_pct is not None else "—"
+        line = f"{r.metric_key:<42} {pg:>14} {ath:>14} {diff:>12} {pct:>8}  {r.status}"
+        click.echo(line)
+        if r.detail:
+            click.echo(f"    ↳ {r.detail}")
 
 
 def _serialize_manifests(

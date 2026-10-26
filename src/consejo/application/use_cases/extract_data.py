@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Mapping, Sequence
 
 from src.consejo.application.ports import MetricRepo, SourceConn
-from src.consejo.domain.entities import SourceManifest
+from src.consejo.domain.entities import Metric, SourceManifest
 from src.consejo.domain.value_objects import (
     AttemptId,
     Cut,
@@ -57,6 +57,7 @@ def extract_data(
     fetched_at: datetime | None = None,
     query_params: Mapping[str, object] | None = None,
     mysql_conn: SourceConn | None = None,
+    source: str = "postgres",
 ) -> list[SourceManifest]:
     """Extracts metrics from the catalog and builds traceable manifests.
 
@@ -112,7 +113,7 @@ def extract_data(
             )
             continue
 
-        db_mapping = metric.db_mapping.strip()
+        db_mapping = _select_mapping(metric, source)
 
         if not _is_executable_sql(db_mapping):
             by_key[metric.key] = _build_manifest(
@@ -205,6 +206,22 @@ def _is_executable_sql(db_mapping: str) -> bool:
     """
     stripped = db_mapping.upper().strip()
     return stripped.startswith("SELECT") or stripped.startswith("WITH")
+
+
+def _select_mapping(metric: Metric, source: str) -> str:
+    """Elige el SQL a ejecutar según la fuente activa y el `db_source`.
+
+    - Fuente activa "athena" + métrica `db_source: postgres` (o default):
+      usa `athena_mapping` (dialecto Trino). Si está vacío (métrica aún no
+      traducida), devuelve "" → el extractor la marca EMPTY sin ejecutar.
+    - Métrica `db_source: mysql`: SIEMPRE usa `db_mapping`, porque el lake
+      Iceberg no contiene las DBs MySQL temporales (carso/academica). Estas
+      métricas se ejecutan contra MySQL independientemente de la fuente.
+    - Fuente activa "postgres": usa `db_mapping` (PostgreSQL), sin cambios.
+    """
+    if source == "athena" and metric.db_source != "mysql":
+        return metric.athena_mapping.strip()
+    return metric.db_mapping.strip()
 
 
 def _select_conn(

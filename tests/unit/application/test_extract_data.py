@@ -11,6 +11,7 @@ from src.consejo.application.ports import MetricRepo, SourceConn
 from src.consejo.application.use_cases.extract_data import (
     _is_executable_sql,
     _normalize_rows,
+    _select_mapping,
     extract_data,
 )
 from src.consejo.domain.entities import Metric
@@ -73,6 +74,7 @@ def _make_metric(
     db_mapping: str = "",
     grain: str = "scalar",
     db_source: str = "postgres",
+    athena_mapping: str = "",
 ) -> Metric:
     return Metric(
         id=MetricId(key),
@@ -83,6 +85,7 @@ def _make_metric(
         db_mapping=db_mapping,
         grain=grain,
         db_source=db_source,
+        athena_mapping=athena_mapping,
     )
 
 
@@ -450,3 +453,153 @@ class TestDbSourceDispatch:
 
         assert all(m.status == FetchStatus.EXTRACTED for m in result)
         assert len(pg_conn.fetch_calls) == 2
+
+
+
+# ── Selección de SQL por fuente (--source postgres|athena) ───────────────────
+
+
+class TestSelectMapping:
+    """Tests de _select_mapping: qué SQL se ejecuta según la fuente."""
+
+    def test_postgres_source_uses_db_mapping(self) -> None:
+        m = _make_metric(
+            "registered_cpe",
+            MetricSource.DIM_USER,
+            db_mapping="SELECT 1 FROM dim_user",
+            athena_mapping="SELECT 2 FROM dim_user",
+        )
+        assert _select_mapping(m, "postgres") == "SELECT 1 FROM dim_user"
+
+    def test_athena_source_uses_athena_mapping(self) -> None:
+        m = _make_metric(
+            "registered_cpe",
+            MetricSource.DIM_USER,
+            db_mapping="SELECT 1 FROM dim_user",
+            athena_mapping="SELECT 2 FROM dim_user",
+        )
+        assert _select_mapping(m, "athena") == "SELECT 2 FROM dim_user"
+
+    def test_mysql_metric_always_uses_db_mapping_even_on_athena(self) -> None:
+        """Las métricas db_source=mysql NO están en el lake: usan db_mapping
+        aunque la fuente activa sea athena."""
+        m = _make_metric(
+            "slide3_capacitate_carso",
+            MetricSource.DIM_USER,
+            db_mapping="SELECT 1 FROM carso_analisis.user",
+            athena_mapping="",  # nunca se traduce a Athena
+            db_source="mysql",
+        )
+        assert _select_mapping(m, "athena") == (
+            "SELECT 1 FROM carso_analisis.user"
+        )
+
+    def test_athena_without_translation_returns_empty(self) -> None:
+        """Métrica postgres sin athena_mapping traducido devuelve '' →
+        el extractor la marcará EMPTY sin ejecutar."""
+        m = _make_metric(
+            "certifications_cpe",
+            MetricSource.FACT_INSCRIPTION,
+            db_mapping="SELECT 1 FROM fact_inscription",
+            athena_mapping="",
+        )
+        assert _select_mapping(m, "athena") == ""
+
+
+class TestExtractDataSourceRouting:
+    """Tests de extract_data con source='athena'."""
+
+    def test_athena_source_executes_athena_mapping(
+        self, run_id: RunId, attempt_id: AttemptId, cut: date,
+    ) -> None:
+        """Con source='athena', fetch recibe el athena_mapping, no el PG."""
+        catalog = [
+            _make_metric(
+                "registered_cpe",
+                MetricSource.DIM_USER,
+                db_mapping="SELECT pg FROM dim_user",
+                athena_mapping="SELECT athena FROM dim_user",
+            ),
+        ]
+        repo = FakeMetricRepo(catalog)
+        conn = FakeSourceConn()
+        conn.set_rows("SELECT athena", [{"value": 42}])
+
+        manifests = extract_data(
+            metric_repo=repo,
+            source_conn=conn,
+            run_id=run_id,
+            attempt_id=attempt_id,
+            cut=cut,
+            source="athena",
+        )
+
+        # Se ejecutó el athena_mapping
+        assert len(conn.fetch_calls) == 1
+        executed_sql = conn.fetch_calls[0][0]
+        assert "SELECT athena" in executed_sql
+        assert "SELECT pg" not in executed_sql
+        assert manifests[0].status == FetchStatus.EXTRACTED
+        assert manifests[0].rows[0]["value"] == 42
+
+    def test_athena_empty_mapping_marks_empty_without_fetch(
+        self, run_id: RunId, attempt_id: AttemptId, cut: date,
+    ) -> None:
+        """Métrica postgres sin traducir: EMPTY y sin llamar fetch."""
+        catalog = [
+            _make_metric(
+                "certifications_cpe",
+                MetricSource.FACT_INSCRIPTION,
+                db_mapping="SELECT pg FROM fact_inscription",
+                athena_mapping="",
+            ),
+        ]
+        repo = FakeMetricRepo(catalog)
+        conn = FakeSourceConn()
+
+        manifests = extract_data(
+            metric_repo=repo,
+            source_conn=conn,
+            run_id=run_id,
+            attempt_id=attempt_id,
+            cut=cut,
+            source="athena",
+        )
+
+        assert len(conn.fetch_calls) == 0
+        assert manifests[0].status == FetchStatus.EMPTY
+
+    def test_mysql_metric_routed_to_mysql_conn_on_athena(
+        self, run_id: RunId, attempt_id: AttemptId, cut: date,
+    ) -> None:
+        """db_source=mysql va al mysql_conn con db_mapping, aun con
+        source='athena'."""
+        catalog = [
+            _make_metric(
+                "slide3_capacitate_carso",
+                MetricSource.DIM_USER,
+                db_mapping="SELECT mysql FROM carso_analisis.user",
+                athena_mapping="",
+                db_source="mysql",
+            ),
+        ]
+        repo = FakeMetricRepo(catalog)
+        athena_conn = FakeSourceConn()
+        mysql_conn = FakeSourceConn()
+        mysql_conn.set_rows("SELECT mysql", [{"value": 7}])
+
+        manifests = extract_data(
+            metric_repo=repo,
+            source_conn=athena_conn,
+            run_id=run_id,
+            attempt_id=attempt_id,
+            cut=cut,
+            mysql_conn=mysql_conn,
+            source="athena",
+        )
+
+        # La query fue al mysql_conn, no al athena_conn
+        assert len(athena_conn.fetch_calls) == 0
+        assert len(mysql_conn.fetch_calls) == 1
+        assert "SELECT mysql" in mysql_conn.fetch_calls[0][0]
+        assert manifests[0].rows[0]["value"] == 7

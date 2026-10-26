@@ -107,6 +107,34 @@ class Settings:
     mysql_database: str | None = field(
         default_factory=lambda: _env("MYSQL_DATABASE") or None
     )
+    # ── Athena / S3 Tables (Iceberg datalake) ──────────────────────────────
+    # Fuente de extracción activa: "postgres" (default) o "athena".
+    # Selecciona qué adaptador SourceConn usa el pipeline y, en el catálogo,
+    # si se ejecuta db_mapping (PG) o athena_mapping (Trino).
+    source: str = field(
+        default_factory=lambda: _env("SOURCE", "postgres")
+    )
+    aws_profile: str = field(
+        default_factory=lambda: _env("AWS_PROFILE", "sandbox-datalake")
+    )
+    aws_account_id: str = field(
+        default_factory=lambda: _env("AWS_ACCOUNT_ID", "")
+    )
+    aws_region: str = field(
+        default_factory=lambda: _env("AWS_REGION", "us-east-1")
+    )
+    athena_workgroup: str = field(
+        default_factory=lambda: _env("ATHENA_WORKGROUP", "datalake-fcs")
+    )
+    # Catálogo federado de S3 Tables: "s3tablescatalog/<table-bucket-name>".
+    athena_catalog: str = field(
+        default_factory=lambda: _env(
+            "ATHENA_CATALOG", "s3tablescatalog/datalake-fcs"
+        )
+    )
+    athena_database: str = field(
+        default_factory=lambda: _env("ATHENA_DATABASE", "silver_cpe")
+    )
     google_application_credentials: str = field(
         default_factory=lambda: _env("GOOGLE_APPLICATION_CREDENTIALS")
     )
